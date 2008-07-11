@@ -7,11 +7,11 @@
 #define WMB_ASM_CMD_PRIVATE_H
 
 /* VERSION DEFINITIONS */
-#define VER_STRING	"2.0.0.530"
+#define VER_STRING	"2.0.0.531"
 #define VER_MAJOR	2
 #define VER_MINOR	0
 #define VER_RELEASE	0
-#define VER_BUILD	530
+#define VER_BUILD	531
 #define COMPANY_NAME	"yellowstar"
 #define FILE_VERSION	"2.0b"
 #define FILE_DESCRIPTION	"Assemble WMB captures into an .nds to be played on an DS"
