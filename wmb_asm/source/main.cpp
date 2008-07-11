@@ -93,9 +93,13 @@ int main(int argc, char *argv[])
                      printf("-nds_curdir Assembled binaries will be written to the program's working/current directory\n");
                      printf("-nds_dirDir Assembled binaries will be written to Dir.\n");
                      printf("-run Opens the output once done as if you double-clicked it in Windows Explorer.\n");
-                     printf("-stop Displays the \"Press any key to continue...\" when done\n");
+                     printf("-stop Displays the \"Press any key to continue...\" when done.(Default)\n");
                      printf("-nostop Similar to the previous option, except that text isn't displayed, if the captures were assembled successfully.\n");
                      printf("-copy_dirDir Similar to -nds_dirDir, except the output is copied to Dir after the assembly.\n");
+                     printf("-showtime Display how long the the whole assembly process took, at the end, in seconds.(Default)\n");
+                     printf("-notime Similar to the previous option, except the time elapsed isn't displayed.\n");
+                     printf("-debug Write to a debug log file. Intended for debugging, and fixing binaries not assembled correctly.\n");
+                     printf("-nodebug Don't write to a debug log file.(Default)\n");
                      printf("Example: wmb_asm.exe -rsa -nds_dirbinaries capture1.cap capture2.cap captures more_captures...\n");
                      printf("With that, the RSA-siganture would be checked if ndsrsa.exe is in the current directory,\noutput would be written to the binaries directory,\ncapture1.cap, capture2.cap would be used,\nand captures and more_captures directories would be scanned for captures.\n");
                      
