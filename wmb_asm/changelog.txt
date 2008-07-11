@@ -1,0 +1,18 @@
+Wmb Asm PC changelog
+
+2.0b
+
+A lot of changes since 1.5c. Updating to 2.0b is a must, or at least when
+2.0 final is released.
+
+1.5c
+Minor bug fix.
+
+1.5b
+Minor bug fix.
+
+1.5a
+Minor bug fix.
+
+1.0
+Initial release.

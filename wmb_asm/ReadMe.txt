@@ -1,4 +1,4 @@
-wmb_asm v2.0b by yellowstar 07/10/08
+Wmb Asm Command-Line v2.0b by yellowstar 07/10/08
 
 This command-line program assembles libpcap .cap files of DS WMB Download Play captures into a .nds.
 

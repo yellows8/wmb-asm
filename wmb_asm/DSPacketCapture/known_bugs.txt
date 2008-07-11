@@ -1,0 +1,9 @@
+DSPacketCapture known bugs
+
+There's known bugs in DSPacketCapture. If you find any other bugs, or other problems not listed
+here, goto the issue tracker on the Google Code Project page, and report your issue.
+
+Wmb Asm Google Code Project page: http://code.google.com/p/wmb-asm/
+
+
+1. Only WMB beacons will be captured.

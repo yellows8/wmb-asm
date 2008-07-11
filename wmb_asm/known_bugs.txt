@@ -1,0 +1,7 @@
+Wmb Asm PC known bugs
+
+There are no known bugs in the PC version of Wmb Asm. If you find any, or if your capture
+won't assemble correctly, or if there's any problems, goto the issue tracker on the Google Code project page,
+and report your issue.
+
+Wmb Asm Google Code Project page: http://code.google.com/p/wmb-asm/

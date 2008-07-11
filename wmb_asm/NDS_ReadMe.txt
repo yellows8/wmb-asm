@@ -1,5 +1,8 @@
-Wmb Asm DS beta 2.0
-This DS version will remain as a beta until all the bugs have been fixed.
+Wmb Asm DS beta 0.1
+This DS version will remain as a beta until all the bugs have been fixed. Once the bugs are fixed, the version
+will be updated to the Wmb Asm PC version.
+
+This DS version has serious bugs which stop the assembly of the .nds. So this doesn't work very well, if at all.
 
 Usage:
 First, DLDI patch wmb_asm.nds for your card. Copy it to your card.
