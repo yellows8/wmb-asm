@@ -6,8 +6,8 @@
 // This section contains the executable version information. Go to
 // Project > Project Options to edit these values.
 1 VERSIONINFO
-FILEVERSION 2,0,0,527
-PRODUCTVERSION 2,0,0,527
+FILEVERSION 2,0,0,530
+PRODUCTVERSION 2,0,0,530
 FILETYPE VFT_APP
 BEGIN
     BLOCK "StringFileInfo"

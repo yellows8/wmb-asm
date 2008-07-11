@@ -1,7 +1,7 @@
 [Project]
 FileName=wmb_asm_module.dev
 Name=wmb_asm_module
-UnitCount=8
+UnitCount=9
 PchHead=-1
 PchSource=-1
 Ver=3
@@ -24,7 +24,7 @@ BuildCmd=
 Major=2
 Minor=0
 Release=0
-Build=270
+Build=302
 LanguageID=1033
 CharsetID=1252
 CompanyName=yellowstar
@@ -58,7 +58,7 @@ ExeOutput=
 ObjectOutput=
 OverrideOutput=1
 OverrideOutputName=wmb_asm.dll
-HostApplication=C:\AndrewConsoleStuff\wmb_asm\wmb_asm\wmb_asm.exe
+HostApplication=C:\AndrewConsoleStuff\wmb_asm\SVN\trunk\wmb_asm\wmb_asm.exe
 CommandLine=
 UseCustomMakefile=0
 CustomMakefile=
@@ -145,9 +145,9 @@ OverrideBuildCmd=0
 BuildCmd=
 
 [Unit9]
-FileName=source\wmb.cpp
+FileName=source\asm.cpp
 CompileCpp=1
-Folder=wmb_asm
+Folder=
 Compile=1
 Link=1
 Priority=1000
