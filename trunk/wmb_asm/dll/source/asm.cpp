@@ -88,6 +88,16 @@ PacketModule packetModules[MAX_PKT_MODULES];
 int totalPacketModules = 0;
 int currentPacketModule = -1;
 
+void PktModClose()
+{
+    for(int i=1; i<totalPacketModules+1; i++)
+    {
+        if(packetModules[i].lpdll==NULL)break;
+
+        CloseDLL(&packetModules[i].lpdll, NULL);
+    }
+}
+
 void PktModReset()
 {
     for(int i=0; i<1; i++)
@@ -150,6 +160,25 @@ bool PktModHandle802_11(unsigned char *data, int length)
     return 0;
 }
 
+void InitPktModules()
+{
+    DIR *dir;
+    dirent *ent;
+    char filename[256];
+    strcpy(filename, "");
+    
+    memset(packetModules, 0, sizeof(PacketModule) * MAX_PKT_MODULES);
+    totalPacketModules = 0;
+    currentPacketModule = -1;
+
+    packetModules[0].reset = &WMBReset;
+    packetModules[0].handle802_11 = &WMBHandle802_11;
+
+    
+
+    PktModReset();
+}
+
 //***************************CHECK FCS*************************************************
 inline bool CheckFCS(unsigned char *data, int length)
 {
@@ -198,14 +227,7 @@ DLLIMPORT void InitAsm(SuccessCallback callback, bool debug)
 	save_unused_packets=1;
 	funusedpkt=NULL;
 
-    memset(packetModules, 0, sizeof(PacketModule) * MAX_PKT_MODULES);
-    totalPacketModules = 0;
-    currentPacketModule = -1;
-
-    packetModules[0].reset = &WMBReset;
-    packetModules[0].handle802_11 = &WMBHandle802_11;
-
-    PktModReset();
+    InitPktModules();
 
 	AssemblySuccessCallback = callback;
 }
@@ -280,6 +302,8 @@ DLLIMPORT void ExitAsm()
 					fclosedebug(Log);
 
     ResetAsm();
+    
+    PktModClose();
 }
 
 int captureStage=0;

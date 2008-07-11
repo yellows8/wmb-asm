@@ -28,7 +28,7 @@ DEALINGS IN THE SOFTWARE.
         #ifdef unix
             typedef void* LPDLL;
         #endif
-        
+
         #ifdef DLLMAIN
 
                 #ifndef BUILDING_DLL
@@ -186,8 +186,15 @@ bool CloseAsmDLL(char *error_buffer = NULL)
 {
     return CloseDLL(&AsmDLL, error_buffer);
 }
+
+        #endif
+        
         #endif
 
-    #endif
+        #ifndef DLLMAIN
+            bool LoadDLL(LPDLL *lpdll, const char *filename, char *error_buffer);
+            bool CloseDLL(LPDLL *lpdll, char *error_buffer);
+            void* LoadFunctionDLL(LPDLL *lpdll, const char *func_name, char *error_buffer);
+        #endif
     
 #endif
