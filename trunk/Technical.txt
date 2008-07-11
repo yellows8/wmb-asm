@@ -1,0 +1,50 @@
+This is a document describing on this wmb/download play packet capture assembler program works.(Along with things about wmb)
+
+When working with this networking stuff, you need a program to analyze captures. I recommend Wireshark.(Wireshark is the succesor to Ethereal)
+Also, for reference, use the WMBProtocol on NDSTech Wiki, and the WMB info on gbatek.
+http://www.bottledlight.com/ds/index.php/Wifi/WMBProtocol
+http://nocash.emubase.de/gbatek.htm#dswifimultiboot
+
+This program finds the data for each part, then copies it into some buffers and similar things. Then, after it finds everything,
+it does the actual assembly by writing the data to the .nds.
+
+There's a section in packets called AVS, right at the start of each packet.See IsValidAVS in utils.cpp for
+the code used for handling this. Many of the fields are little-endian. Since most computers,
+are big-endian, the endian needs flipped. Not flipping them results in huge numbers that are difficult to use. See
+ConvertAVSEndian in utils.cpp.(It's right below the other function)
+Also see the AVS_header struct in defs.h, on line 202.
+
+Now for the sequence_control field in the iee80211_framehead2 struct, in defs.h. The sequence_control field's first 12 bits
+are the actual sequence number, while the last 4 bits are the duration.(Duration isn't really used in WMB that I know of)
+This is used for error-checking during the data transfer.
+
+Beacons contain the banner/advertisement seen on the receiving DS, with the icon, game name, and such. The ieee802_11 seq
+is the normal, incrementing-by-one thing. The +2 scheme is used in the data transfer.(The following are fields from the beacon struct, and similar data)
+Capability is always 0x2104.(little-endian)
+taggedparams/Supported Rates is usually 01028204. These are tags we are dealing with. Transparently so far, but soon not so.
+The third byte of dsparams is the channel. As for the tim, I don't know what that is, and it seems it can be safely ignored.
+Next we hunt for the tag with number 221, with vendor 00:09:BF. This is the Nintendo tag, which contains the data we want.
+The ds_element struct starts at the vendor field, not the tag's data. Starting at the tag data will screw things up. 
+See nintendoWMBBeacon in utils.cpp, on line 170. This code goes through the tags, and attempts to find the Nintendo tag.
+It does this by starting at the first tag after the TIM. Next, every time it find a new tag,(including now)
+it checks if we found the Nintendo tag. If so, we return with the address of the tag, starting at the vendor field.
+Otherwise, we read the length the tag, then we jump to the next tag, then keep repeating the whole thing until we find the
+Nintendo tag, or when we hit the end of the packet.
+
+The rest of the beacon assembly is fairly easy. ds_element.advert_sequence_number is the advert sequence number.
+It is always between 0-10. See BeaconGrab in main.cpp, on line 450. The advert is split into 10 different beacons. Basically
+you have a ds_advert struct, and you copy the data in multiples of 98. Again, see BeaconGrab. One last thing about beacons:
+Don't forget to check the CRC16! See ProcessBeacons on line 735, and computeBeaconChecksum right above BeaconGrab.
+
+Next we need to find the client's MAC. All we have to do is find the Authentication frame, grab the sender's MAC, and that's it.
+Finding 802_11 types & subtypes are easy if you have Wireshark. Even you don't, you can Google for them; I'm not directly
+telling you the t & st numbers since it's so easy, with Wireshark anyway.
+And now we need to find the RSA frame. This easy to do when referencing the documents I mentioned earlier.
+Next is the header. Once again this is an easy matter. Note you must ignore this header when handling the Arm7/9 data,
+with the internal seq being zero, since for some wacky reason the header is resent many times.
+
+The data part is not so simple. See the source code for this. See the ReadCaptureLoop function,
+Init at the bottom, and ProcessData.
+
+And now we do the assembly in AssembleNds. This part is easy.
+And now we are done!
