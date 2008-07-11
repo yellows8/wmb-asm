@@ -1,0 +1,39 @@
+# Project: wmb_asm_frontend
+# Compiler: Default GCC compiler
+# Compiler Type: MingW 3
+# Makefile created by wxDev-C++ 6.10.2 on 09/07/08 19:35
+
+CPP       = g++.exe
+CC        = gcc.exe
+WINDRES   = windres.exe
+OBJ       = Objects/MingW/wmb_asm_frontendApp.o Objects/MingW/wmb_asm_frontendFrmMain.o Objects/MingW/wmb_asm_frontend_private.res
+LINKOBJ   = Objects/MingW/wmb_asm_frontendApp.o Objects/MingW/wmb_asm_frontendFrmMain.o Objects/MingW/wmb_asm_frontend_private.res
+LIBS      = -L"C:/Dev-Cpp/Lib" -L"C:/idasdk/libgcc.w32" -mwindows -lwxmsw28 -lwxmsw28_gl -lwxtiff -lwxjpeg -lwxpng -lwxzlib -lwxregex -lwxexpat -lkernel32 -luser32 -lgdi32 -lcomdlg32 -lwinspool -lwinmm -lshell32 -lcomctl32 -lole32 -loleaut32 -luuid -lrpcrt4 -ladvapi32 -lwsock32 -lodbc32 -lopengl32  -g3 
+INCS      = -I"include" -I"C:/idasdk/include"
+CXXINCS   = -I"C:/Dev-Cpp/lib/gcc/mingw32/3.4.2/include" -I"C:/Dev-Cpp/include/c++/3.4.2/backward" -I"C:/Dev-Cpp/include/c++/3.4.2/mingw32" -I"C:/Dev-Cpp/include/c++/3.4.2" -I"C:/Dev-Cpp/include" -I"C:/Dev-Cpp/" -I"C:/Dev-Cpp/include/common/wx/msw" -I"C:/Dev-Cpp/include/common/wx/generic" -I"C:/Dev-Cpp/include/common/wx/fl" -I"C:/Dev-Cpp/include/common/wx/gizmos" -I"C:/Dev-Cpp/include/common/wx/html" -I"C:/Dev-Cpp/include/common/wx/mmedia" -I"C:/Dev-Cpp/include/common/wx/net" -I"C:/Dev-Cpp/include/common/wx/ogl" -I"C:/Dev-Cpp/include/common/wx/plot" -I"C:/Dev-Cpp/include/common/wx/protocol" -I"C:/Dev-Cpp/include/common/wx/stc" -I"C:/Dev-Cpp/include/common/wx/svg" -I"C:/Dev-Cpp/include/common/wx/xml" -I"C:/Dev-Cpp/include/common/wx/xrc" -I"C:/Dev-Cpp/include/common/wx" -I"C:/Dev-Cpp/include/common" -I"C:/idasdk/include"
+RCINCS    = --include-dir "C:/Dev-Cpp/include/common"
+BIN       = wmb_asm_frontend.exe
+DEFINES   =  -D__WXMSW__ -D__GNUWIN32__ -D__WIN95__
+CXXFLAGS  = $(CXXINCS) $(DEFINES) -fno-exceptions -fno-pcc-struct-return -fstrict-aliasing -Wall -D__WXMSW__ -D__GNUWIN32__ -D__WIN95__   -fexpensive-optimizations -O3 -g3
+CFLAGS    = $(INCS) $(DEFINES) -fno-exceptions -fno-pcc-struct-return -fstrict-aliasing -Wall -D__WXMSW__ -D__GNUWIN32__ -D__WIN95__   -fexpensive-optimizations -O3 -g3
+GPROF     = gprof.exe
+RM        = rm -f
+LINK      = g++.exe
+
+.PHONY: all all-before all-after clean clean-custom
+all: all-before $(BIN) all-after
+
+clean: clean-custom
+	$(RM) $(OBJ) $(BIN)
+
+$(BIN): $(OBJ)
+	$(LINK) $(LINKOBJ) -o "wmb_asm_frontend.exe" $(LIBS)
+
+Objects/MingW/wmb_asm_frontendApp.o: $(GLOBALDEPS) wmb_asm_frontendApp.cpp wmb_asm_frontendApp.h wmb_asm_frontendFrmMain.h ../dll/include/wmb_asm.h ../dll/include/dll.h ../dll/include/pcap.h ../dll/include/dirscan.h ../dll/include/win32dirent.h ../dll/include/ndsdirent.h ../dll/include/dll_load.h
+	$(CPP) -c wmb_asm_frontendApp.cpp -o Objects/MingW/wmb_asm_frontendApp.o $(CXXFLAGS)
+
+Objects/MingW/wmb_asm_frontendFrmMain.o: $(GLOBALDEPS) wmb_asm_frontendFrmMain.cpp wmb_asm_frontendFrmMain.h Images/Self_wmb_asm_frontendFrmMain_XPM.xpm
+	$(CPP) -c wmb_asm_frontendFrmMain.cpp -o Objects/MingW/wmb_asm_frontendFrmMain.o $(CXXFLAGS)
+
+Objects/MingW/wmb_asm_frontend_private.res: Objects/MingW/wmb_asm_frontend_private.rc wmb_asm_frontendApp.rc 
+	$(WINDRES) --input-format=rc -o Objects/MingW/wmb_asm_frontend_private.res $(RCINCS) Objects/MingW/WMB_AS~1.RC -O coff

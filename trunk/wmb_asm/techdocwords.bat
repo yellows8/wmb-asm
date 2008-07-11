@@ -1,0 +1,1 @@
+"C:\Documents and Settings\Andrew\My Documents\Projects\word_count\Output\MingW\wordcount.exe" "C:\Documents and Settings\Andrew\My Documents\Projects\wmb_asm\Technical.txt"
