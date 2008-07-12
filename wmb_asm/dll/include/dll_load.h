@@ -146,7 +146,7 @@ bool LoadAsmDLL(const char *filename ,char *error_buffer = NULL)
 	   #ifndef NDS
 	           //Why the strange function names you ask? I'm even sure why my compiler/IDE does this... Maybe because a def file isn't created?
 	           //If you get errors with "failed to load function [...] in module", when you compiled it yourself, try undecorating these names.
-            if((HandlePacket=(lpHandlePacket)LoadFunctionDLL(&AsmDLL, "_Z12HandlePacketP12spcap_pkthdrPhiPPcP7spcap_tbS2_bS2_b", error_buffer))==NULL);
+            if((HandlePacket=(lpHandlePacket)LoadFunctionDLL(&AsmDLL, "_Z12HandlePacketP12spcap_pkthdrPhiPPcP7spcap_tbS2_bS2_b", error_buffer))==NULL) return 0;
             if((InitAsm=(lpInitAsm)LoadFunctionDLL(&AsmDLL, "_Z7InitAsmPFvvEb", error_buffer))==NULL)return 0;
             if((ResetAsm=(lpResetAsm)LoadFunctionDLL(&AsmDLL, "_Z8ResetAsmv", error_buffer))==NULL)return 0;
             if((ExitAsm=(lpExitAsm)LoadFunctionDLL(&AsmDLL, "_Z7ExitAsmv", error_buffer))==NULL)return 0;
