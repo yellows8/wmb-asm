@@ -82,7 +82,9 @@ struct PacketModule
 {
     lpHandle802_11 handle802_11;
     lpReset reset;
+	#ifndef NDS
     LPDLL lpdll;//The handle of the module if this one isn't a built-in packet handler.
+	#endif
 };
 PacketModule packetModules[MAX_PKT_MODULES];
 int totalPacketModules = 0;
@@ -90,12 +92,14 @@ int currentPacketModule = -1;
 
 void PktModClose()
 {
-    for(int i=1; i<totalPacketModules+1; i++)
-    {
-        if(packetModules[i].lpdll==NULL)break;
-
-        CloseDLL(&packetModules[i].lpdll, NULL);
-    }
+	#ifndef NDS
+		for(int i=1; i<totalPacketModules+1; i++)
+		{
+			if(packetModules[i].lpdll==NULL)break;
+			
+			CloseDLL(&packetModules[i].lpdll, NULL);
+		}
+	#endif
 }
 
 void PktModReset()
@@ -106,13 +110,15 @@ void PktModReset()
             packetModules[i].reset();
     }
     
-    for(int i=1; i<totalPacketModules+1; i++)
-    {
-        if(packetModules[i].lpdll==NULL)break;
-        
-        if(packetModules[i].reset!=NULL)
-            packetModules[i].reset();
-    }
+	#ifndef NDS
+		for(int i=1; i<totalPacketModules+1; i++)
+		{
+			if(packetModules[i].lpdll==NULL)break;
+			
+			if(packetModules[i].reset!=NULL)
+				packetModules[i].reset();
+		}
+	#endif
 }
 
 bool PktModHandle802_11(unsigned char *data, int length)
@@ -135,21 +141,23 @@ bool PktModHandle802_11(unsigned char *data, int length)
             }
         }
     
-        for(int i=1; i<totalPacketModules+1; i++)
-        {
-            if(packetModules[i].lpdll==NULL)break;
-            
-            if(packetModules[i].handle802_11!=NULL)
-            {
-                ret = packetModules[i].handle802_11(data, length);
-                
-                if(ret)
-                {
+		#ifndef NDS
+			for(int i=1; i<totalPacketModules+1; i++)
+			{
+				if(packetModules[i].lpdll==NULL)break;
+				
+				if(packetModules[i].handle802_11!=NULL)
+				{
+					ret = packetModules[i].handle802_11(data, length);
+					
+					if(ret)
+					{
                     currentPacketModule = i;
                     return 1;
-                }
-            }
-        }
+					}
+				}
+			}
+		#endif
     
     }
     else
@@ -162,17 +170,19 @@ bool PktModHandle802_11(unsigned char *data, int length)
 
 void InitPktModules()
 {
-    DIR *dir;
+    /*DIR *dir;
     dirent *ent;
     int skip=0;
     LPDLL lpdll;
+	FILE *modlog = NULL;
     char error_buffer[256];
+	char destr[256];*/
     char filename[256];
-    char destr[256];
-    FILE *modlog = NULL;
     memset(filename, 0, 256);
+	#ifndef NDS
     memset(error_buffer, 0, 256);
     memset(destr, 0, 256);
+	#endif
     
     memset(packetModules, 0, sizeof(PacketModule) * MAX_PKT_MODULES);
     totalPacketModules = 0;
@@ -180,90 +190,6 @@ void InitPktModules()
 
     packetModules[0].reset = &WMBReset;
     packetModules[0].handle802_11 = &WMBHandle802_11;
-
-    dir=opendir(".");
-    if(dir!=NULL)
-    {
-        ent=(dirent*)1;
-        
-            while(ent!=NULL)
-            {
-                ent = readdir(dir);
-                if(ent==NULL)break;
-                
-                if(skip<2)
-                {
-                    skip++;
-                    continue;
-                }
-                else
-                {
-                    
-                    if(strstr(ent->d_name, ".dll") || strstr(ent->d_name, ".so"))
-                    {
-                        if(modlog==NULL)
-                        {
-                            modlog = fopen("module_log.txt","w");
-                                if(modlog==NULL)break;
-                        }
-                        
-                        if(!LoadDLL(&lpdll, ent->d_name, error_buffer))
-                        {
-                            sprintf(destr, "ERROR: %s", error_buffer);
-                            
-                            if(modlog!=NULL)
-                            {
-                                fprintf(modlog, "%s", destr);
-                                fflush(modlog);
-                            }
-                            
-                            continue;
-                        }
-                        else
-                        {
-                            
-                            if((packetModules[1 + totalPacketModules].reset=(lpReset)LoadFunctionDLL(&lpdll, "_Z8Resetv", error_buffer))==NULL)
-                            {
-                                sprintf(destr, "ERROR: In module %s: %s", ent->d_name, error_buffer);
-                                
-                                if(modlog!=NULL)
-                                {
-                                    fprintf(modlog, "%s", destr);
-                                    fflush(modlog);
-                                }
-                                
-                                CloseDLL(&lpdll, NULL);
-                                
-                                return;
-                            }
-                            
-                            if((packetModules[1 + totalPacketModules].handle802_11=(lpHandle802_11)LoadFunctionDLL(&lpdll, "_Z15Handle802_11", error_buffer))==NULL)
-                            {
-                                sprintf(destr, "ERROR: In module %s: %s", ent->d_name, error_buffer);
-                                
-                                if(modlog!=NULL)
-                                {
-                                    fprintf(modlog, "%s", destr);
-                                    fflush(modlog);
-                                }
-                                
-                                CloseDLL(&lpdll, NULL);
-                                
-                                return;
-                            }
-                            
-                            packetModules[1 + totalPacketModules].lpdll = lpdll;
-                            totalPacketModules++;
-                        }
-                    }
-                }
-            }
-        
-        closedir(dir);
-    }
-    
-    if(modlog!=NULL)
-    fclose(modlog);
     
     PktModReset();
 }
