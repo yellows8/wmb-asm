@@ -3,8 +3,10 @@ Wmb Asm Command-Line v2.0b by yellowstar 07/10/08
 This command-line program assembles libpcap .cap files of DS WMB Download Play captures into a .nds.
 
 This program will not work without the Wmb Asm Module, wmb_asm.dll, and when running on unix-based platforms, wmb_asm.so.
-If you do not have that file, either download the module from the Google Code page and copy the downloaded module into
-this directory, or just download the package, which contains both the module and command-line, so no extra downloads are needed.
+Also, the module is not of much use without the command-line program. If you missing either of these, goto the
+Google Code project page, and download the missing archive. Extract the contents, then copy the missing file into this directory.
+If it's the command-line you downloaded, copy the module into the directory for the command-line. Likewise when
+you first downloaded the module.
 
 Right now, this tool is made for compiled for Windows only. However, other platforms are supported, but it needs to be compiled
 for the other platforms. The general public needs to wait for devs to compile & host those binaries, before you can use it on those platforms.
