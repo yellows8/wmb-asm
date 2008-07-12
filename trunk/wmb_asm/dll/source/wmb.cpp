@@ -59,7 +59,7 @@ unsigned char *Nin_ie = NULL;
 
 void Init();
 
-bool WMBHandle802_11(unsigned char *data, int length)
+DLLIMPORT bool WMBHandle802_11(unsigned char *data, int length)
 {
      if(stage==STAGE_BEACON)return WMBProcessBeacons(data,length);
      if(stage==STAGE_AUTH)return WMBProcessAuth(data,length);
@@ -70,7 +70,7 @@ bool WMBHandle802_11(unsigned char *data, int length)
      return 0;
 }
 
-void WMBReset()
+DLLIMPORT void WMBReset()
 {
     last_seq=0;
 }

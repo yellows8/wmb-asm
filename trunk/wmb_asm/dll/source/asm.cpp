@@ -164,8 +164,15 @@ void InitPktModules()
 {
     DIR *dir;
     dirent *ent;
+    int skip=0;
+    LPDLL lpdll;
+    char error_buffer[256];
     char filename[256];
-    strcpy(filename, "");
+    char destr[256];
+    FILE *modlog = NULL;
+    memset(filename, 0, 256);
+    memset(error_buffer, 0, 256);
+    memset(destr, 0, 256);
     
     memset(packetModules, 0, sizeof(PacketModule) * MAX_PKT_MODULES);
     totalPacketModules = 0;
@@ -174,8 +181,90 @@ void InitPktModules()
     packetModules[0].reset = &WMBReset;
     packetModules[0].handle802_11 = &WMBHandle802_11;
 
+    dir=opendir(".");
+    if(dir!=NULL)
+    {
+        ent=(dirent*)1;
+        
+            while(ent!=NULL)
+            {
+                ent = readdir(dir);
+                if(ent==NULL)break;
+                
+                if(skip<2)
+                {
+                    skip++;
+                    continue;
+                }
+                else
+                {
+                    
+                    if(strstr(ent->d_name, ".dll") || strstr(ent->d_name, ".so"))
+                    {
+                        if(modlog==NULL)
+                        {
+                            modlog = fopen("module_log.txt","w");
+                                if(modlog==NULL)break;
+                        }
+                        
+                        if(!LoadDLL(&lpdll, ent->d_name, error_buffer))
+                        {
+                            sprintf(destr, "ERROR: %s", error_buffer);
+                            
+                            if(modlog!=NULL)
+                            {
+                                fprintf(modlog, "%s", destr);
+                                fflush(modlog);
+                            }
+                            
+                            continue;
+                        }
+                        else
+                        {
+                            
+                            if((packetModules[1 + totalPacketModules].reset=(lpReset)LoadFunctionDLL(&lpdll, "_Z8Resetv", error_buffer))==NULL)
+                            {
+                                sprintf(destr, "ERROR: In module %s: %s", ent->d_name, error_buffer);
+                                
+                                if(modlog!=NULL)
+                                {
+                                    fprintf(modlog, "%s", destr);
+                                    fflush(modlog);
+                                }
+                                
+                                CloseDLL(&lpdll, NULL);
+                                
+                                return;
+                            }
+                            
+                            if((packetModules[1 + totalPacketModules].handle802_11=(lpHandle802_11)LoadFunctionDLL(&lpdll, "_Z15Handle802_11", error_buffer))==NULL)
+                            {
+                                sprintf(destr, "ERROR: In module %s: %s", ent->d_name, error_buffer);
+                                
+                                if(modlog!=NULL)
+                                {
+                                    fprintf(modlog, "%s", destr);
+                                    fflush(modlog);
+                                }
+                                
+                                CloseDLL(&lpdll, NULL);
+                                
+                                return;
+                            }
+                            
+                            packetModules[1 + totalPacketModules].lpdll = lpdll;
+                            totalPacketModules++;
+                        }
+                    }
+                }
+            }
+        
+        closedir(dir);
+    }
     
-
+    if(modlog!=NULL)
+    fclose(modlog);
+    
     PktModReset();
 }
 
@@ -283,6 +372,8 @@ DLLIMPORT void ResetAsm()
 									memcpy(nds_data.handledIDs,handledIDs,256);
 									nds_data.FoundGameIDs = FoundGameIDs;
                                }
+                               
+                               currentPacketModule = -1;
 	                           PktModReset();
 }
 
