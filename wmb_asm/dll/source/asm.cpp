@@ -179,10 +179,10 @@ void InitPktModules()
 	char destr[256];*/
     char filename[256];
     memset(filename, 0, 256);
-	#ifndef NDS
+	/*#ifndef NDS
     memset(error_buffer, 0, 256);
     memset(destr, 0, 256);
-	#endif
+	#endif*/
     
     memset(packetModules, 0, sizeof(PacketModule) * MAX_PKT_MODULES);
     totalPacketModules = 0;

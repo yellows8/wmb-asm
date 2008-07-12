@@ -24,9 +24,9 @@ DEALINGS IN THE SOFTWARE.
 
 #define ASM_MODULE_VERSION_MAJOR 2
 #define ASM_MODULE_VERSION_MINOR 0
-#define ASM_MODULE_VERSION_RELEASE 0
+#define ASM_MODULE_VERSION_RELEASE 1
 #define ASM_MODULE_VERSION_BUILD 0
-#define ASM_MODULE_VERSION_STR "2.0b"
+#define ASM_MODULE_VERSION_STR "2.0b r2"
 
     #ifdef ARM9//We are compiling for Nintendo DS
 		#include <nds.h>

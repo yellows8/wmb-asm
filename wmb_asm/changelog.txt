@@ -1,5 +1,11 @@
 Wmb Asm PC changelog
 
+2.0b r2
+
+Fixed flaws in the module Read Me. Install instructions are now on a Wiki page on the Google Code project page.
+Previously, assemble.bat, assembleRSA.bat, and the captures directory were missing from the command-line download,
+and the package. These have been added.
+
 2.0b
 
 A lot of changes since 1.2c. Updating to 2.0b is a must, or at least when
