@@ -39,9 +39,9 @@ LeftChar=1
 [Editor_5]
 Open=0
 Top=0
-CursorCol=10
-CursorRow=73
-TopLine=51
+CursorCol=26
+CursorRow=25
+TopLine=1
 LeftChar=1
 [Editor_6]
 Open=0
@@ -60,7 +60,7 @@ LeftChar=1
 [Editor_8]
 Open=0
 Top=0
-CursorCol=5
-CursorRow=183
+CursorCol=10
+CursorRow=185
 TopLine=170
 LeftChar=1

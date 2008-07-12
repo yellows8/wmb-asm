@@ -29,7 +29,7 @@ DEALINGS IN THE SOFTWARE.
 #define APPNAME "wmb_asm.nds"
 #endif
 
-#define APPVERSION "v2.0b"//The string displayed for the version, when this program is ran without any parameters.
+#define APPVERSION "v2.0b r2"//The string displayed for the version, when this program is ran without any parameters.
 
 int ReadDump(int argc, char *argv[]);
 int ReadCaptureLoop(char *cap, int argc, char *argv[], bool checkrsa, char *outdir, bool run, char *copydir, bool use_copydir);
