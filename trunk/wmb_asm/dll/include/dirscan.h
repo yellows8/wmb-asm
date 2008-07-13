@@ -22,7 +22,9 @@ DEALINGS IN THE SOFTWARE.
 #ifndef _H_DIRSCAN
 #define _H_DIRSCAN
 
-
+#ifdef __cplusplus
+  extern "C" {
+#endif
 
 typedef struct TFILE_LIST
 {
@@ -54,6 +56,10 @@ typedef struct TFILE_LIST
 
     #endif
 
+#endif
+
+#ifdef __cplusplus
+  }
 #endif
 
 #endif

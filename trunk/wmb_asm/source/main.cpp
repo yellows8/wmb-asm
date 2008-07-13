@@ -112,6 +112,7 @@ int main(int argc, char *argv[])
                 start=time(NULL);
                 
                 char *error_buffer = (char*)malloc(256);
+                memset(error_buffer, 0, 256);
                 
                     //Try to use the assembly module in the dll directory first, then try the working directory.
                     if(!LoadAsmDLL("dll/wmb_asm", error_buffer))//LoadAsmDLL takes care of the extension

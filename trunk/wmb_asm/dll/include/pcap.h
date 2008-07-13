@@ -21,6 +21,10 @@ DEALINGS IN THE SOFTWARE.
 
 #ifndef lib_pcap_h
 
+    #ifdef __cplusplus
+    extern "C" {
+    #endif
+
     #ifndef _H_CUSTOM_PCAP
     #define _H_CUSTOM_PCAP
 
@@ -100,6 +104,10 @@ DEALINGS IN THE SOFTWARE.
             
             #endif
 
+    #endif
+    
+    #ifdef __cplusplus
+    }
     #endif
 
 #endif
