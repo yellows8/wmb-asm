@@ -59,6 +59,10 @@ unsigned char *Nin_ie = NULL;
 
 void Init();
 
+#ifdef __cplusplus
+  extern "C" {
+#endif
+
 DLLIMPORT bool WMBHandle802_11(unsigned char *data, int length)
 {
      if(stage==STAGE_BEACON)return WMBProcessBeacons(data,length);
@@ -74,6 +78,10 @@ DLLIMPORT void WMBReset()
 {
     last_seq=0;
 }
+
+#ifdef __cplusplus
+  }
+#endif
 
 void WMBBeaconGrab(unsigned char *data)
 {

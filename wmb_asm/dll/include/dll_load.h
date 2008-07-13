@@ -37,8 +37,8 @@ DEALINGS IN THE SOFTWARE.
 
                     bool LoadDLL(LPDLL *lpdll, const char *filename, char *error_buffer = NULL)
                     {
-                        if(error_buffer!=NULL)
-                        strcpy(error_buffer,"");
+                        //if(error_buffer!=NULL)
+                        //strcpy(error_buffer,"");
                         
                         char modname[256];
                         memset(modname,0,256);
@@ -94,8 +94,8 @@ DEALINGS IN THE SOFTWARE.
 
 bool CloseDLL(LPDLL *lpdll, char *error_buffer = NULL)
 {
-    if(error_buffer!=NULL)
-    strcpy(error_buffer,"");
+    //if(error_buffer!=NULL)
+    //strcpy(error_buffer,"");
     
         #ifdef WIN32
             if(!FreeLibrary(*lpdll))
@@ -116,22 +116,42 @@ bool CloseDLL(LPDLL *lpdll, char *error_buffer = NULL)
     return 1;
 }
 
-void* LoadFunctionDLL(LPDLL *lpdll, const char *func_name, char *error_buffer = NULL)
+void* LoadFunctionDLL(LPDLL *lpdll, const char *func_name, const char *func_name2, char *error_buffer = NULL)
 {
     void* func_addr=NULL;
+    char *f_name = NULL;
     
-    if(error_buffer!=NULL)
-    strcpy(error_buffer,"");
-    
+    if(func_addr==NULL && func_name!=NULL)
+    {
+        f_name = (char*)func_name;
+        
         #ifdef WIN32
-            func_addr = (void*)GetProcAddress((HINSTANCE)*lpdll,func_name);
+            func_addr = (void*)GetProcAddress((HINSTANCE)*lpdll,f_name);
         #endif
     
                 #ifdef unix
-                    func_addr = dlsym(lpdll,func_name);
+                    func_addr = dlsym(lpdll,f_name);
                 #endif
+                
+                
+    }
     
-    if(error_buffer!=NULL && func_addr==NULL)sprintf(error_buffer,"Failed to load function %s in the module.\n",func_name);
+    if(func_addr==NULL && func_name2!=NULL)
+    {
+        f_name = (char*)func_name2;
+        #ifdef WIN32
+            func_addr = (void*)GetProcAddress((HINSTANCE)*lpdll,f_name);
+        #endif
+
+                #ifdef unix
+                    func_addr = dlsym(lpdll,f_name);
+                #endif
+    }
+    
+    if(error_buffer!=NULL && func_addr==NULL)
+    {
+        sprintf(error_buffer ,"Failed to load function %s in the module.\n",f_name);
+    }
     
     return func_addr;
 }
@@ -141,38 +161,40 @@ bool LoadAsmDLL(const char *filename ,char *error_buffer = NULL)
 {
     if(filename==NULL)return 0;
     
+    AsmDLL = 0;
+    
     if(!LoadDLL(&AsmDLL, filename, error_buffer))return 0;
     
 	   #ifndef NDS
 	           //Why the strange function names you ask? I'm even sure why my compiler/IDE does this... Maybe because a def file isn't created?
 	           //If you get errors with "failed to load function [...] in module", when you compiled it yourself, try undecorating these names.
-            if((HandlePacket=(lpHandlePacket)LoadFunctionDLL(&AsmDLL, "_Z12HandlePacketP12spcap_pkthdrPhiPPcP7spcap_tbS2_bS2_b", error_buffer))==NULL) return 0;
-            if((InitAsm=(lpInitAsm)LoadFunctionDLL(&AsmDLL, "_Z7InitAsmPFvvEb", error_buffer))==NULL)return 0;
-            if((ResetAsm=(lpResetAsm)LoadFunctionDLL(&AsmDLL, "_Z8ResetAsmv", error_buffer))==NULL)return 0;
-            if((ExitAsm=(lpExitAsm)LoadFunctionDLL(&AsmDLL, "_Z7ExitAsmv", error_buffer))==NULL)return 0;
-            if((CaptureAsmReset=(lpCaptureAsmReset)LoadFunctionDLL(&AsmDLL, "_Z15CaptureAsmResetPi", error_buffer))==NULL)return 0;
-            if((GetStatusAsm=(lpGetStatusAsm)LoadFunctionDLL(&AsmDLL, "_Z12GetStatusAsmPi", error_buffer))==NULL)return 0;
-            if((QueryAssembleStatus=(lpQueryAssembleStatus)LoadFunctionDLL(&AsmDLL, "_Z19QueryAssembleStatusPi", error_buffer))==NULL)return 0;
-            if((GetPrecentageCompleteAsm=(lpGetPrecentageCompleteAsm)LoadFunctionDLL(&AsmDLL, "_Z24GetPrecentageCompleteAsmv", error_buffer))==NULL)return 0;
-            if((ConvertEndian=(lpConvertEndian)LoadFunctionDLL(&AsmDLL, "_Z13ConvertEndianPvS_i", error_buffer))==NULL)return 0;
-            if((CheckEndianA=(lpCheckEndianA)LoadFunctionDLL(&AsmDLL, "_Z12CheckEndianAPvi", error_buffer))==NULL)return 0;
-            if((GetModuleVersionStr=(lpGetModuleVersionStr)LoadFunctionDLL(&AsmDLL, "_Z19GetModuleVersionStrv", error_buffer))==NULL)return 0;
-            if((GetModuleVersionInt=(lpGetModuleVersionInt)LoadFunctionDLL(&AsmDLL, "_Z19GetModuleVersionInti", error_buffer))==NULL)return 0;
+            HandlePacket=(lpHandlePacket)LoadFunctionDLL(&AsmDLL, "HandlePacket", "_Z12HandlePacketP12spcap_pkthdrPhiPPcP7spcap_tbS2_bS2_b", error_buffer);if((HandlePacket)==NULL) return 0;
+            InitAsm=(lpInitAsm)LoadFunctionDLL(&AsmDLL, "InitAsm", "_Z7InitAsmPFvvEb", error_buffer);if((InitAsm)==NULL)return 0;
+            ResetAsm=(lpResetAsm)LoadFunctionDLL(&AsmDLL, "ResetAsm", "_Z8ResetAsmv", error_buffer);if((ResetAsm)==NULL)return 0;
+            ExitAsm=(lpExitAsm)LoadFunctionDLL(&AsmDLL, "ExitAsm", "_Z7ExitAsmv", error_buffer);if((ExitAsm)==NULL)return 0;
+            CaptureAsmReset=(lpCaptureAsmReset)LoadFunctionDLL(&AsmDLL, "CaptureAsmReset", "_Z15CaptureAsmResetPi", error_buffer);if((CaptureAsmReset)==NULL)return 0;
+            GetStatusAsm=(lpGetStatusAsm)LoadFunctionDLL(&AsmDLL, "GetStatusAsm", "_Z12GetStatusAsmPi", error_buffer);if((GetStatusAsm)==NULL)return 0;
+            QueryAssembleStatus=(lpQueryAssembleStatus)LoadFunctionDLL(&AsmDLL, "QueryAssembleStatus", "_Z19QueryAssembleStatusPi", error_buffer);if((QueryAssembleStatus)==NULL)return 0;
+            GetPrecentageCompleteAsm=(lpGetPrecentageCompleteAsm)LoadFunctionDLL(&AsmDLL, "GetPrecentageCompleteAsm", "_Z24GetPrecentageCompleteAsmv", error_buffer);if((GetPrecentageCompleteAsm)==NULL)return 0;
+            ConvertEndian=(lpConvertEndian)LoadFunctionDLL(&AsmDLL, "ConvertEndian", "_Z13ConvertEndianPvS_i", error_buffer);if((ConvertEndian)==NULL)return 0;
+            CheckEndianA=(lpCheckEndianA)LoadFunctionDLL(&AsmDLL, "CheckEndianA", "_Z12CheckEndianAPvi", error_buffer);if((CheckEndianA)==NULL)return 0;
+            GetModuleVersionStr=(lpGetModuleVersionStr)LoadFunctionDLL(&AsmDLL, "GetModuleVersionStr", "_Z19GetModuleVersionStrv", error_buffer);if((GetModuleVersionStr)==NULL)return 0;
+            GetModuleVersionInt=(lpGetModuleVersionInt)LoadFunctionDLL(&AsmDLL, "GetModuleVersionInt", "_Z19GetModuleVersionInti", error_buffer);if((GetModuleVersionInt)==NULL)return 0;
             
-            if((pcap_open_offline=(lppcap_open_offline)LoadFunctionDLL(&AsmDLL, "_Z17pcap_open_offlinePKcPc", error_buffer))==NULL)return 0;
-            if((pcap_next_ex=(lppcap_next_ex)LoadFunctionDLL(&AsmDLL, "_Z12pcap_next_exP7spcap_tPP12spcap_pkthdrPPKh", error_buffer))==NULL)return 0;
-            if((pcap_close=(lppcap_close)LoadFunctionDLL(&AsmDLL, "_Z10pcap_closeP7spcap_t", error_buffer))==NULL)return 0;
-            if((pcap_geterr=(lppcap_geterr)LoadFunctionDLL(&AsmDLL, "_Z11pcap_geterrP7spcap_t", error_buffer))==NULL)return 0;
-            if((GetPacketNumber=(lpGetPacketNumber)LoadFunctionDLL(&AsmDLL, "_Z15GetPacketNumberv", error_buffer))==NULL)return 0;
-            if((GetSnapshotLength=(lpGetSnapshotLength)LoadFunctionDLL(&AsmDLL, "_Z17GetSnapshotLengthv", error_buffer))==NULL)return 0;
+            pcap_open_offline=(lppcap_open_offline)LoadFunctionDLL(&AsmDLL, "pcap_open_offline", "_Z17pcap_open_offlinePKcPc", error_buffer);if((pcap_open_offline)==NULL)return 0;
+            pcap_next_ex=(lppcap_next_ex)LoadFunctionDLL(&AsmDLL, "pcap_next_ex", "_Z12pcap_next_exP7spcap_tPP12spcap_pkthdrPPKh", error_buffer);if((pcap_next_ex)==NULL)return 0;
+            pcap_close=(lppcap_close)LoadFunctionDLL(&AsmDLL, "pcap_close", "_Z10pcap_closeP7spcap_t", error_buffer);if((pcap_close)==NULL)return 0;
+            pcap_geterr=(lppcap_geterr)LoadFunctionDLL(&AsmDLL, "pcap_geterr", "_Z11pcap_geterrP7spcap_t", error_buffer);if((pcap_geterr)==NULL)return 0;
+            GetPacketNumber=(lpGetPacketNumber)LoadFunctionDLL(&AsmDLL, "GetPacketNumber", "_Z15GetPacketNumberv", error_buffer);if((GetPacketNumber)==NULL)return 0;
+            GetSnapshotLength=(lpGetSnapshotLength)LoadFunctionDLL(&AsmDLL, "GetSnapshotLength", "_Z17GetSnapshotLengthv", error_buffer);if((GetSnapshotLength)==NULL)return 0;
             
-            if((opendir=(lpopendir)LoadFunctionDLL(&AsmDLL, "opendir", error_buffer))==NULL)return 0;
-            if((closedir=(lpclosedir)LoadFunctionDLL(&AsmDLL, "closedir", error_buffer))==NULL)return 0;
-            if((readdir=(lpreaddir)LoadFunctionDLL(&AsmDLL, "readdir", error_buffer))==NULL)return 0;
-            if((rewinddir=(lprewinddir)LoadFunctionDLL(&AsmDLL, "rewinddir", error_buffer))==NULL)return 0;
+            opendir=(lpopendir)LoadFunctionDLL(&AsmDLL, "opendir", NULL, error_buffer);if((opendir)==NULL)return 0;
+            closedir=(lpclosedir)LoadFunctionDLL(&AsmDLL, "closedir", NULL, error_buffer);if((closedir)==NULL)return 0;
+            readdir=(lpreaddir)LoadFunctionDLL(&AsmDLL, "readdir", NULL, error_buffer);if((readdir)==NULL)return 0;
+            rewinddir=(lprewinddir)LoadFunctionDLL(&AsmDLL, "rewinddir", NULL, error_buffer);if((rewinddir)==NULL)return 0;
             
-            if((ScanDirectory=(lpScanDirectory)LoadFunctionDLL(&AsmDLL, "_Z13ScanDirectoryP10TFILE_LISTPcS1_", error_buffer))==NULL)return 0;
-            if((FreeDirectory=(lpFreeDirectory)LoadFunctionDLL(&AsmDLL, "_Z13FreeDirectoryP10TFILE_LIST", error_buffer))==NULL)return 0;
+            ScanDirectory=(lpScanDirectory)LoadFunctionDLL(&AsmDLL, "ScanDirectory", "_Z13ScanDirectoryP10TFILE_LISTPcS1_", error_buffer);if((ScanDirectory)==NULL)return 0;
+            FreeDirectory=(lpFreeDirectory)LoadFunctionDLL(&AsmDLL, "FreeDirectory", "_Z13FreeDirectoryP10TFILE_LIST", error_buffer);if((FreeDirectory)==NULL)return 0;
         #endif
 	
 	           #ifdef NDS

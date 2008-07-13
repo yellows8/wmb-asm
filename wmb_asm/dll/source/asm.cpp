@@ -41,8 +41,16 @@ bool Handle802_11(unsigned char *data, int length);
 unsigned int CalcCRC32(unsigned char *data, unsigned int length);
 unsigned short CalcCRC16(unsigned char *data, unsigned int length);
 
+#ifdef __cplusplus
+  extern "C" {
+#endif
+
 void WMBReset();
 bool WMBHandle802_11(unsigned char *data, int length);
+
+#ifdef __cplusplus
+  }
+#endif
 
 int GetFileSize(FILE* _pfile);
 

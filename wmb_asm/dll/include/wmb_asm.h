@@ -53,6 +53,7 @@ DEALINGS IN THE SOFTWARE.
     #endif
 
 #include "dll.h"
+
 #include "../include/pcap.h"
 
 #include "../include/dirscan.h"
@@ -146,6 +147,10 @@ extern unsigned char *Nin_ie;
 #define NIN_WMB_IE_PAYLOAD_SIZE 0x24
 #define NIN_WMB_IE_PAYLOAD_DATA 0x26
 #define NIN_WMB_IE_SOME_FLAGS 0x10
+
+#ifdef __cplusplus
+  extern "C" {
+#endif
 
 typedef void (*SuccessCallback)(void);
     //This most likely isn't already defined on all compilers/IDEs when compiling DLLs, but don't fret, that's already taken care of.(See above, dll.h, and dllmain.cpp)
@@ -490,5 +495,9 @@ extern Nds_data nds_data;
             #define BUILDING_DLL 1
         #endif
     #endif
+
+#ifdef __cplusplus
+  }
+#endif
 
 #endif

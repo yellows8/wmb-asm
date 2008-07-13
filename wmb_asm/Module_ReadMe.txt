@@ -4,8 +4,11 @@ This module assembles libpcap .cap files of DS WMB Download Play captures into a
 
 Setup instructions: http://code.google.com/p/wmb-asm/wiki/Setup
 
-Right now, this tool is made for compiled for Windows only. However, other platforms are supported, but it needs to be compiled
-for the other platforms. The general public needs to wait for devs to compile & host those binaries, before you can use it on those platforms.
+Right now, this tool is made for compiled for Windows only.
+However, other platforms are supported, but it needs to be compiled
+for the other platforms. The general public needs to wait for
+devs to compile & host those binaries, before you can use it on
+those platforms.(I can host these myself, if they want)
 
 Compiling
 This program was built with the GNU compiler, but others should work, but some changes might be needed for other compilers.

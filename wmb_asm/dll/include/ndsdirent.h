@@ -27,6 +27,10 @@ DEALINGS IN THE SOFTWARE.
 #include <sys/dir.h>
 #include <sys/stat.h>
 
+#ifdef __cplusplus
+  extern "C" {
+#endif
+
 //This header is very similar to that Win32 dirent header
 typedef struct DIR DIR;//So we can define it only in the c file?
 typedef unsigned int ino_t;
@@ -41,6 +45,10 @@ DIR           *opendir(const char *);
 int           closedir(DIR *);
 struct dirent *readdir(DIR *);
 void          rewinddir(DIR *);
+
+#ifdef __cplusplus
+  }
+#endif
 
 #endif
 

@@ -26,7 +26,18 @@ DEALINGS IN THE SOFTWARE.
 
 unsigned char normal_mac[5] = {0x03,0x09,0xBF,0x00,0x00};
 
-//************VERSION
+//************VERSION************************************
+#ifdef __cplusplus
+  extern "C" {
+#endif
+
+DLLIMPORT char *GetModuleVersionStr();
+DLLIMPORT int GetModuleVersionInt(int which_number);
+
+#ifdef __cplusplus
+  }
+#endif
+
 DLLIMPORT char *GetModuleVersionStr()
 {
     return (char*)ASM_MODULE_VERSION_STR;
@@ -38,7 +49,7 @@ DLLIMPORT int GetModuleVersionInt(int which_number)
     if(which_number == 1)return ASM_MODULE_VERSION_MINOR;
     if(which_number == 2)return ASM_MODULE_VERSION_RELEASE;
     if(which_number >= 3)return ASM_MODULE_VERSION_BUILD;
-    
+
     return 0;
 }
 

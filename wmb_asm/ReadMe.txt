@@ -4,12 +4,13 @@ This command-line program assembles libpcap .cap files of DS WMB Download Play c
 
 Setup instructions: http://code.google.com/p/wmb-asm/wiki/Setup
 
-Right now, this tool is made for compiled for Windows only. However, other platforms are supported, but it needs to be compiled
-for the other platforms. The general public needs to wait for devs to compile & host those binaries, before you can use it on those platforms.
+Right now, this tool is made for compiled for Windows only.
+However, other platforms are supported, but it needs to be compiled
+for the other platforms. The general public needs to wait for
+devs to compile & host those binaries, before you can use it on
+those platforms.(I can host these myself, if they want)
 
 The following is what appears when you start the program without passing any parameters to it:
-
-
 
 wmb_asm.exe v2.0b r2 by yellowstar built on [Time and date the software was compiled will be displayed here]
 Usage:
