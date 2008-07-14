@@ -59,6 +59,7 @@ DEALINGS IN THE SOFTWARE.
         bool swap;
         pcap_pkthdr header;
         unsigned char *pktdata;
+        char *error_buffer;
     } __attribute__ ((__packed__)) pcap_t;
 
         #ifdef BUILDING_DLL

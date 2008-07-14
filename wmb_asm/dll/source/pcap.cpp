@@ -88,6 +88,8 @@ DLLIMPORT pcap_t *pcap_open_offline(const char *filename, char *errbuf)
     if(cap->pktdata==NULL)return NULL;
     memset(cap->pktdata,0,capheader.snapshotLength);
     
+    cap->error_buffer = errbuf;
+    
     return cap;
 }
 
@@ -141,7 +143,7 @@ DLLIMPORT void pcap_close(pcap_t *fcap)
 
 DLLIMPORT char *pcap_geterr(pcap_t *file)
 {
-    return PCAP_ERROR_BUFFER;
+    return file->error_buffer;
 }
 
 DLLIMPORT int GetPacketNumber()
