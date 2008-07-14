@@ -19,35 +19,47 @@ OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 DEALINGS IN THE SOFTWARE.
 */
 
-#ifndef DLLIMPORT
-    #ifdef BUILDING_DLL
-        # define DLLIMPORT __declspec (dllexport)
-    #else /* Not BUILDING_DLL */
-        # define DLLIMPORT __declspec (dllimport)
-    #endif /* Not BUILDING_DLL */
+#ifndef _H_DIRSCAN
+#define _H_DIRSCAN
+
+#ifdef __cplusplus
+  extern "C" {
 #endif
 
-#ifdef NDS
-#undef DLLIMPORT
-#define DLLIMPORT//This is done when compiling for DS, so the functions with this define infront
-//of their prototypes and declarations, would have those removed.(The export commands would be removed,
-//because of the preprocessor, from the prespective of the compiler.)
-#endif
-
-#ifdef DLLMAIN
-#ifndef _DLL_H_
-#define _DLL_H_
-
-class DLLIMPORT DllClass
+typedef struct TFILE_LIST
 {
-  public:
-    DllClass();
-    virtual ~DllClass(void);
+    char *filename;
+    TFILE_LIST *next;
+} __attribute__ ((__packed__)) FILE_LIST;
 
-  private:
+#ifdef BUILDING_DLL
+    DLLIMPORT FILE_LIST *ScanDirectory(FILE_LIST *filelist, char *dirname, char *ext = NULL);
+    DLLIMPORT void FreeDirectory(FILE_LIST *filelist);
+#endif
 
-};
+#ifndef BUILDING_DLL
 
+    #ifndef NDS
 
-#endif /* _DLL_H_ */
+        typedef FILE_LIST * (*lpScanDirectory)(FILE_LIST *filelist, char *dirname, char *ext);
+        typedef void (*lpFreeDirectory)(FILE_LIST* dir);
+
+            #ifdef DLLMAIN
+                lpScanDirectory ScanDirectory=NULL;
+                lpFreeDirectory FreeDirectory=NULL;
+            #endif
+
+                    #ifndef DLLMAIN
+                        extern lpScanDirectory ScanDirectory;
+                        extern lpFreeDirectory FreeDirectory;
+                    #endif
+
+    #endif
+
+#endif
+
+#ifdef __cplusplus
+  }
+#endif
+
 #endif

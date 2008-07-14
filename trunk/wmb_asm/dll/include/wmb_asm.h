@@ -28,6 +28,17 @@ DEALINGS IN THE SOFTWARE.
 #define ASM_MODULE_VERSION_BUILD 0
 #define ASM_MODULE_VERSION_STR "2.0b r2"
 
+#ifndef __cplusplus
+    enum bool {false = 0, true = 1};
+#endif
+
+#ifdef BUILDING_SDK
+    #undef DLLIMPORT
+    #define DLLIMPORT
+    #undef BUILDING_DLL
+    #define BUILDING_DLL
+#endif
+
     #ifdef ARM9//We are compiling for Nintendo DS
 		#include <nds.h>
 			#ifndef NDS
@@ -49,7 +60,10 @@ DEALINGS IN THE SOFTWARE.
     
     #ifndef NDS
         #include <io.h>
-        #include <cstdio>
+        
+            #ifdef __cplusplus
+                #include <cstdio>
+            #endif
     #endif
 
 #include "dll.h"
@@ -63,9 +77,10 @@ DEALINGS IN THE SOFTWARE.
     #endif
 
             #ifdef WIN32
-                #include <cstdlib>
-                #include <iostream>
-                
+                    #ifdef __cplusplus
+                        #include <cstdlib>
+                        #include <iostream>
+                    #endif
                 #include "../include/win32dirent.h"
             #endif
             
@@ -81,7 +96,9 @@ DEALINGS IN THE SOFTWARE.
     #endif
 
             #ifndef NDS
-                using namespace std;
+                #ifdef __cplusplus
+                    using namespace std;
+                #endif
             #endif
 
 //*****************DEBUG*******************************

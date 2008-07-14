@@ -19,35 +19,37 @@ OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 DEALINGS IN THE SOFTWARE.
 */
 
-#ifndef DLLIMPORT
-    #ifdef BUILDING_DLL
-        # define DLLIMPORT __declspec (dllexport)
-    #else /* Not BUILDING_DLL */
-        # define DLLIMPORT __declspec (dllimport)
-    #endif /* Not BUILDING_DLL */
-#endif
-
 #ifdef NDS
-#undef DLLIMPORT
-#define DLLIMPORT//This is done when compiling for DS, so the functions with this define infront
-//of their prototypes and declarations, would have those removed.(The export commands would be removed,
-//because of the preprocessor, from the prespective of the compiler.)
+
+#ifndef _H_NDSDIRENT
+#define _H_NDSDIRENT
+
+#include <sys/dir.h>
+#include <sys/stat.h>
+
+#ifdef __cplusplus
+  extern "C" {
 #endif
 
-#ifdef DLLMAIN
-#ifndef _DLL_H_
-#define _DLL_H_
+//This header is very similar to that Win32 dirent header
+typedef struct DIR DIR;//So we can define it only in the c file?
+typedef unsigned int ino_t;
 
-class DLLIMPORT DllClass
+struct dirent
 {
-  public:
-    DllClass();
-    virtual ~DllClass(void);
-
-  private:
-
+	ino_t d_ino;
+    char *d_name;
 };
 
+DIR           *opendir(const char *);
+int           closedir(DIR *);
+struct dirent *readdir(DIR *);
+void          rewinddir(DIR *);
 
-#endif /* _DLL_H_ */
+#ifdef __cplusplus
+  }
+#endif
+
+#endif
+
 #endif
