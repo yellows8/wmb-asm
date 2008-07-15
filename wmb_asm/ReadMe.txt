@@ -52,6 +52,7 @@ the RSA-signature is not checked. To have the program assemble & check the RSA, 
 except this time double-click-execute assembleRSA.bat.
 
 The RSA check will not work unless you have ndsrsa.exe. Goto this URL for that.
+http://users.belgacom.net/bn931507/nds_rsa_1_1.zip
 Download it, then copy ndsrsa.exe to this directory. Wmb_asm will now check the RSA, when told to, or when you
 use assembleRSA.bat.
 
