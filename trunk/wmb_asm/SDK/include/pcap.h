@@ -1,5 +1,5 @@
 /*
-Wmb Asm and all software in the Wmb Asm package are licensed under the MIT license:
+Wmb Asm, the SDK, and all software in the Wmb Asm package are licensed under the MIT license:
 Copyright (c) 2008 yellowstar
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this
@@ -21,10 +21,6 @@ DEALINGS IN THE SOFTWARE.
 
 #ifndef lib_pcap_h
 
-    #ifdef __cplusplus
-    extern "C" {
-    #endif
-
     #ifndef _H_CUSTOM_PCAP
     #define _H_CUSTOM_PCAP
 
@@ -32,7 +28,7 @@ DEALINGS IN THE SOFTWARE.
     #define PCAP_VERSION_MINOR 4
     
     #define PCAP_ERRBUF_SIZE 256
-    
+	
     typedef unsigned char u_char;
     typedef unsigned int u_int;
     
@@ -54,61 +50,30 @@ DEALINGS IN THE SOFTWARE.
     } __attribute__ ((__packed__)) pcap_pkthdr;
     
     typedef struct spcap_t
-    {
-        FILE *file;
-        bool swap;
-        pcap_pkthdr header;
-        unsigned char *pktdata;
-        char *error_buffer;
-    } __attribute__ ((__packed__)) pcap_t;
-
-        #ifdef BUILDING_DLL
-        DLLIMPORT pcap_t  *pcap_open_offline(const char *filename, char *errbuf);
-        DLLIMPORT int     pcap_next_ex(pcap_t *file, pcap_pkthdr **hdr, const u_char **pktdata);
-        DLLIMPORT void    pcap_close(pcap_t *file);
-        DLLIMPORT char    *pcap_geterr(pcap_t *file);
-        
-        DLLIMPORT int GetPacketNumber();
-        DLLIMPORT int GetSnapshotLength();
-        #endif
-
-            #ifndef BUILDING_DLL
-            
-                #ifndef NDS
-
-                typedef pcap_t* (*lppcap_open_offline)(const char *filename, char *errbuf);
-                typedef int (*lppcap_next_ex)(pcap_t *file, pcap_pkthdr **hdr, const u_char **pktdata);
-                typedef void (*lppcap_close)(pcap_t *file);
-                typedef char* (*lppcap_geterr)(pcap_t *file);
-                typedef int (*lpGetPacketNumber)();
-                typedef int (*lpGetSnapshotLength)();
-
-                    #ifdef DLLMAIN
-                    lppcap_open_offline pcap_open_offline=NULL;
-                    lppcap_next_ex pcap_next_ex=NULL;
-                    lppcap_close pcap_close=NULL;
-                    lppcap_geterr pcap_geterr=NULL;
-                    lpGetPacketNumber GetPacketNumber=NULL;
-                    lpGetSnapshotLength GetSnapshotLength=NULL;
-                    #endif
-
-                        #ifndef DLLMAIN
-                        extern lppcap_open_offline pcap_open_offline;
-                        extern lppcap_next_ex pcap_next_ex;
-                        extern lppcap_close pcap_close;
-                        extern lppcap_geterr pcap_geterr;
-                        extern lpGetPacketNumber GetPacketNumber;
-                        extern lpGetSnapshotLength GetSnapshotLength;
-                        #endif
-
-                #endif
-            
-            #endif
-
+	{
+		FILE *file;
+		bool swap;
+		pcap_pkthdr header;
+		unsigned char *pktdata;
+		char *error_buffer;
+	} __attribute__ ((__packed__)) pcap_t;
+	
+	#ifdef __cplusplus
+    extern "C" {
     #endif
+	
+        pcap_t  *pcap_open_offline(const char *filename, char *errbuf);
+        int     pcap_next_ex(pcap_t *file, pcap_pkthdr **hdr, const u_char **pktdata);
+        void    pcap_close(pcap_t *file);
+        char    *pcap_geterr(pcap_t *file);
+        
+        int GetPacketNumber();
+        int GetSnapshotLength();
     
     #ifdef __cplusplus
     }
     #endif
 
+    #endif
+    
 #endif

@@ -7,11 +7,11 @@
 #define WMB_ASM_FRONTEND_PRIVATE_H
 
 /* VERSION DEFINITIONS */
-#define VER_STRING	"1.0.1.90"
+#define VER_STRING	"1.0.1.101"
 #define VER_MAJOR	1
 #define VER_MINOR	0
 #define VER_RELEASE	1
-#define VER_BUILD	90
+#define VER_BUILD	101
 #define COMPANY_NAME	"yellowstar"
 #define FILE_VERSION	"1.0"
 #define FILE_DESCRIPTION	"Assemble WMB captures with a GUI"

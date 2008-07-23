@@ -8,7 +8,7 @@
 //---------------------------------------------------------------------------
 
 /*
-Wmb Asm and all software in the Wmb Asm package are licensed under the MIT license:
+Wmb Asm, the SDK, and all software in the Wmb Asm package are licensed under the MIT license:
 Copyright (c) 2008 yellowstar
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this
@@ -29,8 +29,10 @@ DEALINGS IN THE SOFTWARE.
 */
 
 #include "wmb_asm_frontendFrmMain.h"
-#include "../dll/include/wmb_asm.h"//So we can use the assembler module
+#include "../SDK/include/wmb_asm_sdk_client.h"//So we can use the assembler module
 #include <stdio.h>
+
+extern sAsmSDK_Config Config;
 
 //Do not add custom headers between
 //Header Include Start and Header Include End

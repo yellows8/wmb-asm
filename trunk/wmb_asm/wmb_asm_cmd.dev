@@ -17,7 +17,7 @@ ProfileIndex=0
 Major=2
 Minor=0
 Release=1
-Build=577
+Build=641
 LanguageID=1033
 CharsetID=1252
 CompanyName=yellowstar
@@ -43,7 +43,7 @@ ResourceIncludes=
 MakeIncludes=
 Compiler=_@@_
 CppCompiler=
-Linker=
+Linker=SDK/lib/WmbAsmSDK.a_@@_
 PreprocDefines=
 CompilerSettings=1a00000000001001000000
 Icon=
@@ -52,23 +52,13 @@ ObjectOutput=
 OverrideOutput=1
 OverrideOutputName=wmb_asm.exe
 HostApplication=
-CommandLine=C:\AndrewConsoleStuff\wmb_asm\captures\captures C:\AndrewConsoleStuff\wmb_asm\SVN\trunk\wmb_asm\binaries
+CommandLine=-nds_dirC:\AndrewConsoleStuff\wmb_asm\SVN\trunk\wmb_asm\binaries C:\AndrewConsoleStuff\wmb_asm\captures\captures
 UseCustomMakefile=0
 CustomMakefile=
 IncludeVersionInfo=1
 SupportXPThemes=0
 CompilerSet=0
 compilerType=0
-
-[Unit1]
-FileName=source\main.cpp
-CompileCpp=1
-Folder=wmb_asm
-Compile=1
-Link=1
-Priority=1000
-OverrideBuildCmd=0
-BuildCmd=
 
 [Unit5]
 FileName=source\win32dirent.cpp
@@ -110,19 +100,29 @@ OverrideBuildCmd=0
 BuildCmd=
 
 [Unit2]
-FileName=source\console.cpp
+FileName=source\main.cpp
+CompileCpp=1
+Folder=wmb_asm_cmd
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit6]
+FileName=source\win32dirent.cpp
 CompileCpp=1
 Folder=wmb_asm
 Compile=1
 Link=1
 Priority=1000
 OverrideBuildCmd=0
-BuildCmd=$(CPP) -c console.cpp -o console.o $(CXXFLAGS)
+BuildCmd=
 
-[Unit6]
-FileName=source\win32dirent.cpp
+[Unit1]
+FileName=source\console.cpp
 CompileCpp=1
-Folder=wmb_asm
+Folder=wmb_asm_cmd
 Compile=1
 Link=1
 Priority=1000

@@ -40,7 +40,7 @@ DEALINGS IN THE SOFTWARE.
 #endif
 
     #ifdef ARM9//We are compiling for Nintendo DS
-		#include <nds.h>
+		//#include <nds.h>
 			#ifndef NDS
 				#define NDS
 			#endif

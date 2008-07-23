@@ -1,5 +1,5 @@
 /*
-Wmb Asm and all software in the Wmb Asm package are licensed under the MIT license:
+Wmb Asm, the SDK, and all software in the Wmb Asm package are licensed under the MIT license:
 Copyright (c) 2008 yellowstar
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this
@@ -18,13 +18,12 @@ FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TOR
 OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 */
-
 #define DLLMAIN//Define for wmb_asm.h, see that for details.
 #ifndef BUILDING_DLL//Not all compilers/IDEs define this, so make sure it's defined, as this define is used in the code.
 #define BUILDING_DLL
 #endif
 #include "..\include\dll.h"
-#include "..\include\wmb_asm.h"
+#include "..\..\SDK\include\wmb_asm_sdk_module.h"
 
 #ifdef WIN32
 DllClass::DllClass()
