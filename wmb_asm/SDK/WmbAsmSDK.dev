@@ -1,7 +1,7 @@
 [Project]
 FileName=WmbAsmSDK.dev
 Name=WmbAsmSDK
-UnitCount=5
+UnitCount=6
 PchHead=-1
 PchSource=-1
 Ver=3
@@ -42,7 +42,7 @@ Compiler=
 CppCompiler=
 Linker=
 PreprocDefines=
-CompilerSettings=0000000000000000000000
+CompilerSettings=0000000000001001000000
 Icon=
 ExeOutput=lib
 ObjectOutput=Objects\MingW
@@ -85,7 +85,7 @@ CompilerSet=1
 compilerType=1
 
 [Unit2]
-FileName=source\win32dirent.c
+FileName=source\dll_load.cpp
 CompileCpp=1
 Folder=WmbAsmSDK
 Compile=1
@@ -95,7 +95,7 @@ OverrideBuildCmd=0
 BuildCmd=
 
 [Unit4]
-FileName=source\ndsdirent.c
+FileName=source\pcap.cpp
 CompileCpp=1
 Folder=WmbAsmSDK
 Compile=1
@@ -105,7 +105,7 @@ OverrideBuildCmd=0
 BuildCmd=
 
 [Unit5]
-FileName=source\pcap.c
+FileName=source\utils.cpp
 CompileCpp=1
 Folder=WmbAsmSDK
 Compile=1
@@ -115,7 +115,7 @@ OverrideBuildCmd=0
 BuildCmd=
 
 [Unit1]
-FileName=source\utils.c
+FileName=source\dirscan.cpp
 CompileCpp=1
 Folder=WmbAsmSDK
 Compile=1
@@ -125,7 +125,17 @@ OverrideBuildCmd=0
 BuildCmd=
 
 [Unit3]
-FileName=source\dirscan.c
+FileName=source\ndsdirent.cpp
+CompileCpp=1
+Folder=WmbAsmSDK
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit6]
+FileName=source\win32dirent.cpp
 CompileCpp=1
 Folder=WmbAsmSDK
 Compile=1

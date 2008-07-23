@@ -19,8 +19,9 @@ OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 DEALINGS IN THE SOFTWARE.
 */
 
-#define DLLMAIN//This define is for wmb_asm.h, see that header for details
-#include "..\dll\include\wmb_asm.h"
+#define DLLMAIN
+
+#include "..\SDK\include\wmb_asm_sdk_client.h"
 
 #ifndef NDS
 #define APPNAME "wmb_asm.exe"
@@ -38,6 +39,8 @@ void InitConsoleStuff();//Used for initializing on consoles.(NDS and such)
 bool Stop=1;//If true at the end, display "Press any key to continue"(PC only)
 bool ShowTime=1;//If true at the end, display how long the assembly took, in seconds.
 bool Debug=0;//If true, write out a debug log.
+
+sAsmSDK_Config *Config = NULL;
 
 #ifdef NDS//There is no module loading available for homebrew on NDS, so fake module loading.
 //Trick the code into thinking loading was successful. Actually, there's code in the source directory, which are named
@@ -107,17 +110,20 @@ int main(int argc, char *argv[])
           }
           else
           { 
+                
                 printf("%s\n",APPNAME);
                 time_t start, end;
                 start=time(NULL);
                 
                 char *error_buffer = (char*)malloc(256);
+                Config = (sAsmSDK_Config*)malloc(sizeof(sAsmSDK_Config));
                 memset(error_buffer, 0, 256);
+                memset(Config, 0, sizeof(sAsmSDK_Config));
                 
                     //Try to use the assembly module in the dll directory first, then try the working directory.
-                    if(!LoadAsmDLL("dll/wmb_asm", error_buffer))//LoadAsmDLL takes care of the extension
+                    if(!LoadAsmDLL("dll/wmb_asm", Config, error_buffer))//LoadAsmDLL takes care of the extension
                     {
-                        if(!LoadAsmDLL("wmb_asm", error_buffer))
+                        if(!LoadAsmDLL("wmb_asm", Config, error_buffer))
                         {
                             //If those fail, report the error, then quit.
                             printf("Error: %s\n",error_buffer);
@@ -126,7 +132,9 @@ int main(int argc, char *argv[])
                         }
                     }
           
-          
+                    #ifndef NDS
+                        InitDLLFunctions(Config);
+                    #endif
           
                             if(!ReadDump(argc,argv))
                             {
@@ -159,6 +167,7 @@ int main(int argc, char *argv[])
                     system("PAUSE");
                 }
             free(error_buffer);
+            free(Config);
           
           }
           
@@ -286,7 +295,6 @@ int ReadDump(int argc, char *argv[])
         }
         else
         {
-        
             if(ScanDirectory(files_list,argv[i],(char*)".cap")==NULL)
             {
                 //ScanDirectory will put the filename contained in argv[i], in files_list, if it's a file.
@@ -297,7 +305,7 @@ int ReadDump(int argc, char *argv[])
         }
     }
     
-    InitAsm(&AsmSuccessCallback, Debug);//Initialize the assembler
+    InitAsm(&AsmSuccessCallback, Debug, Config);//Initialize the assembler
     
 	   while(cur_file!=NULL)//Go through all the files ScanDirectory found.
 	   {
@@ -329,10 +337,8 @@ int ReadDump(int argc, char *argv[])
                }
 	       
 	       //Read and assemble the capture.
-           if(ReadCaptureLoop(cur_file->filename,argc,argv,checkrsa,outdir,run,copydir,use_copydir))
+           if(!ReadCaptureLoop(cur_file->filename,argc,argv,checkrsa,outdir,run,copydir,use_copydir)==0)
            {
-           //return 0;
-           
            
            int error_code=0;
 	       char *str = CaptureAsmReset(&error_code);
@@ -342,11 +348,11 @@ int ReadDump(int argc, char *argv[])
                         printf("ERROR: %s\n",str);//If we made it past the beacon assembly stage, report the error message.
                 }
 
-        }
+            }
 
            cur_file=cur_file->next;//Begin processing the next capture
       }
-
+      
     free(outdir);//Free the output directory and copy to directory
     free(copydir);
     FreeDirectory(files_list);//Free the file list

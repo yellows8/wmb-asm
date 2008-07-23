@@ -1,5 +1,5 @@
 /*
-Wmb Asm and all software in the Wmb Asm package are licensed under the MIT license:
+Wmb Asm, the SDK, and all software in the Wmb Asm package are licensed under the MIT license:
 Copyright (c) 2008 yellowstar
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this
@@ -32,31 +32,8 @@ typedef struct TFILE_LIST
     TFILE_LIST *next;
 } __attribute__ ((__packed__)) FILE_LIST;
 
-#ifdef BUILDING_DLL
-    DLLIMPORT FILE_LIST *ScanDirectory(FILE_LIST *filelist, char *dirname, char *ext = NULL);
-    DLLIMPORT void FreeDirectory(FILE_LIST *filelist);
-#endif
-
-#ifndef BUILDING_DLL
-
-    #ifndef NDS
-
-        typedef FILE_LIST * (*lpScanDirectory)(FILE_LIST *filelist, char *dirname, char *ext);
-        typedef void (*lpFreeDirectory)(FILE_LIST* dir);
-
-            #ifdef DLLMAIN
-                lpScanDirectory ScanDirectory=NULL;
-                lpFreeDirectory FreeDirectory=NULL;
-            #endif
-
-                    #ifndef DLLMAIN
-                        extern lpScanDirectory ScanDirectory;
-                        extern lpFreeDirectory FreeDirectory;
-                    #endif
-
-    #endif
-
-#endif
+    FILE_LIST *ScanDirectory(FILE_LIST *filelist, char *dirname, char *ext);
+    void FreeDirectory(FILE_LIST *filelist);
 
 #ifdef __cplusplus
   }

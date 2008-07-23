@@ -26,40 +26,10 @@ struct dirent
     char *d_name;
 };
 
-#ifdef BUILDING_DLL
-    DLLIMPORT DIR           *opendir(const char *);
-    DLLIMPORT int           closedir(DIR *);
-    DLLIMPORT struct dirent *readdir(DIR *);
-    DLLIMPORT void          rewinddir(DIR *);
-#endif
-
-#ifndef BUILDING_DLL
-
-    #ifndef NDS
-
-        typedef DIR* (*lpopendir)(const char *dirname);
-        typedef int (*lpclosedir)(DIR* dir);
-        typedef struct dirent* (*lpreaddir)(DIR* dir);
-        typedef void (*lprewinddir)(DIR* dir);
-
-            #ifdef DLLMAIN
-                lpopendir opendir=NULL;
-                lpclosedir closedir=NULL;
-                lpreaddir readdir=NULL;
-                lprewinddir rewinddir=NULL;
-            #endif
-
-                    #ifndef DLLMAIN
-                        extern lpopendir opendir;
-                        extern lpclosedir closedir;
-                        extern lpreaddir readdir;
-                        extern lprewinddir rewinddir;
-                    #endif
-
-    #endif
-
-#endif
-
+    DIR           *opendir(const char *);
+    int           closedir(DIR *);
+    struct dirent *readdir(DIR *);
+    void          rewinddir(DIR *);
 /*
 
     Copyright Kevlin Henney, 1997, 2003. All rights reserved.

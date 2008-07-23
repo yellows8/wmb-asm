@@ -1,21 +1,21 @@
 # Project: WmbAsmSDK
 # Compiler: Default GCC compiler
 # Compiler Type: MingW 3
-# Makefile created by wxDev-C++ 6.10.2 on 14/07/08 19:12
+# Makefile created by wxDev-C++ 6.10.2 on 22/07/08 18:13
 
 CPP       = g++.exe
 CC        = gcc.exe
 WINDRES   = windres.exe
-OBJ       = Objects/MingW/utils.o Objects/MingW/win32dirent.o Objects/MingW/dirscan.o Objects/MingW/ndsdirent.o Objects/MingW/pcap.o
-LINKOBJ   = Objects/MingW/utils.o Objects/MingW/win32dirent.o Objects/MingW/dirscan.o Objects/MingW/ndsdirent.o Objects/MingW/pcap.o
-LIBS      = -L"C:/Dev-Cpp/Lib" -L"C:/idasdk/libgcc.w32"  
+OBJ       = Objects/MingW/dirscan.o Objects/MingW/dll_load.o Objects/MingW/ndsdirent.o Objects/MingW/pcap.o Objects/MingW/utils.o Objects/MingW/win32dirent.o
+LINKOBJ   = Objects/MingW/dirscan.o Objects/MingW/dll_load.o Objects/MingW/ndsdirent.o Objects/MingW/pcap.o Objects/MingW/utils.o Objects/MingW/win32dirent.o
+LIBS      = -L"C:/Dev-Cpp/Lib" -L"C:/idasdk/libgcc.w32"  -g3 
 INCS      = -I"include" -I"C:/idasdk/include"
 CXXINCS   = -I"C:/Dev-Cpp/lib/gcc/mingw32/3.4.2/include" -I"C:/Dev-Cpp/include/c++/3.4.2/backward" -I"C:/Dev-Cpp/include/c++/3.4.2/mingw32" -I"C:/Dev-Cpp/include/c++/3.4.2" -I"C:/Dev-Cpp/include" -I"C:/Dev-Cpp/" -I"C:/Dev-Cpp/include/common/wx/msw" -I"C:/Dev-Cpp/include/common/wx/generic" -I"C:/Dev-Cpp/include/common/wx/fl" -I"C:/Dev-Cpp/include/common/wx/gizmos" -I"C:/Dev-Cpp/include/common/wx/html" -I"C:/Dev-Cpp/include/common/wx/mmedia" -I"C:/Dev-Cpp/include/common/wx/net" -I"C:/Dev-Cpp/include/common/wx/ogl" -I"C:/Dev-Cpp/include/common/wx/plot" -I"C:/Dev-Cpp/include/common/wx/protocol" -I"C:/Dev-Cpp/include/common/wx/stc" -I"C:/Dev-Cpp/include/common/wx/svg" -I"C:/Dev-Cpp/include/common/wx/xml" -I"C:/Dev-Cpp/include/common/wx/xrc" -I"C:/Dev-Cpp/include/common/wx" -I"C:/Dev-Cpp/include/common" -I"C:/idasdk/include"
 RCINCS    = --include-dir "C:/Dev-Cpp/include/common"
 BIN       = lib/WmbAsmSDK.a
 DEFINES   = 
-CXXFLAGS  = $(CXXINCS) $(DEFINES)  
-CFLAGS    = $(INCS) $(DEFINES)  
+CXXFLAGS  = $(CXXINCS) $(DEFINES)   -O3 -g3
+CFLAGS    = $(INCS) $(DEFINES)   -O3 -g3
 GPROF     = gprof.exe
 RM        = rm -f
 LINK      = ar
@@ -29,17 +29,20 @@ clean: clean-custom
 $(BIN): $(OBJ)
 	$(LINK) rcu "$(BIN)" $(LINKOBJ)
 
-Objects/MingW/utils.o: $(GLOBALDEPS) source/utils.c include/wmb_asm_sdk.h ../dll/include/wmb_asm.h ../dll/include/dll.h ../dll/include/pcap.h ../dll/include/dirscan.h ../dll/include/win32dirent.h ../dll/include/ndsdirent.h ../dll/include/dll_load.h
-	$(CPP) -c source/utils.c -o Objects/MingW/utils.o $(CXXFLAGS)
+Objects/MingW/dirscan.o: $(GLOBALDEPS) source/dirscan.cpp
+	$(CPP) -c source/dirscan.cpp -o Objects/MingW/dirscan.o $(CXXFLAGS)
 
-Objects/MingW/win32dirent.o: $(GLOBALDEPS) source/win32dirent.c ../dll/include/wmb_asm.h ../dll/include/dll.h ../dll/include/pcap.h ../dll/include/dirscan.h ../dll/include/win32dirent.h ../dll/include/ndsdirent.h ../dll/include/dll_load.h
-	$(CPP) -c source/win32dirent.c -o Objects/MingW/win32dirent.o $(CXXFLAGS)
+Objects/MingW/dll_load.o: $(GLOBALDEPS) source/dll_load.cpp
+	$(CPP) -c source/dll_load.cpp -o Objects/MingW/dll_load.o $(CXXFLAGS)
 
-Objects/MingW/dirscan.o: $(GLOBALDEPS) source/dirscan.c ../dll/include/wmb_asm.h ../dll/include/dll.h ../dll/include/pcap.h ../dll/include/dirscan.h ../dll/include/win32dirent.h ../dll/include/ndsdirent.h ../dll/include/dll_load.h
-	$(CPP) -c source/dirscan.c -o Objects/MingW/dirscan.o $(CXXFLAGS)
+Objects/MingW/ndsdirent.o: $(GLOBALDEPS) source/ndsdirent.cpp
+	$(CPP) -c source/ndsdirent.cpp -o Objects/MingW/ndsdirent.o $(CXXFLAGS)
 
-Objects/MingW/ndsdirent.o: $(GLOBALDEPS) source/ndsdirent.c ../dll/include/wmb_asm.h ../dll/include/dll.h ../dll/include/pcap.h ../dll/include/dirscan.h ../dll/include/win32dirent.h ../dll/include/ndsdirent.h ../dll/include/dll_load.h
-	$(CPP) -c source/ndsdirent.c -o Objects/MingW/ndsdirent.o $(CXXFLAGS)
+Objects/MingW/pcap.o: $(GLOBALDEPS) source/pcap.cpp
+	$(CPP) -c source/pcap.cpp -o Objects/MingW/pcap.o $(CXXFLAGS)
 
-Objects/MingW/pcap.o: $(GLOBALDEPS) source/pcap.c ../dll/include/wmb_asm.h ../dll/include/dll.h ../dll/include/pcap.h ../dll/include/dirscan.h ../dll/include/win32dirent.h ../dll/include/ndsdirent.h ../dll/include/dll_load.h
-	$(CPP) -c source/pcap.c -o Objects/MingW/pcap.o $(CXXFLAGS)
+Objects/MingW/utils.o: $(GLOBALDEPS) source/utils.cpp
+	$(CPP) -c source/utils.cpp -o Objects/MingW/utils.o $(CXXFLAGS)
+
+Objects/MingW/win32dirent.o: $(GLOBALDEPS) source/win32dirent.cpp
+	$(CPP) -c source/win32dirent.cpp -o Objects/MingW/win32dirent.o $(CXXFLAGS)

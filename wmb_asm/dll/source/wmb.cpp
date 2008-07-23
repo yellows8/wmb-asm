@@ -1,5 +1,5 @@
 /*
-Wmb Asm and all software in the Wmb Asm package are licensed under the MIT license:
+Wmb Asm, the SDK, and all software in the Wmb Asm package are licensed under the MIT license:
 Copyright (c) 2008 yellowstar
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this
@@ -22,7 +22,7 @@ DEALINGS IN THE SOFTWARE.
 #ifndef BUILDING_DLL
 #define BUILDING_DLL
 #endif
-#include "..\include\wmb_asm.h"
+#include "..\..\SDK\include\wmb_asm_sdk_plugin.h"
 
 unsigned char BroadcastMAC[6]={0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
 unsigned char host_client_mgc[4] = {0x06,0x01,0x02,0x00};
@@ -57,7 +57,14 @@ int last_seq=0;//Last seq in the data transfer
 
 unsigned char *Nin_ie = NULL;
 
+bool *DEBUG = NULL;
+FILE **Log = NULL;
+
 void Init();
+
+bool DidInit = 0;
+
+lpResetAsm ResetAsm = NULL;
 
 #ifdef __cplusplus
   extern "C" {
@@ -74,27 +81,83 @@ DLLIMPORT bool WMBHandle802_11(unsigned char *data, int length)
      return 0;
 }
 
-DLLIMPORT void WMBReset()
+DLLIMPORT void WMBReset(sAsmSDK_Config *config)
 {
+    if(!DidInit)
+    {
+        ResetAsm = config->ResetAsm;
+        
+        DidInit = 1;
+    }
+    
+    stage=STAGE_BEACON;
     last_seq=0;
+    
+    memset(host_mac,0,6);
+	memset(client_mac,0,6);
 }
 
 #ifdef __cplusplus
   }
 #endif
 
+//******************CHECK FRAME*********************************************************
+bool CheckFrame(unsigned char *data, unsigned char command, unsigned short *size, unsigned char *pos)
+{
+     iee80211_framehead *fh = (iee80211_framehead*)data;
+     unsigned char *dat = &data[24];
+     unsigned char rsize=0;
+     unsigned short Size=0;
+
+     if (((FH_FC_TYPE(fh->frame_control) == 2) && (FH_FC_SUBTYPE(fh->frame_control) == 2)) && CompareMAC(host_mac, fh->mac2))
+     {
+          if(CheckFlow(fh->mac1,0))
+          {
+                                   if(memcmp(dat,host_client_mgc,4)==0)
+                                   {
+                                   dat+=4;
+
+                                   rsize=*dat;
+                                   Size = ((unsigned short)(rsize<<1));
+
+                                   dat++;
+
+                                     if(*dat==0x11)//Command packet, ignore non-command packets
+                                     {
+                                     dat++;
+                                       if(*dat==command)
+                                       {
+                                       if(command==0x04 || command==0x00)
+                                       Size-=6;
+
+                                       dat++;
+
+                                       if(pos)
+                                       *pos=(unsigned char)((int)dat - (int)data)+2;
+                                       if(size)*size=Size;
+
+                                       return 1;
+                                       }
+                                     }
+                                   }
+          }
+     }
+
+     return 0;
+}
+
 void WMBBeaconGrab(unsigned char *data)
 {
      ds_element *ds = (ds_element*)Nin_ie;
      //Block start. This block is based on code from masscat's WMB client.
-     int *ptr = &nds_data.found_beacon[(int)ds->advert_sequence_number + ((int)ds->gameID * 10)];
+     int *ptr = &nds_data->found_beacon[(int)ds->advert_sequence_number + ((int)ds->gameID * 10)];
 
      *ptr+=1;
 
-		if(DEBUG)
+		if(*DEBUG)
 		{
-			fprintfdebug(Log,"PROCESSING BEACON DSSEQ %d\n",(int)ds->advert_sequence_number);
-			fflushdebug(Log);
+			fprintfdebug(*Log,"PROCESSING BEACON DSSEQ %d\n",(int)ds->advert_sequence_number);
+			fflushdebug(*Log);
 		}
      
      if(*ptr<=2)
@@ -106,24 +169,24 @@ void WMBBeaconGrab(unsigned char *data)
                             if(i==8)pos+=98;
                         }
                         
-                        memcpy(&nds_data.beacon_data[(980*(int)ds->gameID)+pos],ds->data,(size_t)ds->data_size);
+                        memcpy(&nds_data->beacon_data[(980*(int)ds->gameID)+pos],ds->data,(size_t)ds->data_size);
     }
 
     //Block end
 
      bool got_all=1;
      
-     if(!nds_data.multipleIDs)
+     if(!nds_data->multipleIDs)
      {
         //This code is based on code from masscat's WMB client.
         for(int i=0; i<9; i++)
         {
-             if(!nds_data.found_beacon[i])got_all=0;
+             if(!nds_data->found_beacon[i])got_all=0;
         }
      }
      else
      {
-            if(nds_data.FoundAllBeacons)
+            if(nds_data->FoundAllBeacons)
             {
                 got_all=1;
             }
@@ -138,7 +201,7 @@ void WMBBeaconGrab(unsigned char *data)
             
             int pos, dsize;
 
-                if(!nds_data.multipleIDs)
+                if(!nds_data->multipleIDs)
                 {
                     for(int i=0; i<9; i++)
                     {
@@ -146,16 +209,16 @@ void WMBBeaconGrab(unsigned char *data)
                         if(i!=8)dsize=98;
                         if(i==8)dsize=72;
                         
-                        memcpy(&((unsigned char*)&nds_data.advert)[pos],&nds_data.beacon_data[(980*(int)nds_data.FirstBeaconID)+pos],dsize);
+                        memcpy(&((unsigned char*)&nds_data->advert)[pos],&nds_data->beacon_data[(980*(int)nds_data->FirstBeaconID)+pos],dsize);
                     }
                 }
             
-            if(nds_data.finished_first_assembly)
+            if(nds_data->finished_first_assembly)
             {
                 
-              if(!nds_data.multipleIDs)
+              if(!nds_data->multipleIDs)
               {
-                if(memcmp(nds_data.oldadvert.icon_pallete,nds_data.advert.icon_pallete,32)==0)
+                if(memcmp(nds_data->oldadvert.icon_pallete,nds_data->advert.icon_pallete,32)==0)
                 {
                     
                     ResetAsm();
@@ -163,28 +226,28 @@ void WMBBeaconGrab(unsigned char *data)
                 }
                 else
                 {
-                    memcpy(&nds_data.oldadvert,&nds_data.advert,sizeof(ds_advert));
-                    //memset(&nds_data.advert,0,sizeof(ds_advert));
+                    memcpy(&nds_data->oldadvert,&nds_data->advert,sizeof(ds_advert));
+                    //memset(&nds_data->advert,0,sizeof(ds_advert));
                 }
               }
 	                         
             }
             else
             {
-            if(!nds_data.multipleIDs)
-            memcpy(&nds_data.oldadvert,&nds_data.advert,sizeof(ds_advert));
+            if(!nds_data->multipleIDs)
+            memcpy(&nds_data->oldadvert,&nds_data->advert,sizeof(ds_advert));
             }
             
                            stage=STAGE_AUTH;
-								if(DEBUG)
+								if(*DEBUG)
 								{
-									fprintfdebug(Log,"FOUND ALL BEACONS!\n");
-									fprintfdebug(Log,"ENTERING ASSOC STAGE\n");
-									fprintfdebug(Log,"HOST MAC ");
+									fprintfdebug(*Log,"FOUND ALL BEACONS!\n");
+									fprintfdebug(*Log,"ENTERING ASSOC STAGE\n");
+									fprintfdebug(*Log,"HOST MAC ");
 											for(int i=0; i<5; i++)
-												fprintfdebug(Log,"%x:",host_mac[i]);
-									fprintfdebug(Log,"%x\n",host_mac[5]);
-									fflushdebug(Log);
+												fprintfdebug(*Log,"%x:",host_mac[i]);
+									fprintfdebug(*Log,"%x\n",host_mac[5]);
+									fflushdebug(*Log);
 								}
 
 
@@ -198,29 +261,29 @@ bool WMBProcessAuth(unsigned char *data, int length)
      if (((FH_FC_TYPE(fh->frame_control) == 0) && (FH_FC_SUBTYPE(fh->frame_control) == 11)) && CompareMAC(host_mac, fh->mac3))
      {
      unsigned char ID = GetGameID(data);//Eh, not really. The real gameID is grabbed in the header handling code.
-     nds_data.clientID = ID;//This is some kind of ID stored in the duration field in the 80211 ieee header
+     nds_data->clientID = ID;//This is some kind of ID stored in the duration field in the 80211 ieee header
      
      memcpy(client_mac,fh->mac2,6);
 	 
-	 if(DEBUG)
+	 if(*DEBUG)
 	 {
         
-        fprintfdebug(Log,"FOUND AUTH\n");
-        fprintfdebug(Log,"CLIENT MAC ");
+        fprintfdebug(*Log,"FOUND AUTH\n");
+        fprintfdebug(*Log,"CLIENT MAC ");
         
             for(int i=0; i<5; i++)
-                fprintfdebug(Log,"%x:",client_mac[i]);
+                fprintfdebug(*Log,"%x:",client_mac[i]);
         
-        fprintfdebug(Log,"%x\n",client_mac[5]);
+        fprintfdebug(*Log,"%x\n",client_mac[5]);
         
-		fprintfdebug(Log,"ENTERING RSA STAGE\n");
-		fflushdebug(Log);
+		fprintfdebug(*Log,"ENTERING RSA STAGE\n");
+		fflushdebug(*Log);
 		
 	 }
 
                            stage=STAGE_RSA;
                            
-                           nds_data.gotID=0;
+                           nds_data->gotID=0;
 
                            return 1;
      }
@@ -243,18 +306,18 @@ bool WMBProcessRSA(unsigned char *data, int length)
 
             unsigned char ID = GetGameID(data);
             
-                if(nds_data.clientID!=ID)
+                if(nds_data->clientID!=ID)
                 {
-					if(DEBUG)
+					if(*DEBUG)
 					{
-                        fprintfdebug(Log,"RSA FAILED ID %d MEM %d\n",(int)ID,(int)nds_data.clientID);
-                        fflushdebug(Log);
+                        fprintfdebug(*Log,"RSA FAILED ID %d MEM %d\n",(int)ID,(int)nds_data->clientID);
+                        fflushdebug(*Log);
                     }
 					
 					return 0;
                 }
 
-                    if(nds_data.finished_first_assembly)
+                    if(nds_data->finished_first_assembly)
                     {
                     
                     //fprintfdebug(Log,"HIT RSA TITLE MEM %s\n",nds_data.header.gameTitle);
@@ -263,22 +326,22 @@ bool WMBProcessRSA(unsigned char *data, int length)
         dat=&data[(int)pos];
         memcpy(&rsa,dat,(size_t)size);
      
-                            if(nds_data.finished_first_assembly)
+                            if(nds_data->finished_first_assembly)
                             {
-                                if(memcmp(&nds_data.rsa,&rsa,sizeof(nds_rsaframe))==0)
+                                if(memcmp(&nds_data->rsa,&rsa,sizeof(nds_rsaframe))==0)
                                 {
                                         ResetAsm();
                                         return 1;
                                 }
                             }
      
-        memcpy(&nds_data.rsa,&rsa,sizeof(nds_rsaframe));
+        memcpy(&nds_data->rsa,&rsa,sizeof(nds_rsaframe));
         
-		  if(DEBUG)
+		  if(*DEBUG)
 		  {
-                fprintfdebug(Log,"FOUND RSA %d %d\n",(int)size,(int)pos);
-                fprintfdebug(Log,"ENTERING HEADER STAGE\n");
-		        fflushdebug(Log);
+                fprintfdebug(*Log,"FOUND RSA %d %d\n",(int)size,(int)pos);
+                fprintfdebug(*Log,"ENTERING HEADER STAGE\n");
+		        fflushdebug(*Log);
           }
 		
 		stage=STAGE_HEADER;
@@ -321,18 +384,18 @@ bool WMBProcessHeader(unsigned char *data, int length)
         dat=&data[(int)pos-2];
         
         unsigned char ID = *dat;
-        nds_data.gameID = ID;
+        nds_data->gameID = ID;
         
-            if(nds_data.handledIDs[(int)ID] && nds_data.multipleIDs)
+            if(nds_data->handledIDs[(int)ID] && nds_data->multipleIDs)
             {
-				if(DEBUG)
+				if(*DEBUG)
 				{
-					fprintfdebug(Log,"FOUND HEADER WITH BAD ID %d ALREADY FOUND IDS ",(int)ID);
+					fprintfdebug(*Log,"FOUND HEADER WITH BAD ID %d ALREADY FOUND IDS ",(int)ID);
 						for(int i=0; i<15; i++)
-							if(nds_data.handledIDs[i])fprintfdebug(Log,"%d ",i);
+							if(nds_data->handledIDs[i])fprintfdebug(*Log,"%d ",i);
 					
-					fprintfdebug(Log,"\n");
-					fflushdebug(Log);
+					fprintfdebug(*Log,"\n");
+					fflushdebug(*Log);
                 }
                 
                 stage=STAGE_AUTH;//If we wouldn't go back to the Auth or RSA stage, with some multi-game captures, we'd get the wrong RSA-signature.
@@ -376,21 +439,21 @@ bool WMBProcessHeader(unsigned char *data, int length)
             //DS Download Station's, and maybe other things, don't send their whole header.
      }
     
-    if(nds_data.multipleIDs)
+    if(nds_data->multipleIDs)
      printf("Found game with ID %d, assembling now.\n",(int)ID);
      
 		if(DEBUG)
 		{
-			fprintfdebug(Log,"HEADER SET GAMEID TO %d\n",ID);
-			fflushdebug(Log);
+			fprintfdebug(*Log,"HEADER SET GAMEID TO %d\n",ID);
+			fflushdebug(*Log);
         }
 
-    if(nds_data.finished_first_assembly)
+    if(nds_data->finished_first_assembly)
     {
         
-        //fprintfdebug(Log,"HIT HEADER TITLE MEM %s CUR %s\n",nds_data.header.gameTitle,temp_header.gameTitle);
+        //fprintfdebug(*Log,"HIT HEADER TITLE MEM %s CUR %s\n",nds_data.header.gameTitle,temp_header.gameTitle);
         
-        if(memcmp(&nds_data.header,&temp_header,sizeof(TNDSHeader))==0)
+        if(memcmp(&nds_data->header,&temp_header,sizeof(TNDSHeader))==0)
         {
             
             ResetAsm();
@@ -398,43 +461,43 @@ bool WMBProcessHeader(unsigned char *data, int length)
         }
     }
     
-      memcpy(&nds_data.header,&temp_header,sizeof(TNDSHeader));
+      memcpy(&nds_data->header,&temp_header,sizeof(TNDSHeader));
 
      int arm7s_seq, arm7e_seq;
 
-     nds_data.pkt_fixed = 0;
+     nds_data->pkt_fixed = 0;
 
      //This code here is based on Juglak's code. This needs to be done, otherwise there would be problems with entering the final stage, assembly, too soon.
-     arm7s_seq = ((int)nds_data.header.arm9binarySize-((int)nds_data.header.arm9binarySize%490))/490;
-	if (((int)nds_data.header.arm9binarySize%490) != 0) arm7s_seq++;
+     arm7s_seq = ((int)nds_data->header.arm9binarySize-((int)nds_data->header.arm9binarySize%490))/490;
+	if (((int)nds_data->header.arm9binarySize%490) != 0) arm7s_seq++;
 
-	arm7e_seq = ((int)nds_data.header.arm7binarySize-((int)nds_data.header.arm7binarySize%490))/490;
+	arm7e_seq = ((int)nds_data->header.arm7binarySize-((int)nds_data->header.arm7binarySize%490))/490;
 
 	arm7e_seq += arm7s_seq;
 
-     nds_data.arm7s_seq = arm7s_seq;
-     nds_data.arm7e_seq = arm7e_seq;
+     nds_data->arm7s_seq = arm7s_seq;
+     nds_data->arm7e_seq = arm7e_seq;
 	
 		if(DEBUG)
 		{
-			fprintfdebug(Log,"ARM7S %d ARM7E %d\n",nds_data.arm7s_seq,nds_data.arm7e_seq);
+			fprintfdebug(*Log,"ARM7S %d ARM7E %d\n",nds_data->arm7s_seq,nds_data->arm7e_seq);
         }
 
      stage=STAGE_DATA;
 	 
 		if(DEBUG)
 		{
-			fprintfdebug(Log,"ENTERING DATA STAGE\n");
+			fprintfdebug(*Log,"ENTERING DATA STAGE\n");
 		}
 
      char str[20];
-     strncpy(str,nds_data.header.gameTitle,12);
+     strncpy(str,nds_data->header.gameTitle,12);
      str[12]=0;
      
-		if(DEBUG)
+		if(*DEBUG)
 		{
-			fprintfdebug(Log,"FOUND HEADER SZ %d GAME NAME %s\n",size,str);
-			fflushdebug(Log);
+			fprintfdebug(*Log,"FOUND HEADER SZ %d GAME NAME %s\n",size,str);
+			fflushdebug(*Log);
         }
      
      printf("FOUND GAME NAME: %s\n\n",str);
@@ -458,7 +521,7 @@ bool WMBProcessData(unsigned char *data, int length)
      Seq=NULL;
      seq=0;
 
-	bool prev_init=nds_data.data_init;
+	bool prev_init=nds_data->data_init;
 	Init();
 
 	iee80211_framehead *fh = (iee80211_framehead*)data;
@@ -469,12 +532,12 @@ bool WMBProcessData(unsigned char *data, int length)
     dat=&data[(int)pos-2];
     //unsigned char ID = GetGameID(data);
     unsigned char ID = *dat;
-        if(ID!=nds_data.gameID)
+        if(ID!=nds_data->gameID)
         {
-                if(DEBUG)
+                if(*DEBUG)
                 {
-                    fprintfdebug(Log,"DATA FAILED ID %d MEM %d---------------------------------\n",(int)ID,(int)nds_data.gameID);
-			        fflushdebug(Log);
+                    fprintfdebug(*Log,"DATA FAILED ID %d MEM %d---------------------------------\n",(int)ID,(int)nds_data->gameID);
+			        fflushdebug(*Log);
                 }
         return 0;
         }
@@ -499,113 +562,113 @@ bool WMBProcessData(unsigned char *data, int length)
     {
         if(fh_seq-2!=last_seq && prev_init==0)
         {
-                                if(DEBUG)
+                                if(*DEBUG)
                                 {
-                                    fprintfdebug(Log,"DROPPED DATA PKT SEQ %d PREV SEQ %d\n",fh_seq,last_seq);
-                                    fflushdebug(Log);
+                                    fprintfdebug(*Log,"DROPPED DATA PKT SEQ %d PREV SEQ %d\n",fh_seq,last_seq);
+                                    fflushdebug(*Log);
                                 }
                               return 0;
         }
         last_seq=fh_seq;
     }
     
-     if(size==102)nds_data.pkt_size=250;
-     if(nds_data.pkt_size==250)seq--;
+     if(size==102)nds_data->pkt_size=250;
+     if(nds_data->pkt_size==250)seq--;
      if(size==102 && seq==0)return 1;
 
-     if(seq==1)nds_data.pkt_size = size;
+     if(seq==1)nds_data->pkt_size = size;
 
      if(size==102)
-     nds_data.data_sizes[(int)seq-1]=1;
+     nds_data->data_sizes[(int)seq-1]=1;
 
-            if(nds_data.data_sizes[(int)seq-1]!=0)
+            if(nds_data->data_sizes[(int)seq-1]!=0)
             {
             if(!CheckDataPackets((int)seq))return 1;
             
-            if(nds_data.arm7e==0)return 1;
+            if(nds_data->arm7e==0)return 1;
             }
 
      int temp=0;
      for(int i=0; i<(int)seq-1; i++)
      {
-     temp+=nds_data.data_sizes[i];
+     temp+=nds_data->data_sizes[i];
      
-     if(nds_data.data_sizes[i]==0)temp+=nds_data.pkt_size;
+     if(nds_data->data_sizes[i]==0)temp+=nds_data->pkt_size;
      }
 
-     nds_data.cur_pos = temp;
+     nds_data->cur_pos = temp;
 
-     nds_data.data_sizes[(int)seq-1] = size;
+     nds_data->data_sizes[(int)seq-1] = size;
           
-     memcpy(&nds_data.saved_data[nds_data.cur_pos],dat,(size_t)(size));
+     memcpy(&nds_data->saved_data[nds_data->cur_pos],dat,(size_t)(size));
      
-		if(DEBUG)
+		if(*DEBUG)
 		{
-			fprintfdebug(Log,"FOUND THE DATA SIZE %d SEQ %d DZ %d",(int)size,(int)*Seq,(int)seq-1);
+			fprintfdebug(*Log,"FOUND THE DATA SIZE %d SEQ %d DZ %d",(int)size,(int)*Seq,(int)seq-1);
 				#ifdef _H_CUSTOM_PCAP
-					fprintfdebug(Log," PKTNUM %d",GetPacketNumber());
+					fprintfdebug(*Log," PKTNUM %d",GetPacketNumber());
 				#endif
-			fprintfdebug(Log,"\n");
-			fflushdebug(Log);
+			fprintfdebug(*Log,"\n");
+			fflushdebug(*Log);
         }
 
-    nds_data.cur_pos+=size;
+    nds_data->cur_pos+=size;
 
-     if(nds_data.cur_pos>=(int)nds_data.header.arm9binarySize && nds_data.arm7s == 0)
+     if(nds_data->cur_pos>=(int)nds_data->header.arm9binarySize && nds_data->arm7s == 0)
      {
 
-            if(nds_data.cur_pos!=(int)nds_data.header.arm9binarySize)
-            nds_data.cur_pos=(int)nds_data.header.arm9binarySize;
+            if(nds_data->cur_pos!=(int)nds_data->header.arm9binarySize)
+            nds_data->cur_pos=(int)nds_data->header.arm9binarySize;
 
-            nds_data.arm7s = nds_data.cur_pos;
-            nds_data.arm7s_seq = (int)seq-1;
+            nds_data->arm7s = nds_data->cur_pos;
+            nds_data->arm7s_seq = (int)seq-1;
             
-                 if(DEBUG)
+                 if(*DEBUG)
                  {
-                    fprintfdebug(Log,"ARM7S SET TO %d SEQ %d\n",nds_data.arm7s,nds_data.arm7s_seq);
+                    fprintfdebug(*Log,"ARM7S SET TO %d SEQ %d\n",nds_data->arm7s,nds_data->arm7s_seq);
                     //printf("ARM7S SET TO %d SEQ %d PKTNUM %d\n",nds_data.arm7s,nds_data.arm7s_seq,GetPacketNumber());
-			        fflushdebug(Log);
+			        fflushdebug(*Log);
                  }
      }
 
-     if(nds_data.cur_pos>=nds_data.total_binaries_size && nds_data.arm7e==0)
+     if(nds_data->cur_pos>=nds_data->total_binaries_size && nds_data->arm7e==0)
      {
 
-            if(nds_data.cur_pos!=nds_data.total_binaries_size)
-            nds_data.cur_pos=nds_data.total_binaries_size;
+            if(nds_data->cur_pos!=nds_data->total_binaries_size)
+            nds_data->cur_pos=nds_data->total_binaries_size;
 
-            //nds_data.cur_pos-= (nds_data.pkt_size*3);
-            nds_data.arm7e = nds_data.cur_pos;
-            nds_data.arm7e_seq = (int)seq-1;
+            //nds_data->cur_pos-= (nds_data->pkt_size*3);
+            nds_data->arm7e = nds_data->cur_pos;
+            nds_data->arm7e_seq = (int)seq-1;
             
-            if(DEBUG)
+            if(*DEBUG)
             {
-                fprintfdebug(Log,"ARM7E SET TO %d SEQ %d\n",nds_data.arm7e,nds_data.arm7e_seq);
+                fprintfdebug(*Log,"ARM7E SET TO %d SEQ %d\n",nds_data->arm7e,nds_data->arm7e_seq);
                 //printf("ARM7E SET TO %d SEQ %d PKTNUM %d\n",nds_data.arm7e,nds_data.arm7e_seq,GetPacketNumber());
-			    fflushdebug(Log);
+			    fflushdebug(*Log);
             }
      }
      
-     if(nds_data.arm7e_seq!=0)
+     if(nds_data->arm7e_seq!=0)
      {
      
      //Make sure we found every packet. Only thing left to do in this function is the goto assembly
      //stage code, so it's safe to do this here.
-     for(int i=0; i<nds_data.arm7e_seq; i++)
+     for(int i=0; i<nds_data->arm7e_seq; i++)
      {
-            if(nds_data.data_sizes[i]==0)
+            if(nds_data->data_sizes[i]==0)
             {
                 return 0;//If we missed any packets, don't begin assembly
             }
      }
 
-     nds_data.arm7e = nds_data.total_binaries_size;//Sometimes there problems if we don't set this here...
+     nds_data->arm7e = nds_data->total_binaries_size;//Sometimes there problems if we don't set this here...
 	 
-		if(DEBUG)
+		if(*DEBUG)
 		{
-			fprintfdebug(Log,"FOUND ALL DATA PACKETS\n");
-			fprintfdebug(Log,"ENTERING ASSEMBLE STAGE\n");
-			fflushdebug(Log);
+			fprintfdebug(*Log,"FOUND ALL DATA PACKETS\n");
+			fprintfdebug(*Log,"ENTERING ASSEMBLE STAGE\n");
+			fflushdebug(*Log);
         }
 		
      stage=STAGE_ASSEMBLE;
@@ -680,10 +743,10 @@ bool WMBProcessBeacons(unsigned char *data, int length)
                                        
                                          if(checksum!=ds->checksum)
                                          {
-											if(DEBUG)
+											if(*DEBUG)
 											{
-												fprintfdebug(Log,"BEACON SEQ %d FAILED CRC16 CHECK!\n",(int)ds->advert_sequence_number);
-												fflushdebug(Log);
+												fprintfdebug(*Log,"BEACON SEQ %d FAILED CRC16 CHECK!\n",(int)ds->advert_sequence_number);
+												fflushdebug(*Log);
                                             }
                                          //return 1;
                                          }
@@ -692,26 +755,26 @@ bool WMBProcessBeacons(unsigned char *data, int length)
                                        
                                          //if(ds->connected_clients!=1)return 0;
                                        
-                                         nds_data.foundIDs[(int)ds->gameID]=1;
-                                         if(!nds_data.gotID && ds->sequence_number!=8)
+                                         nds_data->foundIDs[(int)ds->gameID]=1;
+                                         if(!nds_data->gotID && ds->sequence_number!=8)
                                          {
-                                                nds_data.gotID=1;
-                                                nds_data.FirstBeaconID = ds->gameID;
+                                                nds_data->gotID=1;
+                                                nds_data->FirstBeaconID = ds->gameID;
                                                 
-													if(DEBUG)
+													if(*DEBUG)
 													{
-														fprintfdebug(Log,"BEACON SET ID TO %d\n",(int)nds_data.FirstBeaconID);
-														fflushdebug(Log);
+														fprintfdebug(*Log,"BEACON SET ID TO %d\n",(int)nds_data->FirstBeaconID);
+														fflushdebug(*Log);
                                                     }
                                          }
                                          
-                                         if(ds->sequence_number<8 && ds->sequence_number>0)nds_data.prev_nonadvert = ds->non_advert;
-                                         if(ds->sequence_number==0 && nds_data.prev_nonadvert!=ds->non_advert)nds_data.multipleIDs=1;
+                                         if(ds->sequence_number<8 && ds->sequence_number>0)nds_data->prev_nonadvert = ds->non_advert;
+                                         if(ds->sequence_number==0 && nds_data->prev_nonadvert!=ds->non_advert)nds_data->multipleIDs=1;
                                          
                                          
-                                         if(ds->sequence_number==8 && nds_data.multipleIDs && nds_data.FirstBeaconID==ds->gameID)
+                                         if(ds->sequence_number==8 && nds_data->multipleIDs && nds_data->FirstBeaconID==ds->gameID)
                                          {
-                                                if(nds_data.beacon_thing==1)
+                                                if(nds_data->beacon_thing==1)
                                                 {
                                                     
                                                     bool got_it=1;
@@ -719,44 +782,44 @@ bool WMBProcessBeacons(unsigned char *data, int length)
                                                         for(int i=0; i<9; i++)
                                                         {
                                          
-                                                            if(nds_data.found_beacon[((int)ds->gameID*10)+i])
+                                                            if(nds_data->found_beacon[((int)ds->gameID*10)+i])
                                                                 got_it=0;
                                                         }
                                          
-                                                    nds_data.FoundAllBeacons=1;
+                                                    nds_data->FoundAllBeacons=1;
                                                     
-                                                        if(got_it && !nds_data.FoundGameIDs)
+                                                        if(got_it && !nds_data->FoundGameIDs)
                                                         {
                                                             int total=0;
                                                             
                                                                 for(int i=0; i<15; i++)
                                                                 {
-                                                                    if(nds_data.foundIDs[i])total++;
+                                                                    if(nds_data->foundIDs[i])total++;
                                                                 }
                                                             
-                                                            nds_data.FoundGameIDs=1;
+                                                            nds_data->FoundGameIDs=1;
                                                             printf("Found %d demos broadcasted in capture.\n",total);
                                                         }
                                          
                                                 }
                                                 else
                                                 {
-                                                    nds_data.beacon_thing=1;
+                                                    nds_data->beacon_thing=1;
                                                 }
                                          }
                                        
                                         memcpy(host_mac,Beacon->srcmac,6);
                                         
-                                        nds_data.beacon_checksum[(int)ds->advert_sequence_number] = checksum;
+                                        nds_data->beacon_checksum[(int)ds->advert_sequence_number] = checksum;
                                         
                                         
-											if(DEBUG)
+											if(*DEBUG)
 											{
-												fprintfdebug(Log,"FOUND BEACON DSSEQ %d AD %d BC %d CON %d LEN %d DS %d BC %d LEN %d ID %d NONAD %d PKTNUM %d\n",
+												fprintfdebug(*Log,"FOUND BEACON DSSEQ %d AD %d BC %d CON %d LEN %d DS %d BC %d LEN %d ID %d NONAD %d PKTNUM %d\n",
 												(int)ds->sequence_number,(int)ds->advert_sequence_number,
 												ReadSeq(&Beacon->seq), (int)ds->connected_clients, (int)ds->advert_len,
 												(int)ds->data_size,(int)ds->advert_len,(int)ds->advert_len,(int)ds->gameID,(int)ds->non_advert, (int)GetPacketNumber());
-												fflushdebug(Log);
+												fflushdebug(*Log);
                                             }
 
                                         WMBBeaconGrab(data);
@@ -776,29 +839,29 @@ bool WMBProcessBeacons(unsigned char *data, int length)
 
 void Init()
 {
-     if(!nds_data.data_init)
+     if(!nds_data->data_init)
 	{
-    nds_data.data_init=1;
+    nds_data->data_init=1;
 
-    nds_data.total_binaries_size = ((int)nds_data.header.arm9binarySize + (int)nds_data.header.arm7binarySize);
+    nds_data->total_binaries_size = ((int)nds_data->header.arm9binarySize + (int)nds_data->header.arm7binarySize);
 
-		if(DEBUG)
+		if(*DEBUG)
 		{
-			fprintfdebug(Log,"ARM9SZ %d ARM7SZ %d\n",(int)nds_data.header.arm9binarySize,(int)nds_data.header.arm7binarySize);
+			fprintfdebug(*Log,"ARM9SZ %d ARM7SZ %d\n",(int)nds_data->header.arm9binarySize,(int)nds_data->header.arm7binarySize);
 			
-			fprintfdebug(Log,"BINARIES SIZES %d\n",nds_data.total_binaries_size);
-			fflushdebug(Log);
+			fprintfdebug(*Log,"BINARIES SIZES %d\n",nds_data->total_binaries_size);
+			fflushdebug(*Log);
         }
-    nds_data.saved_data = (unsigned char*)malloc((size_t)nds_data.total_binaries_size);
-    nds_data.data_sizes = (int*)malloc((sizeof(int)*(7980*4)));
-    nds_data.arm7s = 0;nds_data.arm7e = 0;
-    if(nds_data.saved_data==NULL || nds_data.data_sizes==NULL)
+    nds_data->saved_data = (unsigned char*)malloc((size_t)nds_data->total_binaries_size);
+    nds_data->data_sizes = (int*)malloc((sizeof(int)*(7980*4)));
+    nds_data->arm7s = 0;nds_data->arm7e = 0;
+    if(nds_data->saved_data==NULL || nds_data->data_sizes==NULL)
     {
     printf("FATAL ERROR: Failed to allocate memory for binaries data.\n");
-		if(DEBUG)
+		if(*DEBUG)
 		{
-			fprintfdebug(Log,"FATAL ERROR: Failed to allocate memory for binaries data.\n");
-			fflushdebug(Log);
+			fprintfdebug(*Log,"FATAL ERROR: Failed to allocate memory for binaries data.\n");
+			fflushdebug(*Log);
         }
 		
 	system("PAUSE");
@@ -809,13 +872,13 @@ void Init()
             return;
         }
     }
-    memset(nds_data.saved_data,0,(size_t)nds_data.total_binaries_size);
-    memset(nds_data.data_sizes,0,(sizeof(int)*(7980*4)));
-    nds_data.last_dat_seq=1;
-		if(DEBUG)
+    memset(nds_data->saved_data,0,(size_t)nds_data->total_binaries_size);
+    memset(nds_data->data_sizes,0,(sizeof(int)*(7980*4)));
+    nds_data->last_dat_seq=1;
+		if(*DEBUG)
 		{
-			fprintfdebug(Log,"FINISHED INIT\n");
-			fflushdebug(Log);
+			fprintfdebug(*Log,"FINISHED INIT\n");
+			fflushdebug(*Log);
         }
 		
     }

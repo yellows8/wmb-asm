@@ -1,5 +1,5 @@
 /*
-The Wmb Asm SDK is licensed under the MIT license:
+Wmb Asm, the SDK, and all software in the Wmb Asm package are licensed under the MIT license:
 Copyright (c) 2008 yellowstar
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this
@@ -19,45 +19,15 @@ OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 DEALINGS IN THE SOFTWARE.
 */
 
-#ifndef BUILDING_DLL
-#define BUILDING_DLL 1
-#endif
-
-#undef DLLIMPORT
-#define DLLIMPORT
-
 #define BUILDING_SDK
+
+#define SDK_MAIN
 
 #include "..\include\wmb_asm_sdk.h"
 
 unsigned char normal_mac[5] = {0x03,0x09,0xBF,0x00,0x00};
 
-//************VERSION************************************
-#ifdef __cplusplus
-  extern "C" {
-#endif
-
-DLLIMPORT char *GetModuleVersionStr();
-DLLIMPORT int GetModuleVersionInt(int which_number);
-
-#ifdef __cplusplus
-  }
-#endif
-
-DLLIMPORT char *GetModuleVersionStr()
-{
-    return (char*)ASM_MODULE_VERSION_STR;
-}
-
-DLLIMPORT int GetModuleVersionInt(int which_number)
-{
-    if(which_number <= 0)return ASM_MODULE_VERSION_MAJOR;
-    if(which_number == 1)return ASM_MODULE_VERSION_MINOR;
-    if(which_number == 2)return ASM_MODULE_VERSION_RELEASE;
-    if(which_number >= 3)return ASM_MODULE_VERSION_BUILD;
-
-    return 0;
-}
+DLLIMPORT void ConvertAVSEndian(AVS_header *avs);
 
 //**********ENDIANS*******************************
 
@@ -167,6 +137,12 @@ bool CompareMAC(unsigned char *a, unsigned char *b)
 //******************CHECK FRAME CONTROL***************************************************************
 bool CheckFrameControl(iee80211_framehead2 *framehead, int type, int subtype)
 {
+    /*if(*SDK_DEBUG && SDK_CONFIG!=NULL)
+    {
+    fprintf(*SDK_Log, "CONFIG DAT %p CONFIG %p\n", SDK_CONFIG->nds_data, sdk_nds_data);
+    fflushdebug(*SDK_Log);
+    }*/
+    
      if(FH_FC_TYPE(framehead->frame_control) == type &&
         FH_FC_SUBTYPE(framehead->frame_control) == subtype)
         {
@@ -189,51 +165,6 @@ bool CheckFlow(unsigned char *mac, unsigned char flow)
      if(memcmp(mac,normal_mac,5)!=0)return 0;
 
      if(mac[5]==flow)return 1;
-
-     return 0;
-}
-
-//******************CHECK FRAME*********************************************************
-bool CheckFrame(unsigned char *data, unsigned char command, unsigned short *size, unsigned char *pos)
-{
-     iee80211_framehead *fh = (iee80211_framehead*)data;
-     unsigned char *dat = &data[24];
-     unsigned char rsize=0;
-     unsigned short Size=0;
-
-     if (((FH_FC_TYPE(fh->frame_control) == 2) && (FH_FC_SUBTYPE(fh->frame_control) == 2)) && CompareMAC(host_mac, fh->mac2))
-     {
-          if(CheckFlow(fh->mac1,0))
-          {
-                                   if(memcmp(dat,host_client_mgc,4)==0)
-                                   {
-                                   dat+=4;
-
-                                   rsize=*dat;
-                                   Size = ((unsigned short)(rsize<<1));
-
-                                   dat++;
-
-                                     if(*dat==0x11)//Command packet, ignore non-command packets
-                                     {
-                                     dat++;
-                                       if(*dat==command)
-                                       {
-                                       if(command==0x04 || command==0x00)
-                                       Size-=6;
-
-                                       dat++;
-
-                                       if(pos)
-                                       *pos=(unsigned char)((int)dat - (int)data)+2;
-                                       if(size)*size=Size;
-
-                                       return 1;
-                                       }
-                                     }
-                                   }
-          }
-     }
 
      return 0;
 }
@@ -298,29 +229,29 @@ unsigned char *IsValidAVS(u_char *pkt_data)
                         }
                         else
                         {
-							if(DEBUG)
-								fprintfdebug(Log,"PD BECAUSE PREAMBLE! PRE %u ENC %u\n",avs->preamble,avs->encoding_type);
+							if(*SDK_DEBUG)
+								fprintfdebug(*SDK_Log,"PD BECAUSE PREAMBLE! PRE %u ENC %u\n",avs->preamble,avs->encoding_type);
 						}
 
 
                    }
                    else
                    {
-						if(DEBUG)
-							fprintfdebug(Log,"SSI TYPE FAILED: %u\n",avs->SSI_type);
+						if(*SDK_DEBUG)
+							fprintfdebug(*SDK_Log,"SSI TYPE FAILED: %u\n",avs->SSI_type);
                    }
          }
          else
          {
-			 if(DEBUG)
-				fprintfdebug(Log,"PHY FAILED: %u\n",avs->PHY_type);
+			 if(*SDK_DEBUG)
+				fprintfdebug(*SDK_Log,"PHY FAILED: %u\n",avs->PHY_type);
          }
      }
 
-	 if(DEBUG)
+	 if(*SDK_DEBUG)
 	 {
-		fprintfdebug(Log,"PACKET DROPPED!\n");
-		fflushdebug(Log);
+		fprintfdebug(*SDK_Log,"PACKET DROPPED!\n");
+		fflushdebug(*SDK_Log);
 	 }
 
      return NULL;
@@ -351,12 +282,25 @@ bool CheckDataPackets(int seq)
      int i;
      for(i=0; i<(int)seq; i++)
      {
-            if(nds_data.data_sizes[i]==0)
+            if(SDK_CONFIG!=NULL)
             {
-					if(DEBUG)
+            sdk_nds_data = SDK_CONFIG->nds_data;
+            }
+            else
+            {
+                printf("ACK!\n");
+            }
+            
+            printf("CDP %p\n",sdk_nds_data);
+            if(sdk_nds_data!=NULL)
+            printf("%p\n",sdk_nds_data->data_sizes);
+            
+            if(sdk_nds_data->data_sizes[i]==0)
+            {
+					if(*SDK_DEBUG)
 					{
-						fprintfdebug(Log,"_____DATA SIZES FAILED %d\n",i);
-						fflushdebug(Log);
+						fprintfdebug(*SDK_Log,"_____DATA SIZES FAILED %d\n",i);
+						fflushdebug(*SDK_Log);
                     }
 				
                 return 0;//If we missed any packets, don't begin assembly
@@ -376,7 +320,9 @@ unsigned char GetGameID(unsigned char *data)
     Byte1 = bytes[0];
     Byte2 = bytes[1];
 
-    if(!nds_data.multipleIDs)return 0;
+    return 0;
+
+    if(!sdk_nds_data->multipleIDs)return 0;
 
     if(Byte1==0x00)
     {
@@ -384,10 +330,10 @@ unsigned char GetGameID(unsigned char *data)
     }
     else
     {
-        if(Byte1 % 8 != 25 && Byte1!=0xFA)//Don't do anything if the remainder from this devision operation is 25
-        {
-            Byte2++;
-        }
+            if(Byte1 % 8 != 25 && Byte1!=0xFA)//Don't do anything if the remainder from this devision operation is 25
+            {
+                Byte2++;
+            }
     }
 
     //Byte2--;//I thought this value was 1-based, but apparently it's not...
@@ -559,10 +505,10 @@ void ExecuteApp(char *appname, char *cmdline)
      &si,
      &pi))
      {
-            if(DEBUG)
+            if(*SDK_DEBUG)
             {
                 sprintf(acstr,"CreateProcess Failed: %d",GetLastError());
-                fprintfdebug(Log,"%s\n",acstr);
+                fprintfdebug(*SDK_Log,"%s\n",acstr);
             }
             
             if(GetLastError() == ERROR_FILE_NOT_FOUND)

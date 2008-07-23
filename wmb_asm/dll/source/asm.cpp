@@ -1,5 +1,5 @@
 /*
-Wmb Asm and all software in the Wmb Asm package are licensed under the MIT license:
+Wmb Asm, the SDK, and all software in the Wmb Asm package are licensed under the MIT license:
 Copyright (c) 2008 yellowstar
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this
@@ -22,9 +22,12 @@ DEALINGS IN THE SOFTWARE.
 #ifndef BUILDING_DLL
 #define BUILDING_DLL
 #endif
-#include "..\include\wmb_asm.h"
+#include "..\..\SDK\include\wmb_asm_sdk_module.h"
 
 #define MAX_PKT_MODULES 255
+
+#undef DLLIMPORT
+#define DLLIMPORT __declspec (dllexport)
 
 SuccessCallback AssemblySuccessCallback = NULL;
 
@@ -45,29 +48,23 @@ unsigned short CalcCRC16(unsigned char *data, unsigned int length);
   extern "C" {
 #endif
 
-void WMBReset();
-bool WMBHandle802_11(unsigned char *data, int length);
+DLLIMPORT unsigned char GetPrecentageCompleteAsm();
+
+DLLIMPORT char *CaptureAsmReset(int*);
+
+DLLIMPORT bool HandlePacket(pcap_pkthdr *header, u_char *pkt_data, int length, char *argv[], pcap_t *fp, bool checkrsa, char *outdir, bool run, char *copydir, bool use_copydir);
+
+DLLIMPORT char *GetStatusAsm(int *error_code);
 
 #ifdef __cplusplus
   }
 #endif
 
-int GetFileSize(FILE* _pfile);
-
-void CaptureAsmReset();
-
-bool HandlePacket(pcap_pkthdr *header, u_char *pkt_data, int length, char *argv[], pcap_t *fp, bool checkrsa, char *outdir, bool run, char *copydir, bool use_copydir);
-
-char *GetStatusAsm(int *error_code);
-
 #ifdef WIN32
 void ExecuteApp(char *appname, char *cmdline);
 #endif
 
-FILE *Log = stdout;
 bool debug=0;
-
-Nds_data nds_data;
 
 FILE *funusedpkt = NULL;
 bool fpkt_error=0;
@@ -81,15 +78,22 @@ bool glob_run;
 char *glob_copydir;
 bool glob_use_copydir;
 
-bool DEBUG = 0;
+FILE **Log = NULL;
+bool *DEBUG = NULL;
+
+sAsmSDK_Config *CONFIG = NULL;
 
 typedef bool (*lpHandle802_11)(unsigned char *data, int length);
-typedef void (*lpReset)();
+typedef void (*lpReset)(sAsmSDK_Config *config);
+typedef char *(*lpGetStatus)(int *error_code);
+typedef int (*lpQueryFailure)();
 
 struct PacketModule
 {
     lpHandle802_11 handle802_11;
     lpReset reset;
+    lpGetStatus get_status;
+    lpQueryFailure query_failure;
 	#ifndef NDS
     LPDLL lpdll;//The handle of the module if this one isn't a built-in packet handler.
 	#endif
@@ -101,7 +105,7 @@ int currentPacketModule = -1;
 void PktModClose()
 {
 	#ifndef NDS
-		for(int i=1; i<totalPacketModules+1; i++)
+		for(int i=0; i<totalPacketModules; i++)
 		{
 			if(packetModules[i].lpdll==NULL)break;
 			
@@ -112,19 +116,13 @@ void PktModClose()
 
 void PktModReset()
 {
-    for(int i=0; i<1; i++)
-    {
-        if(packetModules[i].reset!=NULL)
-            packetModules[i].reset();
-    }
-    
 	#ifndef NDS
-		for(int i=1; i<totalPacketModules+1; i++)
+		for(int i=0; i<totalPacketModules; i++)
 		{
 			if(packetModules[i].lpdll==NULL)break;
 			
 			if(packetModules[i].reset!=NULL)
-				packetModules[i].reset();
+				packetModules[i].reset(CONFIG);
 		}
 	#endif
 }
@@ -134,33 +132,20 @@ bool PktModHandle802_11(unsigned char *data, int length)
     if(currentPacketModule == -1)
     {
         bool ret = 0;
-        
-        for(int i=0; i<1; i++)
-        {
-            if(packetModules[i].handle802_11!=NULL)
-            {
-                ret = packetModules[i].handle802_11(data, length);
-                
-                if(ret)
-                {
-                    currentPacketModule = i;
-                    return 1;
-                }
-            }
-        }
     
 		#ifndef NDS
-			for(int i=1; i<totalPacketModules+1; i++)
+			for(int ii=0; ii<totalPacketModules; ii++)
 			{
-				if(packetModules[i].lpdll==NULL)break;
+                
+				if(packetModules[ii].lpdll==NULL)break;
 				
-				if(packetModules[i].handle802_11!=NULL)
+				if(packetModules[ii].handle802_11!=NULL)
 				{
-					ret = packetModules[i].handle802_11(data, length);
+                    ret = packetModules[ii].handle802_11(data, length);
 					
 					if(ret)
 					{
-                    currentPacketModule = i;
+                    currentPacketModule = ii;
                     return 1;
 					}
 				}
@@ -176,30 +161,179 @@ bool PktModHandle802_11(unsigned char *data, int length)
     return 0;
 }
 
+int LoadPacketModule(char *filename, char *error_buffer, char *destr, LPDLL *lpdll);
+FILE *modlog = NULL;
+
 void InitPktModules()
 {
-    /*DIR *dir;
-    dirent *ent;
-    int skip=0;
     LPDLL lpdll;
-	FILE *modlog = NULL;
-    char error_buffer[256];
-	char destr[256];*/
     char filename[256];
     memset(filename, 0, 256);
-	/*#ifndef NDS
+	FILE_LIST *files_list = NULL;
+    FILE_LIST *cur_file = files_list;
+    //memset(files_list,0,sizeof(FILE_LIST));
+
+    char *error_buffer = (char*)malloc(256);
+	char *destr = (char*)malloc(256);
+    #ifndef NDS
     memset(error_buffer, 0, 256);
     memset(destr, 0, 256);
-	#endif*/
+	#endif
     
     memset(packetModules, 0, sizeof(PacketModule) * MAX_PKT_MODULES);
     totalPacketModules = 0;
     currentPacketModule = -1;
 
-    packetModules[0].reset = &WMBReset;
-    packetModules[0].handle802_11 = &WMBHandle802_11;
+    #ifndef NDS
+        files_list = (FILE_LIST*)malloc(sizeof(FILE_LIST));
+        memset(files_list, 0, sizeof(FILE_LIST));
+        //C:\\AndrewConsoleStuff\\wmb_asm\\SVN\\trunk\\wmb_asm
+        ScanDirectory(files_list,(char*)".",(char*)".dll");
+            
+            if(files_list!=NULL)
+            {
+
+            
+            cur_file = files_list;
+
+                while(cur_file!=NULL)
+                {
+                    if(cur_file->filename==NULL)break;
+                    if(strcmp(cur_file->filename,"")==0)break;
+                    
+                    if(strstr(cur_file->filename, ".dll")!=0 || strstr(cur_file->filename, ".so")!=0)
+                    {
+                    
+                    if(strstr(cur_file->filename, "wmb_asm.dll")==0 && strstr(cur_file->filename, "wmb_asm.so")==0)//Don't try to load ourself, the Wmb Asm Module.
+                    {
+
+                            if(modlog==NULL)
+                            {
+                                modlog = fopen("module_log.txt","w");
+                                    if(modlog==NULL)break;
+                            }
+                            
+                            //printf("Loading %s\n",cur_file->filename);
+                            
+                            int ret = LoadPacketModule(cur_file->filename, error_buffer, destr, &lpdll);
+                            if(ret==0)return;
+                            if(ret==2)continue;
+                            
+                            //printf("Loaded %s\n",cur_file->filename);
+                    }
+                    
+                    }
+                    
+                    cur_file=cur_file->next;
+                }
+            }
+            else
+            {
+                printf("Failed to open file or directory %s\n",(char*)".");
+            }
+        
+        if(modlog!=NULL)
+        fclose(modlog);
+
+        FreeDirectory(files_list);
+
+        if(totalPacketModules==0)
+        {
+            printf("ERROR: Failed to find any Packet Module Plugins! Wmb Asm Module and the\nCommand-line can't work without the plugins! Stop!\n");
+            system("PAUSE");
+            exit(1);
+        }
+
+    printf("Done.\n");
+
+    #endif
     
     PktModReset();
+}
+
+int LoadPacketModule(char *filename, char *error_buffer, char *destr, LPDLL *lpdll)
+{
+    
+    if(!LoadDLL(lpdll, filename, error_buffer))
+                                    {
+                                        sprintf(destr, "ERROR: %s", error_buffer);
+
+                                        if(modlog!=NULL)
+                                        {
+                                            fprintf(modlog, "%s", destr);
+                                            fflush(modlog);
+                                        }
+
+                                        return 2;
+                                    }
+                                    else
+                                    {
+
+                                        if((packetModules[totalPacketModules].reset=(lpReset)LoadFunctionDLL(lpdll, "Reset", "_Z8Resetv", error_buffer))==NULL)
+                                        {
+                                            sprintf(destr, "ERROR: In module %s: %s", filename, error_buffer);
+
+                                                if(modlog!=NULL)
+                                                {
+                                                    fprintf(modlog, "%s", destr);
+                                                    fflush(modlog);
+                                                }
+
+                                            CloseDLL(lpdll, NULL);
+
+                                            return 0;
+                                        }
+
+                                        if((packetModules[totalPacketModules].handle802_11=(lpHandle802_11)LoadFunctionDLL(lpdll, "Handle802_11", "_Z15Handle802_11", error_buffer))==NULL)
+                                        {
+                                            sprintf(destr, "ERROR: In module %s: %s", filename, error_buffer);
+
+                                                if(modlog!=NULL)
+                                                {
+                                                    fprintf(modlog, "%s", destr);
+                                                    fflush(modlog);
+                                                }
+
+                                            CloseDLL(lpdll, NULL);
+
+                                            return 0;
+                                        }
+
+                                        if((packetModules[totalPacketModules].get_status=(lpGetStatus)LoadFunctionDLL(lpdll, "GetStatus", NULL, error_buffer))==NULL)
+                                        {
+                                            sprintf(destr, "ERROR: In module %s: %s", filename, error_buffer);
+
+                                                if(modlog!=NULL)
+                                                {
+                                                    fprintf(modlog, "%s", destr);
+                                                    fflush(modlog);
+                                                }
+
+                                            CloseDLL(lpdll, NULL);
+
+                                            return 0;
+                                        }
+
+                                        if((packetModules[totalPacketModules].query_failure=(lpQueryFailure)LoadFunctionDLL(lpdll, "QueryFailure", NULL, error_buffer))==NULL)
+                                        {
+                                            sprintf(destr, "ERROR: In module %s: %s", filename, error_buffer);
+
+                                                if(modlog!=NULL)
+                                                {
+                                                    fprintf(modlog, "%s", destr);
+                                                    fflush(modlog);
+                                                }
+
+                                            CloseDLL(lpdll, NULL);
+
+                                            return 0;
+                                        }
+
+                                        packetModules[totalPacketModules].lpdll = *lpdll;
+                                        totalPacketModules++;
+                                    }
+                                    
+                                    return 1;
 }
 
 //***************************CHECK FCS*************************************************
@@ -215,10 +349,10 @@ inline bool CheckFCS(unsigned char *data, int length)
         unsigned int *fcheck = (unsigned int*)&data[length-4];
         if(checksum!=*fcheck)
         {
-			if(DEBUG)
+			if(*DEBUG)
 			{
-				fprintf(Log,"CHECKSUM %d FILE %d\n",(int)checksum,(int)*fcheck);
-				fflushdebug(Log);
+				fprintf(*Log,"CHECKSUM %d FILE %d\n",(int)checksum,(int)*fcheck);
+				fflushdebug(*Log);
             }
 
             return 0;
@@ -234,19 +368,49 @@ inline bool CheckFCS(unsigned char *data, int length)
     return 0;
 }
 
-DLLIMPORT void InitAsm(SuccessCallback callback, bool debug)
+#ifdef __cplusplus
+  extern "C" {
+#endif
+
+//************VERSION************************************
+
+DLLIMPORT char *GetModuleVersionStr()
 {
-    DEBUG = debug;
+    return (char*)ASM_MODULE_VERSION_STR;
+}
 
-		if(DEBUG)
+DLLIMPORT int GetModuleVersionInt(int which_number)
+{
+    if(which_number <= 0)return ASM_MODULE_VERSION_MAJOR;
+    if(which_number == 1)return ASM_MODULE_VERSION_MINOR;
+    if(which_number == 2)return ASM_MODULE_VERSION_RELEASE;
+    if(which_number >= 3)return ASM_MODULE_VERSION_BUILD;
+
+    return 0;
+}
+
+DLLIMPORT void InitAsm(SuccessCallback callback, bool debug, sAsmSDK_Config *config)
+{
+    
+    
+    DEBUG = config->DEBUG;
+    Log = config->Log;
+    nds_data = config->nds_data;
+    //*config = *config;
+    *config->Log = *config->Log;
+    *config->nds_data = *config->nds_data;
+    if(config->DEBUG==NULL)printf("ACK!\n");
+    
+    *DEBUG = debug;
+    
+    CONFIG = config;
+    
+    if(*DEBUG)
 		{
-			Log = fopendebug("log.txt","w");
+			*Log = fopendebug("log.txt","w");
         }
-
-    stage=STAGE_BEACON;
-	memset(host_mac,0,6);
-	memset(client_mac,0,6);
-	memset(&nds_data,0,sizeof(Nds_data));
+    
+	memset(nds_data,0,sizeof(Nds_data));
 	save_unused_packets=1;
 	funusedpkt=NULL;
 
@@ -257,54 +421,50 @@ DLLIMPORT void InitAsm(SuccessCallback callback, bool debug)
 
 DLLIMPORT void ResetAsm()
 {
-                        if(nds_data.saved_data!=NULL)free(nds_data.saved_data);
-                        if(nds_data.data_sizes!=NULL)free(nds_data.data_sizes);
-                        nds_data.saved_data=NULL;
-                        nds_data.data_sizes=NULL;
+                        if(nds_data->saved_data!=NULL)free(nds_data->saved_data);
+                        if(nds_data->data_sizes!=NULL)free(nds_data->data_sizes);
+                        nds_data->saved_data=NULL;
+                        nds_data->data_sizes=NULL;
 
-                               stage=STAGE_BEACON;
-	                           memset(host_mac,0,6);
-	                           memset(client_mac,0,6);
-
-                                if(DEBUG)
-                                    fflushdebug(Log);
+                                if(*DEBUG)
+                                    fflushdebug(*Log);
 
 	                           TNDSHeader temp_header;
 	                           nds_rsaframe temp_rsa;
-	                           bool first=nds_data.finished_first_assembly;
+	                           bool first=nds_data->finished_first_assembly;
                                unsigned short temp_checksums[10];
                                ds_advert temp_advert1;
                                //bool beacon_thing=nds_data.beacon_thing;
-                               bool multipleIDs = nds_data.multipleIDs;
+                               bool multipleIDs = nds_data->multipleIDs;
                                bool handledIDs[256];
                                bool FoundGameIDs;
 
-	                           if(nds_data.finished_first_assembly)
+	                           if(nds_data->finished_first_assembly)
 	                           {
-                                    memcpy(&temp_header,&nds_data.header,sizeof(TNDSHeader));
-									memcpy(&temp_rsa,&nds_data.rsa,sizeof(nds_rsaframe));
-									memcpy(temp_checksums,nds_data.beacon_checksum,20);
-									memcpy(&temp_advert1,&nds_data.oldadvert,sizeof(ds_advert));
-									//memcpy(&temp_advert2,&nds_data.advert,sizeof(ds_advert));
-									//nds_data.beacon_thing=beacon_thing;
-									nds_data.multipleIDs = multipleIDs;
-									memcpy(handledIDs,nds_data.handledIDs,256);
-									FoundGameIDs = nds_data.FoundGameIDs;
+                                    memcpy(&temp_header,&nds_data->header,sizeof(TNDSHeader));
+									memcpy(&temp_rsa,&nds_data->rsa,sizeof(nds_rsaframe));
+									memcpy(temp_checksums,nds_data->beacon_checksum,20);
+									memcpy(&temp_advert1,&nds_data->oldadvert,sizeof(ds_advert));
+									//memcpy(&temp_advert2,&nds_data->advert,sizeof(ds_advert));
+									//nds_data->beacon_thing=beacon_thing;
+									nds_data->multipleIDs = multipleIDs;
+									memcpy(handledIDs,nds_data->handledIDs,256);
+									FoundGameIDs = nds_data->FoundGameIDs;
                                }
 
-	                           memset(&nds_data,0,sizeof(Nds_data));
-	                           nds_data.finished_first_assembly=first;
-	                           if(nds_data.finished_first_assembly)
+	                           memset(nds_data,0,sizeof(Nds_data));
+	                           nds_data->finished_first_assembly=first;
+	                           if(nds_data->finished_first_assembly)
 	                           {
-                                    memcpy(&nds_data.header,&temp_header,sizeof(TNDSHeader));
-									memcpy(&nds_data.rsa,&temp_rsa,sizeof(nds_rsaframe));
-									memcpy(nds_data.beacon_checksum,temp_checksums,20);
-									memcpy(&nds_data.oldadvert,&temp_advert1,sizeof(ds_advert));
-									//memcpy(&nds_data.advert,&temp_advert2,sizeof(ds_advert));
-									//beacon_thing=nds_data.beacon_thing;
-									multipleIDs = nds_data.multipleIDs;
-									memcpy(nds_data.handledIDs,handledIDs,256);
-									nds_data.FoundGameIDs = FoundGameIDs;
+                                    memcpy(&nds_data->header,&temp_header,sizeof(TNDSHeader));
+									memcpy(&nds_data->rsa,&temp_rsa,sizeof(nds_rsaframe));
+									memcpy(&nds_data->beacon_checksum,temp_checksums,20);
+									memcpy(&nds_data->oldadvert,&temp_advert1,sizeof(ds_advert));
+									//memcpy(&nds_data->advert,&temp_advert2,sizeof(ds_advert));
+									//beacon_thing=nds_data->beacon_thing;
+									multipleIDs = nds_data->multipleIDs;
+									memcpy(nds_data->handledIDs,handledIDs,256);
+									nds_data->FoundGameIDs = FoundGameIDs;
                                }
                                
                                currentPacketModule = -1;
@@ -313,6 +473,7 @@ DLLIMPORT void ResetAsm()
 
 DLLIMPORT void ExitAsm()
 {
+    
     if(funusedpkt!=NULL)
     {
     fclose(funusedpkt);
@@ -323,33 +484,36 @@ DLLIMPORT void ExitAsm()
 			remove("unused_packets.bin");
 		#endif
 
-				if(DEBUG)
-					fclosedebug(Log);
-
-    ResetAsm();
+                if(DEBUG)
+                {
+                        if(*DEBUG)
+				        {
+					       fclosedebug(*Log);
+                        }
+                    
+                    free(DEBUG);
+                }
     
+    ResetAsm();
     PktModClose();
 }
 
-int captureStage=0;
+#ifdef __cplusplus
+  }
+#endif
+
 int total_assembled=0;
 int prev_total=0;
 void CaptureBacktrack()
 {
     //Used mainly with multi-game captures. This is done because some packets that the program will not find, may have already been transmitted & captured previously in the capture.
-
-    //if(captureStage==stage)return;
-
-    captureStage=stage;
     total_assembled=0;
         for(int i=0; i<15; i++)
         {
-            if(nds_data.handledIDs[i])total_assembled++;
+            if(nds_data->handledIDs[i])total_assembled++;
         }
     prev_total=total_assembled;
-
-    //if(stage>STAGE_BEACON && stage<STAGE_ASSEMBLE)
-        //{
+    
             if(funusedpkt!=NULL)
             fclose(funusedpkt);
 
@@ -361,10 +525,10 @@ void CaptureBacktrack()
 
                 if(funusedpkt!=NULL)
                 {
-							if(DEBUG)
+							if(*DEBUG)
 							{
-								fprintfdebug(Log,"Backtracking through unused packets...\n");
-								fflushdebug(Log);
+								fprintfdebug(*Log,"Backtracking through unused packets...\n");
+								fflushdebug(*Log);
 							}
 
                         while(feof(funusedpkt)==0)
@@ -386,72 +550,76 @@ void CaptureBacktrack()
         total_assembled=0;
         for(int i=0; i<15; i++)
         {
-            if(nds_data.handledIDs[i])total_assembled++;
+            if(nds_data->handledIDs[i])total_assembled++;
         }
 
 
-        if(total_assembled==prev_total && captureStage==stage)return;
+        if(total_assembled==prev_total)return;
 
         CaptureBacktrack();
 }
 
+#ifdef __cplusplus
+  extern "C" {
+#endif
+
 DLLIMPORT char *CaptureAsmReset(int *code)//Needs to be called after reading the whole capture.
 {
     char *str = NULL;
-    if(funusedpkt!=NULL && nds_data.multipleIDs)
+    if(funusedpkt!=NULL && nds_data->multipleIDs)
     {
         fclose(funusedpkt);
         funusedpkt=NULL;
-
-        captureStage=0;
+        
         CaptureBacktrack();
 
         total_assembled=0;
         for(int i=0; i<15; i++)
         {
-            if(nds_data.handledIDs[i])total_assembled++;
+            if(nds_data->handledIDs[i])total_assembled++;
         }
 
         bool got_all=1;
         int total_asm=0, total=0;
         for(int i=0; i<15; i++)
         {
-            if(!nds_data.handledIDs[i] && nds_data.foundIDs[i])got_all=0;
-            if(nds_data.foundIDs[i])total++;
-            if(nds_data.handledIDs[i])total_asm++;
+            if(!nds_data->handledIDs[i] && nds_data->foundIDs[i])got_all=0;
+            if(nds_data->foundIDs[i])total++;
+            if(nds_data->handledIDs[i])total_asm++;
         }
 
         if(got_all)
         {
             printf("Successfully assembled all %d demos in the capture.\n",total);
 
-                if(DEBUG)
+                if(*DEBUG)
                 {
-			         fprintfdebug(Log,"Successfully assembled all %d demos in the capture.\n",total);
+			         fprintfdebug(*Log,"Successfully assembled all %d demos in the capture.\n",total);
 			    }
         }
         else
         {
-            if(stage<=STAGE_HEADER)
+            //if(stage<=STAGE_HEADER)
+            if(packetModules[currentPacketModule].query_failure() == 1)
             printf("Capture is incomplete.\n");
 
             printf("Failed to assemble all %d demos in the capture; %d out of %d demos in the capture assembled.\n",total,total_asm,total);
 
-				if(DEBUG)
-					fprintfdebug(Log,"Failed to assemble all %d demos in the capture; %d out of %d demos in the capture assembled.\n",total,total_asm,total);
+				if(*DEBUG)
+					fprintfdebug(*Log,"Failed to assemble all %d demos in the capture; %d out of %d demos in the capture assembled.\n",total,total_asm,total);
         }
 
-				if(DEBUG)
-					fflushdebug(Log);
+				if(*DEBUG)
+					fflushdebug(*Log);
 
 			#ifndef NDS
 				funusedpkt = fopen("unused_packets.bin","wb");
 			#endif
     }
 
-    memset(nds_data.handledIDs,0,256);
-    memset(nds_data.found_beacon,0,(10*15) * sizeof(int));
-    nds_data.FoundGameIDs=0;
+    memset(nds_data->handledIDs,0,256);
+    memset(nds_data->found_beacon,0,(10*15) * sizeof(int));
+    nds_data->FoundGameIDs=0;
 
     str = GetStatusAsm(code);
 
@@ -462,62 +630,18 @@ DLLIMPORT char *CaptureAsmReset(int *code)//Needs to be called after reading the
 
 DLLIMPORT char *GetStatusAsm(int *error_code)
 {
-    /*if(stage==STAGE_BEACON)
+    if(currentPacketModule != -1)
     {
-        *error_code=STAGE_BEACON;
-        return (char*)"01: Failed to finish the Beacon stage\n";
-    }*/
-    if(stage==STAGE_AUTH && !nds_data.finished_first_assembly)
-    {
-        *error_code=STAGE_AUTH;
-        return (char*)"02: Failed to find the Authentication packet; Maybe the receiving DS never attempted to download?\n";
+        return packetModules[currentPacketModule].get_status(error_code);
     }
-    if(stage==STAGE_RSA)
-    {
-        *error_code=STAGE_RSA;
-        return (char*)"03: Failed to find the RSA frame, try doing the capture again?\n";
-    }
-    if(stage==STAGE_HEADER)
-    {
-        *error_code=STAGE_HEADER;
-        return (char*)"04: Failed to find the header. Major bugged capture! Try capturing again.\n";
-    }
-    if(stage==STAGE_DATA)
-    {
-        char *str;
-        int missed=0;
-        int found=0;
-        str=(char*)malloc(256);
-        *error_code=STAGE_DATA;
-
-        if(nds_data.data_sizes != NULL)
-        {
-            for(int i=0; i<nds_data.arm7e_seq; i++)
-            {
-                if(nds_data.data_sizes[i]==0)
-                {
-                    missed++;
-                }
-                else
-                {
-                    found++;
-                }
-            }
-        }
-
-        sprintf(str,"05: Failed to find all the necessary data. Missed %d packets, got %d out of %d packets. %d percent done.\n",missed,found,nds_data.arm7e_seq,(int)GetPrecentageCompleteAsm());
-
-        return str;
-    }
-
-	*error_code=-1;
-	return NULL;
+    
+    return NULL;
 }
 
 DLLIMPORT bool QueryAssembleStatus(int *error_code)
 {
-	*error_code = stage;
-    return nds_data.finished_first_assembly;
+    GetStatusAsm(error_code);
+    return nds_data->finished_first_assembly;
 }
 
 DLLIMPORT unsigned char GetPrecentageCompleteAsm()
@@ -529,22 +653,24 @@ DLLIMPORT unsigned char GetPrecentageCompleteAsm()
     int size=490;
     int i=0;
 
-        if(stage>=STAGE_DATA)
+    if(currentPacketModule == -1)return 0;//Prevent access violations and other problems.
+        
+        if(packetModules[currentPacketModule].query_failure() == 2)
         {
 
-                for(int I=0; I<(int)nds_data.total_binaries_size; I+=size)
+                for(int I=0; I<(int)nds_data->total_binaries_size; I+=size)
                 {
-                    temp+=nds_data.data_sizes[i];
-                    size=nds_data.data_sizes[i];
+                    temp+=nds_data->data_sizes[i];
+                    size=nds_data->data_sizes[i];
 
-                    if(size==0)size=nds_data.pkt_size;
+                    if(size==0)size=nds_data->pkt_size;
                     i++;
                 }
 
 
             if(temp == 0)return 0;
 
-            devisor = nds_data.total_binaries_size/100;
+            devisor = nds_data->total_binaries_size/100;
             temp2 = temp / devisor;
             percent = (unsigned char)ceil((double)temp2);
         }
@@ -574,7 +700,7 @@ DLLIMPORT bool HandlePacket(pcap_pkthdr *header, u_char *pkt_data, int length, c
              Handle802_11(data,length-64);
 
                     #ifndef NDS
-					if(save_unused_packets && nds_data.multipleIDs)
+					if(save_unused_packets && nds_data->multipleIDs)
                     {
                         if(funusedpkt==NULL)
                         {
@@ -593,7 +719,7 @@ DLLIMPORT bool HandlePacket(pcap_pkthdr *header, u_char *pkt_data, int length, c
 
      }
 
-     if(stage==STAGE_ASSEMBLE)
+     if(CONFIG->trigger_assembly)
      {
 
                             char out[256];
@@ -603,7 +729,7 @@ DLLIMPORT bool HandlePacket(pcap_pkthdr *header, u_char *pkt_data, int length, c
                             bool found=0;
 	                        memset(out,0,256);
 	                        memset(output,0,256);
-                            strncpy(out,nds_data.header.gameTitle,12);
+                            strncpy(out,nds_data->header.gameTitle,12);
                             for(int i=0; i<12; i++)
                             {
                                 if(out[I+i]=='\\' || out[I+i]=='/' || out[I+i]==':' || out[I+i]=='*' || out[I+i]=='?' || out[I+i]=='"' || out[I+i]=='<' || out[I+i]=='>' || out[I+i]=='|')
@@ -622,7 +748,7 @@ DLLIMPORT bool HandlePacket(pcap_pkthdr *header, u_char *pkt_data, int length, c
 
                             found=0;
                             I=pos;
-                            strncpy(&out[pos],nds_data.header.gameCode,4);
+                            strncpy(&out[pos],nds_data->header.gameCode,4);
                             for(int i=0; i<4; i++)
                             {
                                 if(out[I+i]=='\\' || out[I+i]=='/' || out[I+i]==':' || out[I+i]=='*' || out[I+i]=='?' || out[I+i]=='"' || out[I+i]=='<' || out[I+i]=='>' || out[I+i]=='|')
@@ -637,7 +763,7 @@ DLLIMPORT bool HandlePacket(pcap_pkthdr *header, u_char *pkt_data, int length, c
                             I=pos;
                             found=0;
 
-                            strncpy(&out[pos],nds_data.header.makercode,2);
+                            strncpy(&out[pos],nds_data->header.makercode,2);
                             for(int i=0; i<2; i++)
                             {
                                 if(out[I+i]=='\\' || out[I+i]=='/' || out[I+i]==':' || out[I+i]=='*' || out[I+i]=='?' || out[I+i]=='"' || out[I+i]=='<' || out[I+i]=='>' || out[I+i]=='|')
@@ -666,23 +792,25 @@ DLLIMPORT bool HandlePacket(pcap_pkthdr *header, u_char *pkt_data, int length, c
                              delete[]Str;
                              pcap_close(fp);
 
-                                if(DEBUG)
+                                if(*DEBUG)
                                 {
-	                               fclosedebug(Log);
-                                   Log=NULL;
+	                               fclosedebug(*Log);
+                                   *Log=NULL;
+                                   free(DEBUG);
                                 }
 
                              printf("Failure.\n");
+                             CONFIG->trigger_assembly = 0;
 	                         return 0;
                              }
 
                             if(AssemblySuccessCallback!=NULL)
 	                           AssemblySuccessCallback();
 
-                             nds_data.finished_first_assembly=1;
-                             memcpy(&nds_data.oldadvert,&nds_data.advert,sizeof(ds_advert));
-                             //memset(&nds_data.advert,0,sizeof(ds_advert));
-                             memcpy(&nds_data.oldadvert,&nds_data.advert,sizeof(ds_advert));
+                             nds_data->finished_first_assembly=1;
+                             memcpy(&nds_data->oldadvert,&nds_data->advert,sizeof(ds_advert));
+                             //memset(&nds_data->advert,0,sizeof(ds_advert));
+                             memcpy(&nds_data->oldadvert,&nds_data->advert,sizeof(ds_advert));
                              ResetAsm();
 
 
@@ -718,7 +846,7 @@ DLLIMPORT bool HandlePacket(pcap_pkthdr *header, u_char *pkt_data, int length, c
                                FILE *f = fopen(Str,"rb");
                                if(f!=NULL)
                                {
-                               filesize = GetFileSize(f);
+                               filesize = GetFileLength(f);
                                buffer = (unsigned char*)malloc((size_t)filesize);
                                fread(buffer,1,filesize,f);
                                fclose(f);
@@ -756,11 +884,17 @@ DLLIMPORT bool HandlePacket(pcap_pkthdr *header, u_char *pkt_data, int length, c
 
 	                           delete []Str;
 
+                               CONFIG->trigger_assembly = 0;
+
 	}
 
      return 1;
 
 }
+
+#ifdef __cplusplus
+  }
+#endif
 
 bool Handle802_11(unsigned char *data, int length)
 {
@@ -777,7 +911,7 @@ bool FoundIT=0;
 bool AssembleNds(char *output)
 {
      int temp=0;
-     ds_advert *ad = &nds_data.advert;
+     ds_advert *ad = &nds_data->advert;
      //unsigned char *Ad = (unsigned char*)ad;
      TNDSHeader ndshdr;
      TNDSBanner banner;
@@ -799,10 +933,10 @@ bool AssembleNds(char *output)
 
      memset(&ndshdr,0,sizeof(TNDSHeader));
      memset(&banner,0,sizeof(TNDSBanner));
-     memcpy(&ndshdr,&nds_data.header,sizeof(TNDSHeader));
+     memcpy(&ndshdr,&nds_data->header,sizeof(TNDSHeader));
 
      unsigned char *ptr;
-     ptr = (unsigned char*)&nds_data.advert;
+     ptr = (unsigned char*)&nds_data->advert;
 
      int pos, dsize;
 
@@ -811,7 +945,7 @@ bool AssembleNds(char *output)
      pos=i*98;
      if(i!=8)dsize=98;
      if(i==8)dsize=72;
-     memcpy(&((unsigned char*)&nds_data.advert)[pos],&nds_data.beacon_data[(980*(int)nds_data.gameID)+pos],dsize);
+     memcpy(&((unsigned char*)&nds_data->advert)[pos],&nds_data->beacon_data[(980*(int)nds_data->gameID)+pos],dsize);
      }
 
      memcpy(banner.palette,ad->icon_pallete,32);
@@ -820,25 +954,25 @@ bool AssembleNds(char *output)
      int tempi=0;
      for(int i=0; i<48; i++)
      {
-            if(nds_data.advert.game_name[i]==0)
+            if(nds_data->advert.game_name[i]==0)
             {
             break;
             }
 
             tempi+=2;
      }
-     memcpy(&gdtemp[0],&nds_data.advert.game_name[0],(size_t)tempi);//Copy the game name into the banner discription, add a newline character after that, then copy in the actual discription.
+     memcpy(&gdtemp[0],&nds_data->advert.game_name[0],(size_t)tempi);//Copy the game name into the banner discription, add a newline character after that, then copy in the actual discription.
      //tempi+=2;
      gdtemp[tempi] = '\n';
      tempi+=2;
 
 
-     memcpy(&gdtemp[tempi],&nds_data.advert.game_description[0],96*2);
+     memcpy(&gdtemp[tempi],&nds_data->advert.game_description[0],96*2);
      //tempi+=96*2+2;
 
      for(int i=0; i<96; i++)
      {
-            if(nds_data.advert.game_description[i]==0)
+            if(nds_data->advert.game_description[i]==0)
             {
             break;
             }
@@ -868,21 +1002,21 @@ bool AssembleNds(char *output)
 
      unsigned int temp1, temp2;
      unsigned short temp3, temp4;
-     temp1 = nds_data.header.bannerOffset;
-     temp2 = nds_data.header.romSize;
-     temp3 = nds_data.header.logoCRC16;
-     temp4 = nds_data.header.headerCRC16;
+     temp1 = nds_data->header.bannerOffset;
+     temp2 = nds_data->header.romSize;
+     temp3 = nds_data->header.logoCRC16;
+     temp4 = nds_data->header.headerCRC16;
 
-            if(nds_data.header.bannerOffset==0)//Some demos don't set this fields properly. Fix these for the first header, then use the original header for the second header, so RSA isn't invalidated.
+            if(nds_data->header.bannerOffset==0)//Some demos don't set this fields properly. Fix these for the first header, then use the original header for the second header, so RSA isn't invalidated.
             {
-                nds_data.header.bannerOffset = (unsigned int)((int)(((int)nds_data.header.arm7romSource) + ((int)nds_data.header.arm7binarySize)) + 660);
+                nds_data->header.bannerOffset = (unsigned int)((int)(((int)nds_data->header.arm7romSource) + ((int)nds_data->header.arm7binarySize)) + 660);
             }
-            if(nds_data.header.romSize!=nds_data.header.bannerOffset+2112)
+            if(nds_data->header.romSize!=nds_data->header.bannerOffset+2112)
             {
-                nds_data.header.romSize=(unsigned int)((int)nds_data.header.bannerOffset+2112);
+                nds_data->header.romSize=(unsigned int)((int)nds_data->header.bannerOffset+2112);
             }
 
-            memcpy(&ndshdr,&nds_data.header,sizeof(TNDSHeader));
+            memcpy(&ndshdr,&nds_data->header,sizeof(TNDSHeader));
 
      int rpos = 0;
      memset(reserved,0,160);
@@ -890,8 +1024,8 @@ bool AssembleNds(char *output)
      reserved[i] = 0x2D;
      rpos+=16;
 
-     memcpy(&reserved[rpos],(void*)nds_data.advert.hostname,(size_t)(nds_data.advert.hostname_len*2));
-     rpos+=((int)nds_data.advert.hostname_len*2);
+     memcpy(&reserved[rpos],(void*)nds_data->advert.hostname,(size_t)(nds_data->advert.hostname_len*2));
+     rpos+=((int)nds_data->advert.hostname_len*2);
      for(int i=0; i<32-(rpos-16); i++)
      reserved[rpos + i] = 0x00;
      rpos+= 32-(rpos-16);
@@ -914,7 +1048,7 @@ bool AssembleNds(char *output)
      fflush(nds);
      free(download_play);
 
-     sz=((((int)nds_data.header.arm9romSource)-((int)ftell(nds))));//72
+     sz=((((int)nds_data->header.arm9romSource)-((int)ftell(nds))));//72
      Temp = new unsigned char[sz];
      memset(Temp,0,sz);
      fwrite(Temp,1,sz,nds);
@@ -923,21 +1057,21 @@ bool AssembleNds(char *output)
      temp=0;
      int writtenBytes=0;
 
-     fwrite(&nds_data.saved_data[0],1,nds_data.arm7s,nds);
+     fwrite(&nds_data->saved_data[0],1,nds_data->arm7s,nds);
 
-     sz=((int)nds_data.header.arm7romSource-(int)ftell(nds));
+     sz=((int)nds_data->header.arm7romSource-(int)ftell(nds));
      Temp = new unsigned char[sz];
      memset(Temp,0,sz);
      fwrite(Temp,1,sz,nds);
      delete[] Temp;
 
      writtenBytes=0;
-     if(nds_data.arm7e>nds_data.arm7s)
+     if(nds_data->arm7e>nds_data->arm7s)
      {
-        fwrite(&nds_data.saved_data[nds_data.arm7s],1,nds_data.arm7e - nds_data.arm7s,nds);
+        fwrite(&nds_data->saved_data[nds_data->arm7s],1,nds_data->arm7e - nds_data->arm7s,nds);
      }
 
-            if(nds_data.header.bannerOffset==0)
+            if(nds_data->header.bannerOffset==0)
             {
                 printf("ERROR! BANNER OFFSET WRONG!\n");
                 return 0;
@@ -945,7 +1079,7 @@ bool AssembleNds(char *output)
 
 
 
-     sz=((int)nds_data.header.bannerOffset-((int)ftell(nds)));//(int)(nds_data.header.arm7romSource+nds_data.header.arm7binarySize)
+     sz=((int)nds_data->header.bannerOffset-((int)ftell(nds)));//(int)(nds_data.header.arm7romSource+nds_data.header.arm7binarySize)
 
      if(sz>0)
      {
@@ -955,9 +1089,9 @@ bool AssembleNds(char *output)
         memset(Temp,0,sz);
 
         //This following block is based on code from the sachen program.
-        if(nds_data.pkt_size!=250)
+        if(nds_data->pkt_size!=250)
         {
-            if (( ((nds_data.header.bannerOffset - 0x200) > (nds_data.header.arm7romSource + nds_data.header.arm7binarySize)) ))
+            if (( ((nds_data->header.bannerOffset - 0x200) > (nds_data->header.arm7romSource + nds_data->header.arm7binarySize)) ))
             {
                 //No clue what this is, but Firefly adds this, so...
                 unsigned char unknownData[] = { 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01 };
@@ -972,15 +1106,15 @@ bool AssembleNds(char *output)
 
      fwrite(&banner,1,sizeof(TNDSBanner),nds);
 
-     if(nds_data.header.romSize!=nds_data.header.bannerOffset+2112)
+     if(nds_data->header.romSize!=nds_data->header.bannerOffset+2112)
             {
                 printf("ERROR! ROM SIZE WRONG!\n");
                 return 0;
             }
 
-     if((nds_data.header.bannerOffset+sizeof(TNDSBanner))<nds_data.header.romSize)
+     if((nds_data->header.bannerOffset+sizeof(TNDSBanner))<nds_data->header.romSize)
      {
-     sz=((nds_data.header.romSize)-(nds_data.header.bannerOffset+sizeof(TNDSBanner)));
+     sz=((nds_data->header.romSize)-(nds_data->header.bannerOffset+sizeof(TNDSBanner)));
      Temp = new unsigned char[sz];
      memset(Temp,0,sz);
      fwrite(Temp,1,sz,nds);
@@ -989,7 +1123,7 @@ bool AssembleNds(char *output)
      //printf("SZ %d\n",sz);
      }
 
-     fwrite(&nds_data.rsa.signature,1,136,nds);
+     fwrite(&nds_data->rsa.signature,1,136,nds);
 
      fflush(nds);
 
@@ -1021,22 +1155,22 @@ bool AssembleNds(char *output)
      free(buffer);
      fclose(nds);
 
-     nds_data.beacon_thing=0;
-     nds_data.multipleIDs=0;
-     nds_data.handledIDs[(int)nds_data.gameID] = 1;
+     nds_data->beacon_thing=0;
+     nds_data->multipleIDs=0;
+     nds_data->handledIDs[(int)nds_data->gameID] = 1;
      prev_total=0;
 
-     if(funusedpkt!=NULL && nds_data.multipleIDs)
+     if(funusedpkt!=NULL && nds_data->multipleIDs)
      {
             fclose(funusedpkt);
             funusedpkt=NULL;
             remove("unused_packets.bin");
      }
 
-		if(DEBUG)
+		if(*DEBUG)
 		{
-			fprintfdebug(Log,"ASSEMBLY SUCCESSFUL\n");
-			fflushdebug(Log);
+			fprintfdebug(*Log,"ASSEMBLY SUCCESSFUL\n");
+			fflushdebug(*Log);
 		}
 
      return 1;

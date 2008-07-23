@@ -1,5 +1,5 @@
 /*
-Wmb Asm and all software in the Wmb Asm package are licensed under the MIT license:
+Wmb Asm, the SDK, and all software in the Wmb Asm package are licensed under the MIT license:
 Copyright (c) 2008 yellowstar
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this
@@ -19,16 +19,9 @@ OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 DEALINGS IN THE SOFTWARE.
 */
 
-#ifndef BUILDING_DLL
-#define BUILDING_DLL 1
-#endif
-
-#undef DLLIMPORT
-#define DLLIMPORT
-
 #define BUILDING_SDK
 
-#include "..\..\dll\include\wmb_asm.h"
+#include "..\include\wmb_asm_sdk.h"
 
 #ifndef lib_pcap_h
 

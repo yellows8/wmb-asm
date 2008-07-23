@@ -11,7 +11,7 @@
 #include "wmb_asm_frontendFrmMain.h"
 
 /*
-Wmb Asm and all software in the Wmb Asm package are licensed under the MIT license:
+Wmb Asm, the SDK, and all software in the Wmb Asm package are licensed under the MIT license:
 Copyright (c) 2008 yellowstar
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this
@@ -33,7 +33,7 @@ DEALINGS IN THE SOFTWARE.
 
 #include <stdio.h>
 #define DLLMAIN//This define is for the wmb_asm.h header, see that header for details
-#include "../dll/include/wmb_asm.h"
+#include "../SDK/include/wmb_asm_sdk_client.h"
 
 IMPLEMENT_APP(wmb_asm_frontendFrmMainApp)
 
@@ -42,18 +42,22 @@ wxChar **argv=NULL;
 int argc=0;
 void Successcallback();//Protyped here because this is needed because of InitAsm; See the InitAsm call in OnInit. Also see *FrmMain.cpp for what this function does.
 
+sAsmSDK_Config Config;
+char *error_buffer = NULL;
+bool DEBUG = 0;
+
 bool wmb_asm_frontendFrmMainApp::OnInit()
 {
     //Get the argc/argv passed to the application.(Command-line parameters)
     argc=this->argc;
     argv=this->argv;
     
-    char *error_buffer = (char*)malloc(256);//Allocate memory for errors dealing with modules
-	if(!LoadAsmDLL("../dll/wmb_asm",error_buffer))
+    error_buffer = (char*)malloc(256);//Allocate memory for errors dealing with modules
+	if(!LoadAsmDLL("../dll/wmb_asm", &Config, error_buffer))
 	{
         //Try to load the module in the dll directory, in the parent directory of this working directory, first.
         //If that fails, try loading the module in the working directory. If that fails, display an error message, then quit.
-        if(!LoadAsmDLL("wmb_asm",error_buffer))//LoadAsmDLL takes care of the extension
+        if(!LoadAsmDLL("wmb_asm", &Config, error_buffer))//LoadAsmDLL takes care of the extension
         {
         wxMessageDialog msg(NULL, error_buffer, "Error", wxOK, wxDefaultPosition);
 	    msg.ShowModal();
@@ -61,11 +65,14 @@ bool wmb_asm_frontendFrmMainApp::OnInit()
 	    return 0;//If this function returns zero, that terminates the application.
         }
     }
-    if(InitAsm!=NULL)
-    {
-    InitAsm(&Successcallback);//Initialize the assembly-related stuff, if the module was loaded without any errors.
-    }
-    free(error_buffer);
+    
+        if(InitAsm!=NULL)
+        {
+            memset(&Config, 0, sizeof(sAsmSDK_Config));
+            InitDLLFunctions(&Config);
+            InitAsm(&Successcallback, DEBUG, &Config);//Initialize the assembly-related stuff, if the module was loaded without any errors.
+        }
+    
     
     //Create and display the Main Frame.
     wmb_asm_frontendFrmMain* frame = new wmb_asm_frontendFrmMain(NULL);
@@ -80,7 +87,9 @@ int wmb_asm_frontendFrmMainApp::OnExit()
     if(ExitAsm!=NULL)ExitAsm();
 
     //Close the module, if the module was already loaded fine.
-    CloseAsmDLL();
+    CloseAsmDLL(error_buffer);
+    
+    free(error_buffer);
     
 	return 0;
 }
