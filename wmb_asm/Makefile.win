@@ -1,7 +1,7 @@
 # Project: wmb_asm_cmd
 # Compiler: Default GCC compiler
 # Compiler Type: MingW 3
-# Makefile created by wxDev-C++ 6.10.2 on 22/07/08 18:20
+# Makefile created by wxDev-C++ 6.10.2 on 24/07/08 19:29
 
 CPP       = g++.exe
 CC        = gcc.exe
@@ -29,7 +29,7 @@ clean: clean-custom
 $(BIN): $(OBJ)
 	$(LINK) $(LINKOBJ) -o "wmb_asm.exe" $(LIBS)
 
-source/console.o: $(GLOBALDEPS) source/console.cpp dll/include/wmb_asm.h dll/include/dll.h dll/include/pcap.h dll/include/dirscan.h dll/include/win32dirent.h dll/include/ndsdirent.h dll/include/dll_load.h
+source/console.o: $(GLOBALDEPS) source/console.cpp
 	$(CPP) -c source/console.cpp -o source/console.o $(CXXFLAGS)
 
 source/main.o: $(GLOBALDEPS) source/main.cpp SDK/include/wmb_asm_sdk_client.h SDK/include/wmb_asm_sdk.h SDK/include/pcap.h SDK/include/dirscan.h SDK/include/win32dirent.h SDK/include/ndsdirent.h SDK/include/wmb_asm_sdk_internal.h
