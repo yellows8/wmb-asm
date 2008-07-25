@@ -1,7 +1,7 @@
 # Project: WmbAsmSDK
 # Compiler: Default GCC compiler
 # Compiler Type: MingW 3
-# Makefile created by wxDev-C++ 6.10.2 on 22/07/08 18:13
+# Makefile created by wxDev-C++ 6.10.2 on 24/07/08 19:17
 
 CPP       = g++.exe
 CC        = gcc.exe
@@ -29,20 +29,20 @@ clean: clean-custom
 $(BIN): $(OBJ)
 	$(LINK) rcu "$(BIN)" $(LINKOBJ)
 
-Objects/MingW/dirscan.o: $(GLOBALDEPS) source/dirscan.cpp
+Objects/MingW/dirscan.o: $(GLOBALDEPS) source/dirscan.cpp include/wmb_asm_sdk.h include/pcap.h include/dirscan.h include/win32dirent.h include/ndsdirent.h include/wmb_asm_sdk_internal.h
 	$(CPP) -c source/dirscan.cpp -o Objects/MingW/dirscan.o $(CXXFLAGS)
 
-Objects/MingW/dll_load.o: $(GLOBALDEPS) source/dll_load.cpp
+Objects/MingW/dll_load.o: $(GLOBALDEPS) source/dll_load.cpp include/wmb_asm_sdk.h include/pcap.h include/dirscan.h include/win32dirent.h include/ndsdirent.h include/wmb_asm_sdk_internal.h
 	$(CPP) -c source/dll_load.cpp -o Objects/MingW/dll_load.o $(CXXFLAGS)
 
-Objects/MingW/ndsdirent.o: $(GLOBALDEPS) source/ndsdirent.cpp
+Objects/MingW/ndsdirent.o: $(GLOBALDEPS) source/ndsdirent.cpp include/wmb_asm_sdk.h include/pcap.h include/dirscan.h include/win32dirent.h include/ndsdirent.h include/wmb_asm_sdk_internal.h
 	$(CPP) -c source/ndsdirent.cpp -o Objects/MingW/ndsdirent.o $(CXXFLAGS)
 
-Objects/MingW/pcap.o: $(GLOBALDEPS) source/pcap.cpp
+Objects/MingW/pcap.o: $(GLOBALDEPS) source/pcap.cpp include/wmb_asm_sdk.h include/pcap.h include/dirscan.h include/win32dirent.h include/ndsdirent.h include/wmb_asm_sdk_internal.h
 	$(CPP) -c source/pcap.cpp -o Objects/MingW/pcap.o $(CXXFLAGS)
 
-Objects/MingW/utils.o: $(GLOBALDEPS) source/utils.cpp
+Objects/MingW/utils.o: $(GLOBALDEPS) source/utils.cpp include/wmb_asm_sdk.h include/pcap.h include/dirscan.h include/win32dirent.h include/ndsdirent.h include/wmb_asm_sdk_internal.h
 	$(CPP) -c source/utils.cpp -o Objects/MingW/utils.o $(CXXFLAGS)
 
-Objects/MingW/win32dirent.o: $(GLOBALDEPS) source/win32dirent.cpp
+Objects/MingW/win32dirent.o: $(GLOBALDEPS) source/win32dirent.cpp include/wmb_asm_sdk.h include/pcap.h include/dirscan.h include/win32dirent.h include/ndsdirent.h include/wmb_asm_sdk_internal.h
 	$(CPP) -c source/win32dirent.cpp -o Objects/MingW/win32dirent.o $(CXXFLAGS)

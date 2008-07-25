@@ -139,11 +139,10 @@ DLLIMPORT int QueryFailure()
 DLLIMPORT bool Handle802_11(unsigned char *data, int length)
 {
      if(stage==SDK_STAGE_BEACON)return WMBProcessBeacons(data,length);
-     /*if(stage==SDK_STAGE_AUTH)return WMBProcessAuth(data,length);
+     if(stage==SDK_STAGE_AUTH)return WMBProcessAuth(data,length);
      if(stage==SDK_STAGE_RSA)return WMBProcessRSA(data,length);
      if(stage==SDK_STAGE_HEADER)return WMBProcessHeader(data,length);
      if(stage==SDK_STAGE_DATA)return WMBProcessData(data,length);
-     */
      
      return 0;
 }
@@ -172,7 +171,6 @@ DLLIMPORT void Reset(sAsmSDK_Config *config)
     
     memset(host_mac,0,6);
 	memset(client_mac,0,6);
-	
 }
 
 #ifdef __cplusplus
@@ -840,9 +838,6 @@ bool WMBProcessBeacons(unsigned char *data, int length)
                                          }
                                         
                                          if(ds->data_size==0x01)return 1;//This beacon isn't part of the advert          
-                                         //if(ds->connected_clients!=1)return 0;
-                                       
-                                       printf("%p\n",nds_data);
                                        
                                          nds_data->foundIDs[(int)ds->gameID]=1;
                                          if(!nds_data->gotID && ds->sequence_number!=8)

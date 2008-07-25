@@ -421,6 +421,7 @@ DLLIMPORT void InitAsm(SuccessCallback callback, bool debug, sAsmSDK_Config *con
 
 DLLIMPORT void ResetAsm()
 {
+    
                         if(nds_data->saved_data!=NULL)free(nds_data->saved_data);
                         if(nds_data->data_sizes!=NULL)free(nds_data->data_sizes);
                         nds_data->saved_data=NULL;
@@ -428,7 +429,7 @@ DLLIMPORT void ResetAsm()
 
                                 if(*DEBUG)
                                     fflushdebug(*Log);
-
+                                
 	                           TNDSHeader temp_header;
 	                           nds_rsaframe temp_rsa;
 	                           bool first=nds_data->finished_first_assembly;
@@ -468,11 +469,13 @@ DLLIMPORT void ResetAsm()
                                }
                                
                                currentPacketModule = -1;
-	                           PktModReset();
+                               PktModReset();
 }
 
 DLLIMPORT void ExitAsm()
-{
+{   
+    ResetAsm();
+    PktModClose();
     
     if(funusedpkt!=NULL)
     {
@@ -484,18 +487,15 @@ DLLIMPORT void ExitAsm()
 			remove("unused_packets.bin");
 		#endif
 
-                if(DEBUG)
-                {
-                        if(*DEBUG)
-				        {
-					       fclosedebug(*Log);
-                        }
-                    
-                    free(DEBUG);
+		if(DEBUG)
+        {
+                if(*DEBUG)
+			    {
+					fclosedebug(*Log);
                 }
-    
-    ResetAsm();
-    PktModClose();
+            
+            free(DEBUG);
+        }
 }
 
 #ifdef __cplusplus

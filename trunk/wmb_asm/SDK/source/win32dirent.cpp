@@ -7,7 +7,7 @@
 
 #define BUILDING_SDK
 
-#include "..\..\dll\include\wmb_asm.h"
+#include "..\include\wmb_asm_sdk.h"
 
 #ifdef WIN32
 
