@@ -213,6 +213,8 @@ typedef void (*SuccessCallback)(void);
 void ConvertEndian(void* input, void* output, int input_length);
 void CheckEndianA(void* input, int input_length);
 
+#ifndef NDS
+
     #ifdef USING_DLL
         //In this case with building dlls, DLLIMPORT really means to export the function.
         DLLIMPORT bool HandlePacket(pcap_pkthdr *header, u_char *pkt_data, int length, char *argv[], pcap_t *fp, bool checkrsa, char *outdir, bool run, char *copydir, bool use_copydir);
@@ -279,6 +281,7 @@ void CheckEndianA(void* input, int input_length);
 
                         #endif
                     #endif
+#endif
 
 //These structs are from Juglak's WMB Host. Others are from libnds, while one is mine
 struct iee80211_framehead2 {//<----------This is the struct actually used in the program. The other is a backup.
@@ -527,17 +530,19 @@ struct Nds_data
             bool trigger_assembly;//This will be set to 1 by the Packet Modules when it is time to write
             //the output .nds for assembly. This will be reset to zero after assembly.
             
-            lpHandlePacket HandlePacket;
-            lpInitAsm InitAsm;
-            lpResetAsm ResetAsm;
-            lpExitAsm ExitAsm;
-            lpCaptureAsmReset CaptureAsmReset;
-            lpGetStatusAsm GetStatusAsm;
-            lpQueryAssembleStatus QueryAssembleStatus;
-            lpGetPrecentageCompleteAsm GetPrecentageCompleteAsm;
-
-            lpGetModuleVersionStr GetModuleVersionStr;
-            lpGetModuleVersionInt GetModuleVersionInt;
+			#ifndef NDS
+				lpHandlePacket HandlePacket;
+				lpInitAsm InitAsm;
+				lpResetAsm ResetAsm;
+				lpExitAsm ExitAsm;
+				lpCaptureAsmReset CaptureAsmReset;
+				lpGetStatusAsm GetStatusAsm;
+				lpQueryAssembleStatus QueryAssembleStatus;
+				lpGetPrecentageCompleteAsm GetPrecentageCompleteAsm;
+				
+				lpGetModuleVersionStr GetModuleVersionStr;
+				lpGetModuleVersionInt GetModuleVersionInt;
+			#endif
         };
     
     #ifdef __cplusplus

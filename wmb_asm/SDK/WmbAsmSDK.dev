@@ -85,7 +85,7 @@ CompilerSet=1
 compilerType=1
 
 [Unit2]
-FileName=source\dll_load.cpp
+FileName=source\dll_load.c
 CompileCpp=1
 Folder=WmbAsmSDK
 Compile=1
@@ -95,7 +95,7 @@ OverrideBuildCmd=0
 BuildCmd=
 
 [Unit4]
-FileName=source\pcap.cpp
+FileName=source\pcap.c
 CompileCpp=1
 Folder=WmbAsmSDK
 Compile=1
@@ -105,7 +105,7 @@ OverrideBuildCmd=0
 BuildCmd=
 
 [Unit5]
-FileName=source\utils.cpp
+FileName=source\utils.c
 CompileCpp=1
 Folder=WmbAsmSDK
 Compile=1
@@ -115,7 +115,7 @@ OverrideBuildCmd=0
 BuildCmd=
 
 [Unit1]
-FileName=source\dirscan.cpp
+FileName=source\dirscan.c
 CompileCpp=1
 Folder=WmbAsmSDK
 Compile=1
@@ -125,7 +125,7 @@ OverrideBuildCmd=0
 BuildCmd=
 
 [Unit3]
-FileName=source\ndsdirent.cpp
+FileName=source\ndsdirent.c
 CompileCpp=1
 Folder=WmbAsmSDK
 Compile=1
@@ -135,7 +135,7 @@ OverrideBuildCmd=0
 BuildCmd=
 
 [Unit6]
-FileName=source\win32dirent.cpp
+FileName=source\win32dirent.c
 CompileCpp=1
 Folder=WmbAsmSDK
 Compile=1
