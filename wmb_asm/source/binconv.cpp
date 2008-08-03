@@ -21,49 +21,44 @@ DEALINGS IN THE SOFTWARE.
 
 #include "..\SDK\include\wmb_asm_sdk_client.h"
 
-#ifdef NDS
-void InitConsoleNDS();
-#include <fat.h>
-#endif
-
-void InitConsoleStuff()
+void ConvertBin(char *filename)
 {
-
-#ifdef NDS
-InitConsoleNDS();
-#endif
-
+    printf("Converting %s...\n",filename);
+    
+    FILE *fbin, *fnds;
+    unsigned char *buffer;
+    int length;
+    char str[256];
+    memset(str, 0, 256);
+    
+    fbin = fopen(filename, "rb");
+    
+    if(fbin==NULL)
+    {
+        printf("Failed to open file %s\n",filename);
+        return;
+    }
+    
+    strncpy(str, filename, strlen(filename) - 4);
+    strcat(str, ".nds");
+    
+    length = GetFileLength(fbin) - 0x1C8;//Nintendo Channel .bin files for demos, have a special header 0x1C8 bytes long. Remove that, and you got an .nds.
+    buffer = (unsigned char*)malloc(length);
+    memset(buffer, 0, length);
+    fseek(fbin, 0x1C8, SEEK_SET);
+    
+    fread(buffer, 1, length, fbin);
+    
+    fclose(fbin);
+    
+    fnds = fopen(str, "wb");
+    if(fnds==NULL)
+    {
+        printf("Failed to open file %s\n");
+        return;
+    }
+    
+    fwrite(buffer, 1, length, fnds);
+    
+    fclose(fnds);
 }
-
-#ifdef NDS
-int system(const char *str)
-{
-while(1)swiWaitForVBlank();
-
-return 1;
-}
-
-void InitConsoleNDS()
-{
-irqInit();
-irqEnable(IRQ_VBLANK);
-
-powerON(POWER_ALL);
-videoSetMode(0);	//not using the main screen
-videoSetModeSub(MODE_0_2D | DISPLAY_BG0_ACTIVE);	//sub bg 0 will be used to print text
-vramSetBankC(VRAM_C_SUB_BG);
-
-SUB_BG0_CR = BG_MAP_BASE(31);
-
-BG_PALETTE_SUB[255] = RGB15(31,31,31);	//by default font will be rendered with color 255
-
-//consoleInit() is a lot more flexible but this gets you up and running quick
-consoleInitDefault((u16*)SCREEN_BASE_BLOCK_SUB(31), (u16*)CHAR_BASE_BLOCK_SUB(0), 16);
-
-	if(!fatInitDefault())
-	{
-	printf("ERROR: Failed to initialize FAT.\nDid you DLDI patch this .nds for your card?\n");
-	system("PAUSE");
-	}
-}
-#endif
