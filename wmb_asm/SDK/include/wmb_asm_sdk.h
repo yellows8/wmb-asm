@@ -57,6 +57,8 @@ DEALINGS IN THE SOFTWARE.
         #endif
     #endif
     
+    extern bool PCAP_CheckAVS;
+    
 #endif
 
 #ifndef BUILDING_SDK
