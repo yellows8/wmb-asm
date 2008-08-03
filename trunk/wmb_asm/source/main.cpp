@@ -42,6 +42,8 @@ bool Debug=0;//If true, write out a debug log.
 
 sAsmSDK_Config *Config = NULL;
 
+void ConvertBin(char *filename);
+
 #ifdef NDS//There is no module loading available for homebrew on NDS, so fake module loading.
 //Trick the code into thinking loading was successful. Actually, there's code in the source directory, which are named
 //the same as the filenames in the module code, however, these include the code from the module.
@@ -267,6 +269,12 @@ void HandleOptions(int i, char *argv[], bool *checkrsa, char *outdir, bool *use_
             if(strcmp(argv[i],"-notime")==0)ShowTime=0;//If the option -notime is detected in the parameters, don't display how long assembly took.
             if(strcmp(argv[i],"-debug")==0)Debug=1;//If the option -debug is detected, write out a debug log.
             if(strcmp(argv[i],"-nodebug")==0)Debug=0;//Similar to the previous option, except don't write a debug log.(Default)
+            
+            if(strstr(argv[i],".bin"))
+            {
+                //printf("Hi!\n");
+                ConvertBin(argv[i]);
+            }
 }
 
 int ReadDump(int argc, char *argv[])
@@ -287,7 +295,7 @@ int ReadDump(int argc, char *argv[])
     cur_file=files_list;
     for(int i=1; i<=argc-1; i++)//Go through all of the parameters, excluding the first one which contains the application's filename, in search of options, captures, and directories containing captures.
     {
-        if(*argv[i]=='-')
+        if(*argv[i]=='-' || strstr(argv[i],".bin"))
         {
             //If the first character in the parameter, assume it's an option, and process that option.
             HandleOptions(i,argv,&checkrsa,outdir,&use_capdir,&run,copydir,&use_copydir);

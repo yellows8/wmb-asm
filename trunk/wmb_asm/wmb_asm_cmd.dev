@@ -1,7 +1,7 @@
 [Project]
 FileName=wmb_asm_cmd.dev
 Name=wmb_asm_cmd
-UnitCount=2
+UnitCount=3
 Type=1
 Ver=3
 IsCpp=1
@@ -17,7 +17,7 @@ ProfileIndex=0
 Major=2
 Minor=0
 Release=1
-Build=645
+Build=658
 LanguageID=1033
 CharsetID=1252
 CompanyName=yellowstar
@@ -52,7 +52,7 @@ ObjectOutput=
 OverrideOutput=1
 OverrideOutputName=wmb_asm.exe
 HostApplication=
-CommandLine=capture.cap
+CommandLine=C:\AndrewConsoleStuff\wmb_asm\captures\nintendoch\FlashFocusDS.bin
 UseCustomMakefile=0
 CustomMakefile=
 IncludeVersionInfo=1
@@ -121,6 +121,16 @@ BuildCmd=
 
 [Unit1]
 FileName=source\console.cpp
+CompileCpp=1
+Folder=wmb_asm_cmd
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit3]
+FileName=source\binconv.cpp
 CompileCpp=1
 Folder=wmb_asm_cmd
 Compile=1
