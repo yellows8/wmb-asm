@@ -76,7 +76,7 @@ DLLIMPORT FILE_LIST *ScanDirectory(FILE_LIST *filelist, char *dirname, char *ext
     {
         if(ext!=NULL)
         {
-            if(strcmp((const char*)&ent->d_name[strlen(ent->d_name)-4],(const char*)ext)!=0)
+            if(strcmp((const char*)&DirName[strlen(DirName)-4],(const char*)ext)!=0)
             {
                 return files;
             }
