@@ -3,7 +3,7 @@ CursorCol=28
 CursorRow=4
 TopLine=1
 LeftChar=1
-Open=1
+Open=0
 Top=0
 [Editor_1]
 CursorCol=1
@@ -13,11 +13,11 @@ LeftChar=1
 Open=0
 Top=0
 [Editors]
-Order=-1
+Order=
 Focused=-1
 [Editor_2]
-Open=1
-Top=1
+Open=0
+Top=0
 CursorCol=27
 CursorRow=119
 TopLine=97

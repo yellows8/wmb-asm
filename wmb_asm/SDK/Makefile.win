@@ -1,16 +1,16 @@
 # Project: WmbAsmSDK
 # Compiler: Default GCC compiler
 # Compiler Type: MingW 3
-# Makefile created by wxDev-C++ 6.10.2 on 03/08/08 17:22
+# Makefile created by wxDev-C++ 6.10.2 on 04/08/08 14:05
 
 CPP       = g++.exe
 CC        = gcc.exe
 WINDRES   = windres.exe
 OBJ       = Objects/MingW/dirscan.o Objects/MingW/dll_load.o Objects/MingW/ndsdirent.o Objects/MingW/pcap.o Objects/MingW/utils.o Objects/MingW/win32dirent.o
 LINKOBJ   = Objects/MingW/dirscan.o Objects/MingW/dll_load.o Objects/MingW/ndsdirent.o Objects/MingW/pcap.o Objects/MingW/utils.o Objects/MingW/win32dirent.o
-LIBS      = -L"C:/Dev-Cpp/Lib"  -g3 
-INCS      = -I"include"
-CXXINCS   = -I"C:/Dev-Cpp/lib/gcc/mingw32/3.4.2/include" -I"C:/Dev-Cpp/include/c++/3.4.2/backward" -I"C:/Dev-Cpp/include/c++/3.4.2/mingw32" -I"C:/Dev-Cpp/include/c++/3.4.2" -I"C:/Dev-Cpp/include" -I"C:/Dev-Cpp/" -I"C:/Dev-Cpp/include/common/wx/msw" -I"C:/Dev-Cpp/include/common/wx/generic" -I"C:/Dev-Cpp/include/common/wx/fl" -I"C:/Dev-Cpp/include/common/wx/gizmos" -I"C:/Dev-Cpp/include/common/wx/html" -I"C:/Dev-Cpp/include/common/wx/mmedia" -I"C:/Dev-Cpp/include/common/wx/net" -I"C:/Dev-Cpp/include/common/wx/ogl" -I"C:/Dev-Cpp/include/common/wx/plot" -I"C:/Dev-Cpp/include/common/wx/protocol" -I"C:/Dev-Cpp/include/common/wx/stc" -I"C:/Dev-Cpp/include/common/wx/svg" -I"C:/Dev-Cpp/include/common/wx/xml" -I"C:/Dev-Cpp/include/common/wx/xrc" -I"C:/Dev-Cpp/include/common/wx" -I"C:/Dev-Cpp/include/common"
+LIBS      = -L"C:/Dev-Cpp/Lib" -L"C:/idasdk/libgcc.w32"  -g3 
+INCS      = -I"include" -I"C:/idasdk/include"
+CXXINCS   = -I"C:/Dev-Cpp/lib/gcc/mingw32/3.4.2/include" -I"C:/Dev-Cpp/include/c++/3.4.2/backward" -I"C:/Dev-Cpp/include/c++/3.4.2/mingw32" -I"C:/Dev-Cpp/include/c++/3.4.2" -I"C:/Dev-Cpp/include" -I"C:/Dev-Cpp/" -I"C:/Dev-Cpp/include/common/wx/msw" -I"C:/Dev-Cpp/include/common/wx/generic" -I"C:/Dev-Cpp/include/common/wx/fl" -I"C:/Dev-Cpp/include/common/wx/gizmos" -I"C:/Dev-Cpp/include/common/wx/html" -I"C:/Dev-Cpp/include/common/wx/mmedia" -I"C:/Dev-Cpp/include/common/wx/net" -I"C:/Dev-Cpp/include/common/wx/ogl" -I"C:/Dev-Cpp/include/common/wx/plot" -I"C:/Dev-Cpp/include/common/wx/protocol" -I"C:/Dev-Cpp/include/common/wx/stc" -I"C:/Dev-Cpp/include/common/wx/svg" -I"C:/Dev-Cpp/include/common/wx/xml" -I"C:/Dev-Cpp/include/common/wx/xrc" -I"C:/Dev-Cpp/include/common/wx" -I"C:/Dev-Cpp/include/common" -I"C:/idasdk/include"
 RCINCS    = --include-dir "C:/Dev-Cpp/include/common"
 BIN       = lib/WmbAsmSDK.a
 DEFINES   = 
@@ -29,20 +29,20 @@ clean: clean-custom
 $(BIN): $(OBJ)
 	$(LINK) rcu "$(BIN)" $(LINKOBJ)
 
-Objects/MingW/dirscan.o: $(GLOBALDEPS) source/dirscan.c
+Objects/MingW/dirscan.o: $(GLOBALDEPS) source/dirscan.c include/wmb_asm_sdk.h include/pcap.h include/dirscan.h include/win32dirent.h include/ndsdirent.h include/wmb_asm_sdk_internal.h
 	$(CPP) -c source/dirscan.c -o Objects/MingW/dirscan.o $(CXXFLAGS)
 
-Objects/MingW/dll_load.o: $(GLOBALDEPS) source/dll_load.c
+Objects/MingW/dll_load.o: $(GLOBALDEPS) source/dll_load.c include/wmb_asm_sdk.h include/pcap.h include/dirscan.h include/win32dirent.h include/ndsdirent.h include/wmb_asm_sdk_internal.h
 	$(CPP) -c source/dll_load.c -o Objects/MingW/dll_load.o $(CXXFLAGS)
 
-Objects/MingW/ndsdirent.o: $(GLOBALDEPS) source/ndsdirent.c
+Objects/MingW/ndsdirent.o: $(GLOBALDEPS) source/ndsdirent.c include/wmb_asm_sdk.h include/pcap.h include/dirscan.h include/win32dirent.h include/ndsdirent.h include/wmb_asm_sdk_internal.h include/ndsdirent.h
 	$(CPP) -c source/ndsdirent.c -o Objects/MingW/ndsdirent.o $(CXXFLAGS)
 
-Objects/MingW/pcap.o: $(GLOBALDEPS) source/pcap.c
+Objects/MingW/pcap.o: $(GLOBALDEPS) source/pcap.c include/wmb_asm_sdk.h include/pcap.h include/dirscan.h include/win32dirent.h include/ndsdirent.h include/wmb_asm_sdk_internal.h
 	$(CPP) -c source/pcap.c -o Objects/MingW/pcap.o $(CXXFLAGS)
 
-Objects/MingW/utils.o: $(GLOBALDEPS) source/utils.c
+Objects/MingW/utils.o: $(GLOBALDEPS) source/utils.c include/wmb_asm_sdk.h include/pcap.h include/dirscan.h include/win32dirent.h include/ndsdirent.h include/wmb_asm_sdk_internal.h
 	$(CPP) -c source/utils.c -o Objects/MingW/utils.o $(CXXFLAGS)
 
-Objects/MingW/win32dirent.o: $(GLOBALDEPS) source/win32dirent.c
+Objects/MingW/win32dirent.o: $(GLOBALDEPS) source/win32dirent.c include/wmb_asm_sdk.h include/pcap.h include/dirscan.h include/win32dirent.h include/ndsdirent.h include/wmb_asm_sdk_internal.h
 	$(CPP) -c source/win32dirent.c -o Objects/MingW/win32dirent.o $(CXXFLAGS)
