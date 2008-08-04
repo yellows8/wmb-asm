@@ -214,8 +214,56 @@ unsigned char *IsValidAVS(u_char *pkt_data)
 {
      AVS_header *avs = NULL;
 
-     //if(!PCAP_CheckAVS)
+     if(!PCAP_CheckAVS || pkt_data==NULL)
      return pkt_data;
+
+     avs = (AVS_header*)pkt_data;
+
+     if((avs->magic_revision & AVS_magic) && (((unsigned char*)&avs->magic_revision)[3] & AVS_revision))
+     {
+     ConvertAVSEndian(avs);
+         if(avs->PHY_type==AVS_PHY_type)
+         {
+
+                   if(avs->SSI_type==AVS_SSI_TYPE)
+                   {
+
+                        if(avs->preamble==AVS_PREAMBLE && avs->encoding_type==AVS_ENCODING)
+                        {
+                        return pkt_data + ((int)sizeof(AVS_header));
+                        }
+                        else
+                        {
+							if(*SDK_DEBUG)
+                            {
+								//fprintfdebug(*SDK_Log,"PD BECAUSE PREAMBLE! PRE %u ENC %u\n",avs->preamble,avs->encoding_type);
+                            }
+						}
+
+
+                   }
+                   else
+                   {
+						if(*SDK_DEBUG)
+						{
+							//fprintfdebug(*SDK_Log,"SSI TYPE FAILED: %u\n",avs->SSI_type);
+                        }
+                   }
+         }
+         else
+         {
+			 if(*SDK_DEBUG)
+			 {
+				//fprintfdebug(*SDK_Log,"PHY FAILED: %u\n",avs->PHY_type);
+             }
+         }
+     }
+
+	 if(*SDK_DEBUG)
+	 {
+		//fprintfdebug(*SDK_Log,"PACKET DROPPED!\n");
+		//fflushdebug(*SDK_Log);
+	 }
 
      return NULL;
 }
@@ -242,9 +290,8 @@ DLLIMPORT void ConvertAVSEndian(AVS_header *avs)
 //********************************CHECK DATA PACKETS************************************
 bool CheckDataPackets(int seq)
 {
-    return 0;
-    
-     /*int i;
+     
+     int i;
      for(i=0; i<(int)seq; i++)
      {
             if(SDK_CONFIG!=NULL)
@@ -274,7 +321,7 @@ bool CheckDataPackets(int seq)
             }
      }
      
-     return 1;*/
+     return 1;
 }
 
 unsigned char GetGameID(unsigned char *data)

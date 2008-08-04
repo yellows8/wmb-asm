@@ -183,8 +183,8 @@ bool LoadAsmDLL(const char *filename, sAsmSDK_Config *config, char *error_buffer
         SDK_Log = config->Log;
         SDK_CONFIG = config;
         
-            printf("A CONFIG DAT %p CONFIG %p\n", config->nds_data, sdk_nds_data);
-            printf("CONFIG %p  SDKC %p\n",config, SDK_CONFIG);
+            //printf("A CONFIG DAT %p CONFIG %p\n", config->nds_data, sdk_nds_data);
+            //printf("CONFIG %p  SDKC %p\n",config, SDK_CONFIG);
         
     return 1;
 }

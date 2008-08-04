@@ -660,8 +660,8 @@ bool WMBProcessData(unsigned char *data, int length)
 
             if(nds_data->data_sizes[(int)seq-1]!=0)
             {
-            printf("KA NA\n");
-            printf("CONFIG %p NDS %p\n", CONFIG, nds_data);
+            //printf("KA NA\n");
+            //printf("CONFIG %p NDS %p\n", CONFIG, nds_data);
             //if(!CheckDataPackets((int)seq))return 1;
             
             if(nds_data->arm7e==0)return 1;
