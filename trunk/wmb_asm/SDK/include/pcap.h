@@ -69,6 +69,8 @@ DEALINGS IN THE SOFTWARE.
         
         int GetPacketNumber();
         int GetSnapshotLength();
+        bool GetPacketHasAVS();
+        void SetPacketHasAVS(bool val);
     
     #ifdef __cplusplus
     }

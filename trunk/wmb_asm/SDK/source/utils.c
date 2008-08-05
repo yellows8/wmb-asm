@@ -213,9 +213,11 @@ unsigned char *nintendoWMBBeacon( unsigned char *frame, int frame_size) {
 unsigned char *IsValidAVS(u_char *pkt_data)
 {
      AVS_header *avs = NULL;
-
-     if(!PCAP_CheckAVS || pkt_data==NULL)
+     
+     if(!PCAP_CheckAVS)
+     {
      return pkt_data;
+     }
 
      avs = (AVS_header*)pkt_data;
 
@@ -475,6 +477,47 @@ unsigned short computeBeaconChecksum(unsigned short *data, int length) {
   for (j = 0; j < length; j++) sum += *data++;
   sum = (-((sum >> 16) + (sum & 0xFFFF) + 1)) & 0xFFFF;
   return sum;
+}
+
+int did_dump=0;
+
+EthernetHeader *CheckGetEthernet(unsigned char *data, int length, unsigned short type)
+{
+    if(length < (int)sizeof(EthernetHeader))return NULL;
+    EthernetHeader *header = (EthernetHeader*)data;
+    if(type!=0)
+    {
+        if(header->type!=type)
+        {
+            return NULL;
+        }
+    }
+    
+    return header;
+}
+
+unsigned char *GetEthernet(unsigned char *data, int length, unsigned short type)
+{
+    if(CheckGetEthernet(data, length, type)==NULL)return NULL;
+    
+    return data + sizeof(EthernetHeader);
+}
+
+IPHeader *CheckGetIP(unsigned char *data, int length)
+{
+    IPHeader *header = NULL;
+    if(length < sizeof(IPHeader))return NULL;
+    
+    header = (IPHeader*)data;
+    
+    return header;
+}
+
+unsigned char *GetIP(unsigned char *data, int length)
+{
+    if(CheckGetIP(data, length)==NULL)return NULL;
+    
+    return data + sizeof(IPHeader);
 }
 
 int GetFileLength(FILE* _pfile)

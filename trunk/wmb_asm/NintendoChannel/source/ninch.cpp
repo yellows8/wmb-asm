@@ -8,7 +8,9 @@
 #undef DLLIMPORT
 #define DLLIMPORT __declspec (dllexport)
 
-int stage = SDK_STAGE_BEACON;
+#define STAGE_CLIENTHELLO 1
+
+int stage = STAGE_CLIENTHELLO;
 
 sAsmSDK_Config *CONFIG = NULL;
 bool *DEBUG = NULL;
@@ -20,9 +22,17 @@ bool DidInit = 0;
   extern "C" {
 #endif
 
+bool Handle_ClientHello(unsigned char *data, int length);
+
 DLLIMPORT char *GetStatus(int *error_code)
 {
-    if(stage==SDK_STAGE_AUTH && !nds_data->finished_first_assembly)
+    if(stage==STAGE_CLIENTHELLO)
+    {
+        *error_code = STAGE_CLIENTHELLO;
+        return (char*)"02: Failed to find the TLS Client Hello packet.\n";
+    }
+    
+    /*if(stage==SDK_STAGE_AUTH && !nds_data->finished_first_assembly)
     {
         *error_code=SDK_STAGE_AUTH;
         return (char*)"02: Failed to find the Authentication packet; Maybe the receiving DS never attempted to download?\n";
@@ -68,7 +78,7 @@ DLLIMPORT char *GetStatus(int *error_code)
             }
 
         return str;
-    }
+    }*/
 
 	*error_code=-1;
 	return NULL;
@@ -84,11 +94,7 @@ DLLIMPORT int QueryFailure()
 
 DLLIMPORT bool Handle802_11(unsigned char *data, int length)
 {
-     /*if(stage==SDK_STAGE_BEACON)return WMBProcessBeacons(data,length);
-     if(stage==SDK_STAGE_AUTH)return WMBProcessAuth(data,length);
-     if(stage==SDK_STAGE_RSA)return WMBProcessRSA(data,length);
-     if(stage==SDK_STAGE_HEADER)return WMBProcessHeader(data,length);
-     if(stage==SDK_STAGE_DATA)return WMBProcessData(data,length);*/
+     if(stage==STAGE_CLIENTHELLO)return Handle_ClientHello(data, length);
 
      return 0;
 }
@@ -122,3 +128,28 @@ DLLIMPORT void Reset(sAsmSDK_Config *config)
 #ifdef __cplusplus
   }
 #endif
+
+bool Handle_ClientHello(unsigned char *data, int length)
+{
+    unsigned char *dat = NULL;
+    unsigned char version, ip_length;
+    unsigned char vermask = 0x0F;
+    unsigned char lenmask = 0xF0;
+    
+    dat = GetEthernet(data,length, 8);
+    if(dat==NULL)return 0;
+    length-=sizeof(EthernetHeader);
+    
+    dat = GetIP(dat,length);
+    if(dat==NULL)return 0;
+    length-=sizeof(IPHeader);
+    IPHeader *hdr = (IPHeader*)dat;
+    
+    version = hdr->verlen & vermask;
+    ip_length = hdr->verlen & lenmask;
+    
+    printf("VERSION %d\nLENGTH %d\n",(int)version, (int)ip_length);//This code is broken... The extracted version and length are wrong.
+    printf("FOUND AN TCP PACKET!\n");
+    
+    return 1;
+}

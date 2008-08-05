@@ -52,7 +52,7 @@ DLLIMPORT unsigned char GetPrecentageCompleteAsm();
 
 DLLIMPORT char *CaptureAsmReset(int*);
 
-DLLIMPORT bool HandlePacket(pcap_pkthdr *header, u_char *pkt_data, int length, char *argv[], pcap_t *fp, bool checkrsa, char *outdir, bool run, char *copydir, bool use_copydir);
+DLLIMPORT bool HandlePacket(sAsmSDK_Params *params);
 
 DLLIMPORT char *GetStatusAsm(int *error_code);
 
@@ -522,6 +522,7 @@ void CaptureBacktrack()
             unsigned char *buffer = (unsigned char*)malloc((size_t)GetSnapshotLength());
             memset(buffer,0,(size_t)GetSnapshotLength());
             save_unused_packets=0;//HandlePacket would write the packets we send to it, to this file we are reading, if this wasn't set to zero. Which would obviously cause problems.
+            sAsmSDK_Params *params = NULL;
 
                 if(funusedpkt!=NULL)
                 {
@@ -531,15 +532,32 @@ void CaptureBacktrack()
 								fflushdebug(*Log);
 							}
 
+                    params = (sAsmSDK_Params*)malloc(sizeof(sAsmSDK_Params));
+                    memset(params, 0, sizeof(sAsmSDK_Params));
+
+                    params->header = glob_header;
+                    params->pkt_data = buffer;
+                    params->argv = glob_argv;
+                    params->fp = NULL;
+                    params->checkrsa = glob_checkrsa;
+                    params->outdir = glob_outdir;
+                    params->run = glob_run;
+                    params->copydir = glob_copydir;
+                    params->use_copydir = glob_use_copydir;
+                    params->has_avs = GetPacketHasAVS();
+
                         while(feof(funusedpkt)==0)
                         {
                             if(fread(&length,1,4,funusedpkt)!=4)break;
                             if(fread(buffer,1,(size_t)length,funusedpkt)!=(size_t)length)break;
 
-                            HandlePacket(glob_header,buffer,length,glob_argv,NULL,glob_checkrsa,glob_outdir,glob_run,glob_copydir,glob_use_copydir);
+                            params->length = length;
+
+                            HandlePacket(params);
                         }
 
                     fclose(funusedpkt);
+                    free(params);
                     funusedpkt=NULL;
                     save_unused_packets=1;
                 }
@@ -679,25 +697,30 @@ DLLIMPORT unsigned char GetPrecentageCompleteAsm()
 }
 
 int TheTime=0;
-DLLIMPORT bool HandlePacket(pcap_pkthdr *header, u_char *pkt_data, int length, char *argv[], pcap_t *fp, bool checkrsa, char *outdir, bool run, char *copydir, bool use_copydir)
+DLLIMPORT bool HandlePacket(sAsmSDK_Params *params)
 {
      //THE main assenbly function. All the host program of this module needs to do is load this module, call some functions at certain times, and call this function for each packet it reads/captures, and the assembler takes care of the rest.
 
      unsigned char *data;
 
-     glob_header = header;
-     glob_argv = argv;
-     glob_checkrsa = checkrsa;
-     glob_outdir = outdir;
-     glob_run = run;
-     glob_copydir = copydir;
-     glob_use_copydir = use_copydir;
+     glob_header = params->header;
+     glob_argv = params->argv;
+     glob_checkrsa = params->checkrsa;
+     glob_outdir = params->outdir;
+     glob_run = params->run;
+     glob_copydir = params->copydir;
+     glob_use_copydir = params->use_copydir;
+
+    SetPacketHasAVS(params->has_avs);
 
      //Is the AVS WLAN Capture header valid?
-     data=IsValidAVS(pkt_data);
+     data=IsValidAVS(params->pkt_data);
      if(data)
      {
-             Handle802_11(data,length-64);
+            if(data==NULL)data = params->pkt_data;
+            if(params->has_avs)params->length-=64;
+            
+             Handle802_11(data,params->length);
 
                     #ifndef NDS
 					if(save_unused_packets && nds_data->multipleIDs)
@@ -711,8 +734,8 @@ DLLIMPORT bool HandlePacket(pcap_pkthdr *header, u_char *pkt_data, int length, c
 
                         if(funusedpkt!=NULL)
                         {
-                            fwrite(&length,1,4,funusedpkt);
-                            fwrite(pkt_data,1,(size_t)length,funusedpkt);
+                            fwrite(&params->length,1,4,funusedpkt);
+                            fwrite(params->pkt_data,1,(size_t)params->length,funusedpkt);
                         }
                     }
 					#endif
@@ -780,7 +803,7 @@ DLLIMPORT bool HandlePacket(pcap_pkthdr *header, u_char *pkt_data, int length, c
                             //out[pos+5]=0;
                             strcpy(output,out);
                             //printf("OUT %s\n",out);
-                            sprintf(output,"%s%s",outdir,out);
+                            sprintf(output,"%s%s",params->outdir,out);
                             //printf("OUTPUT %s OUTDIR %s OUT %s\n",output,outdir,out);
 
 
@@ -790,7 +813,7 @@ DLLIMPORT bool HandlePacket(pcap_pkthdr *header, u_char *pkt_data, int length, c
                              if(!AssembleNds(Str))
                              {
                              delete[]Str;
-                             pcap_close(fp);
+                             pcap_close(params->fp);
 
                                 if(*DEBUG)
                                 {
@@ -816,7 +839,7 @@ DLLIMPORT bool HandlePacket(pcap_pkthdr *header, u_char *pkt_data, int length, c
 
 
 	                           #ifdef WIN32
-	                           if(checkrsa)
+	                           if(params->checkrsa)
 	                           {
 	                           char rsa_cmdline[256];
 	                           int rsai=0;
@@ -837,12 +860,12 @@ DLLIMPORT bool HandlePacket(pcap_pkthdr *header, u_char *pkt_data, int length, c
                                }
                                #endif
 
-                               if(copydir!=NULL && use_copydir)
+                               if(params->copydir!=NULL && params->use_copydir)
                                {
                                char str[256];
                                unsigned char *buffer=NULL;
                                int filesize = 0;
-                               sprintf(str,"%s%s",copydir,out);
+                               sprintf(str,"%s%s",params->copydir,out);
                                FILE *f = fopen(Str,"rb");
                                if(f!=NULL)
                                {
@@ -872,7 +895,7 @@ DLLIMPORT bool HandlePacket(pcap_pkthdr *header, u_char *pkt_data, int length, c
                                }
 
                                #ifdef WIN32
-                               if(run)
+                               if(params->run)
                                {
                                     char cline[256];
                                     sprintf(cline,"\"%s\"",output);

@@ -7,11 +7,11 @@
 #define WMB_PRIVATE_H
 
 /* VERSION DEFINITIONS */
-#define VER_STRING	"2.0.1.45"
+#define VER_STRING	"2.0.1.47"
 #define VER_MAJOR	2
 #define VER_MINOR	0
 #define VER_RELEASE	1
-#define VER_BUILD	45
+#define VER_BUILD	47
 #define COMPANY_NAME	"yellowstar"
 #define FILE_VERSION	"2.0b r2"
 #define FILE_DESCRIPTION	"Plugin for assembling WMB captures"
