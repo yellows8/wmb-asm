@@ -122,6 +122,8 @@ DEALINGS IN THE SOFTWARE.
 
 #include "../include/dirscan.h"
 
+#include "../include/inet.h"
+
     #ifndef NDS
         #include <windows.h>
     #endif
@@ -215,11 +217,26 @@ typedef void (*SuccessCallback)(void);
 void ConvertEndian(void* input, void* output, int input_length);
 void CheckEndianA(void* input, int input_length);
 
+struct sAsmSDK_Params
+{
+    pcap_pkthdr *header;
+    u_char *pkt_data;
+    int length;
+    char **argv;
+    pcap_t *fp;
+    bool checkrsa;
+    char *outdir;
+    bool run;
+    char *copydir;
+    bool use_copydir;
+    bool has_avs;
+};
+
 #ifndef NDS
 
     #ifdef USING_DLL
         //In this case with building dlls, DLLIMPORT really means to export the function.
-        DLLIMPORT bool HandlePacket(pcap_pkthdr *header, u_char *pkt_data, int length, char *argv[], pcap_t *fp, bool checkrsa, char *outdir, bool run, char *copydir, bool use_copydir);
+        DLLIMPORT bool HandlePacket(sAsmSDK_Params *params);
 
         DLLIMPORT void InitAsm(SuccessCallback callback, bool debug, sAsmSDK_Config *config);
         DLLIMPORT void ResetAsm();
@@ -235,7 +252,7 @@ void CheckEndianA(void* input, int input_length);
 
                 #ifndef NDS
                     
-                    typedef bool (*lpHandlePacket)(pcap_pkthdr *header, u_char *pkt_data, int length, char *argv[], pcap_t *fp, bool checkrsa, char *outdir, bool run, char *copydir, bool use_copydir);
+                    typedef bool (*lpHandlePacket)(sAsmSDK_Params *params);
                     typedef void (*lpInitAsm)(SuccessCallback callback, bool debug, sAsmSDK_Config *config);
                     typedef void (*lpResetAsm)(void);
                     typedef void (*lpExitAsm)(void);

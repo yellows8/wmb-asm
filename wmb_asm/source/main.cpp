@@ -390,12 +390,29 @@ int ReadCaptureLoop(char *cap, int argc, char *argv[], bool checkrsa, char *outd
     //fprintfdebug(Log,"Reading capture file %s\n",cap);
     printf("Reading capture file %s\n",cap);
 
+    sAsmSDK_Params *params = (sAsmSDK_Params*)malloc(sizeof(sAsmSDK_Params));
+    memset(params, 0, sizeof(sAsmSDK_Params));
+
+    params->has_avs = GetPacketHasAVS();
+
+    params->header = header;
+    params->argv = argv;
+    params->fp = fp;
+    params->checkrsa = checkrsa;
+    params->outdir = outdir;
+    params->run = run;
+    params->copydir = copydir;
+    params->use_copydir = use_copydir;
+
 	/* Retrieve the packets from the file */
 	while((res = pcap_next_ex(fp, &header, &pkt_data)) >= 0)
 	{
         
+        params->length = header->caplen;
+        params->pkt_data = (u_char*)pkt_data;
+        
         //Send the packet to the assembler to process & assemble.
-        if(!HandlePacket(header,(u_char*)pkt_data, header->caplen,argv,fp,checkrsa,outdir,run,copydir,use_copydir))return 0;
+        if(!HandlePacket(params)){free(params);return 0;}
 
     }
 
@@ -406,6 +423,8 @@ int ReadCaptureLoop(char *cap, int argc, char *argv[], bool checkrsa, char *outd
 
 	pcap_close(fp);
 	//free(fp);//Gdb debugger included with wxDev-Cpp hangs on this call...(And on the free call in pcap_close in my capture reading code)
+	
+	free(params);
 	
 	return 1;
 }
