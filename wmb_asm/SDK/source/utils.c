@@ -479,7 +479,7 @@ unsigned short computeBeaconChecksum(unsigned short *data, int length) {
   return sum;
 }
 
-int did_dump=0;
+//int did_dump=0;
 
 EthernetHeader *CheckGetEthernet(unsigned char *data, int length, unsigned short type)
 {
@@ -509,6 +509,8 @@ IPHeader *CheckGetIP(unsigned char *data, int length)
     if(length < sizeof(IPHeader))return NULL;
     
     header = (IPHeader*)data;
+    
+    //header->length *= 4;
     
     return header;
 }

@@ -129,24 +129,47 @@ DLLIMPORT void Reset(sAsmSDK_Config *config)
   }
 #endif
 
+int did_dump=0;
+
 bool Handle_ClientHello(unsigned char *data, int length)
 {
     unsigned char *dat = NULL;
-    unsigned char version, ip_length;
+    unsigned char *Dat = NULL;
+    unsigned char version = 0, ip_length = 0;
     unsigned char vermask = 0x0F;
-    unsigned char lenmask = 0xF0;
+    unsigned char lenmask = 0xF0;//I tried hdr->verlen & len/vermask, with no success.
     
     dat = GetEthernet(data,length, 8);
     if(dat==NULL)return 0;
     length-=sizeof(EthernetHeader);
     
-    dat = GetIP(dat,length);
-    if(dat==NULL)return 0;
+    Dat = GetIP(dat,length);
+    if(Dat==NULL)return 0;
     length-=sizeof(IPHeader);
     IPHeader *hdr = (IPHeader*)dat;
     
-    version = hdr->verlen & vermask;
-    ip_length = hdr->verlen & lenmask;
+    /*for(int i=0; i<4; i++)//I tried this, with no success - same result as that unsigned char version:4, length:4 stuff in the struct
+    {
+        version |= (hdr->verlen & 1>>i);
+        ip_length |= (hdr->verlen & 1>>i+4);
+    }*/
+    
+    version = hdr->version;
+    ip_length = hdr->length;
+    //version = hdr->verlen;
+    
+    /*if(did_dump==9)
+    {
+        FILE *f = fopen("dump.bin","wb");
+        fwrite(hdr, 1, sizeof(IPHeader), f);
+        fclose(f);
+    }
+    else
+    {
+        did_dump++;
+    }*/
+    
+    ip_length*=4;
     
     printf("VERSION %d\nLENGTH %d\n",(int)version, (int)ip_length);//This code is broken... The extracted version and length are wrong.
     printf("FOUND AN TCP PACKET!\n");

@@ -10,7 +10,16 @@ struct EthernetHeader//Ethernet II/2 header, as seen in Wireshark
 
 struct IPHeader
 {
-    unsigned char verlen;
+    /*#if __BYTE_ORDER == __BIG_ENDIAN
+    unsigned char version:4, length:4;//Previously this line just had unsigned char verlen
+    #endif
+    #elif  __BYTE_ORDER == __LITTE_ENDIAN*/
+    unsigned char length:4, version:4;//Previously this line just had unsigned char verlen
+    /*#endif
+    #else
+    # error "Please fix <bits/endian.h>"
+    #endif*/
+    
     unsigned char diff_services;
     unsigned short total_length;
     unsigned short id;
