@@ -506,11 +506,28 @@ unsigned char *GetEthernet(unsigned char *data, int length, unsigned short type)
 IPHeader *CheckGetIP(unsigned char *data, int length)
 {
     IPHeader *header = NULL;
+    unsigned int version, ip_len;
     if(length < sizeof(IPHeader))return NULL;
     
     header = (IPHeader*)data;
     
-    //header->length *= 4;
+    version = header->version;
+    ip_len = header->length * 4;
+    
+    if(version!=4)return NULL;
+    if(ip_len!=20)return NULL;
+    if(header->protocol!=0x06)return NULL;
+    
+    unsigned short pkt_checksum = header->header_checksum;
+    header->header_checksum = 0;
+    unsigned short checksum = 0;//CalcCRC16(data+1, length-1)
+    checksum += header->total_length;
+    checksum += header->id;
+    checksum += header->flags_fragment;
+    checksum += header->header_checksum;
+    checksum = ~checksum;
+    header->header_checksum = pkt_checksum;
+    printf("CALC SUM %x PKT %x\n",checksum, header->header_checksum);
     
     return header;
 }
