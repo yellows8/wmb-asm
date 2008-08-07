@@ -503,6 +503,38 @@ unsigned char *GetEthernet(unsigned char *data, int length, unsigned short type)
     return data + sizeof(EthernetHeader);
 }
 
+/*
+**************************************************************************
+Function: ip_sum_calc
+Description: Calculate the 16 bit IP sum.
+***************************************************************************
+*/
+//typedef unsigned short u16;
+//typedef unsigned long u32;
+
+u16 ip_sum_calc(u16 len_ip_header, u16 *buff)
+{
+u16 word16;
+u32 sum=0;
+u16 i;
+    
+	// make 16 bit words out of every two adjacent 8 bit words in the packet
+	// and add them up
+	for (i=0;i<len_ip_header;i=i+2){
+		word16 =((buff[i]<<8)&0xFF00)+(buff[i+1]&0xFF);
+		sum = sum + (u32) word16;	
+	}
+	
+	// take only 16 bits out of the 32 bit sum and add up the carries
+	while (sum>>16)
+	  sum = (sum & 0xFFFF)+(sum >> 16);
+
+	// one's complement the result
+	sum = ~sum;
+	
+return ((u16) sum);
+}
+
 IPHeader *CheckGetIP(unsigned char *data, int length)
 {
     IPHeader *header = NULL;
@@ -519,15 +551,53 @@ IPHeader *CheckGetIP(unsigned char *data, int length)
     if(header->protocol!=0x06)return NULL;
     
     unsigned short pkt_checksum = header->header_checksum;
-    header->header_checksum = 0;
-    unsigned short checksum = 0;//CalcCRC16(data+1, length-1)
-    checksum += header->total_length;
+    //header->header_checksum = 0;
+    unsigned int checksum = 0;//CalcCRC16(data+1, length-1)
+    /*checksum += header->total_length;
     checksum += header->id;
     checksum += header->flags_fragment;
-    checksum += header->header_checksum;
-    checksum = ~checksum;
+    checksum += header->header_checksum;*/
+    
+    unsigned short *dat_chk = (unsigned short*)data;
+    
+    for(int i=0; i<ip_len/2; i++)
+    {
+        checksum += ((unsigned int)*dat_chk);
+        dat_chk++;
+    }
+
+    while (checksum>>16)
+	  checksum = (checksum & 0xFFFF)+(checksum >> 16);
+
+    /*while(checksum & 0xFFFF0000)
+    {
+        checksum = (checksum & 0xFFFF) + (checksum >> 16);
+    }*/
+    
+    //checksum = 0xFFFF - checksum;
+    //checksum &= 0x0000FFFF;
+    
+    //checksum = ~checksum;
+    //checksum += (unsigned int)header->header_checksum;
+    //checksum = 0xFFFF - checksum;
+    //checksum = ~checksum;
+    
+    //checksum = (checksum & 0xFF)+(checksum >> 8);
+    
+    //checksum = ip_sum_calc((u16)ip_len, (u16*)data);
+    
+    //checksum += header->header_checksum;
+    
+    bool found=0;
+    unsigned short chk = (unsigned short)checksum;
+    for(int i=0; i<16; i++)
+    {
+        if(!(chk & 1<<i))found=1;
+    }
+    
     header->header_checksum = pkt_checksum;
-    printf("CALC SUM %x PKT %x\n",checksum, header->header_checksum);
+    printf("CALC SUM %x PKT %x\n",chk, header->header_checksum);
+    if(found)printf("ERROR\n");
     
     return header;
 }
