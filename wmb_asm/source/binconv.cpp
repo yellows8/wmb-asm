@@ -21,12 +21,14 @@ DEALINGS IN THE SOFTWARE.
 
 #include "..\SDK\include\wmb_asm_sdk_client.h"
 
+unsigned char *ConvertBinBuff(unsigned char *data, int length);
+
 void ConvertBin(char *filename)
 {
     printf("Converting %s...\n",filename);
     
     FILE *fbin, *fnds;
-    unsigned char *buffer;
+    unsigned char *input_buffer, *output_buffer;
     int length;
     char str[256];
     memset(str, 0, 256);
@@ -42,14 +44,14 @@ void ConvertBin(char *filename)
     strncpy(str, filename, strlen(filename) - 4);
     strcat(str, ".nds");
     
-    length = GetFileLength(fbin) - 0x1C8;//Nintendo Channel .bin files for demos, have a special header 0x1C8 bytes long. Remove that, and you got an .nds.
-    buffer = (unsigned char*)malloc(length);
-    memset(buffer, 0, length);
-    fseek(fbin, 0x1C8, SEEK_SET);
-    
-    fread(buffer, 1, length, fbin);
+    length = GetFileLength(fbin);//Nintendo Channel .bin files for demos, have a special header 0x1C8 bytes long. Remove that, and you got an .nds.
+    input_buffer = (unsigned char*)malloc(length);
+    memset(input_buffer, 0, length);
+    fread(input_buffer, 1, length, fbin);
     
     fclose(fbin);
+    
+    output_buffer = ConvertBinBuff(input_buffer, length);
     
     fnds = fopen(str, "wb");
     if(fnds==NULL)
@@ -58,7 +60,19 @@ void ConvertBin(char *filename)
         return;
     }
     
-    fwrite(buffer, 1, length, fnds);
+    fwrite(output_buffer, 1, length, fnds);
     
     fclose(fnds);
+    
+    printf("Successfully converted the file to %s!\n",str);
+}
+
+unsigned char *ConvertBinBuff(unsigned char *data, int length)
+{
+    unsigned char *nds = (unsigned char*)malloc(length - 0x1C8);
+    memset(nds, 0, length - 0x1C8);
+    
+    memcpy(nds, &data[0x1C8], length - 0x1C8);
+    
+    return nds;
 }

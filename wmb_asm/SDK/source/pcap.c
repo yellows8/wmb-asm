@@ -88,8 +88,6 @@ DLLIMPORT pcap_t *pcap_open_offline(const char *filename, char *errbuf)
     if(capheader.linkLayerType==163)PCAP_CheckAVS = 1;
     if(capheader.linkLayerType==1)PCAP_CheckAVS = 0;
     
-    printf("PCAP_AVS %d\n",(int)PCAP_CheckAVS);
-    
     memset(&cap->header,0,sizeof(pcap_file_header));
     cap->pktdata = (unsigned char*)malloc(capheader.snapshotLength);
     if(cap->pktdata==NULL)return NULL;
