@@ -269,12 +269,6 @@ void HandleOptions(int i, char *argv[], bool *checkrsa, char *outdir, bool *use_
             if(strcmp(argv[i],"-notime")==0)ShowTime=0;//If the option -notime is detected in the parameters, don't display how long assembly took.
             if(strcmp(argv[i],"-debug")==0)Debug=1;//If the option -debug is detected, write out a debug log.
             if(strcmp(argv[i],"-nodebug")==0)Debug=0;//Similar to the previous option, except don't write a debug log.(Default)
-            
-            if(strstr(argv[i],".bin"))
-            {
-                //printf("Hi!\n");
-                ConvertBin(argv[i]);
-            }
 }
 
 int ReadDump(int argc, char *argv[])
@@ -295,7 +289,7 @@ int ReadDump(int argc, char *argv[])
     cur_file=files_list;
     for(int i=1; i<=argc-1; i++)//Go through all of the parameters, excluding the first one which contains the application's filename, in search of options, captures, and directories containing captures.
     {
-        if(*argv[i]=='-' || strstr(argv[i],".bin"))
+        if(*argv[i]=='-')
         {
             //If the first character in the parameter, assume it's an option, and process that option.
             HandleOptions(i,argv,&checkrsa,outdir,&use_capdir,&run,copydir,&use_copydir);
@@ -303,12 +297,19 @@ int ReadDump(int argc, char *argv[])
         }
         else
         {
-            if(ScanDirectory(files_list,argv[i],(char*)".cap")==NULL)
+            if(strstr(argv[i],".bin"))
             {
-                //ScanDirectory will put the filename contained in argv[i], in files_list, if it's a file.
-                //But if it's a directory, it will scan the whole directory for captures. Then if it finds a directory
-                //during this scanning, it will repeat, and scan that directory for captures. And so on if it finds more directories in that directory.
-                printf("Failed to open file or directory %s\n",argv[i]);
+                ConvertBin(argv[i]);
+            }
+            else
+            {
+                if(ScanDirectory(files_list,argv[i],(char*)".cap")==NULL)
+                {
+                    //ScanDirectory will put the filename contained in argv[i], in files_list, if it's a file.
+                    //But if it's a directory, it will scan the whole directory for captures. Then if it finds a directory
+                    //during this scanning, it will repeat, and scan that directory for captures. And so on if it finds more directories in that directory.
+                    printf("Failed to open file or directory %s\n",argv[i]);
+                }
             }
         }
     }
@@ -318,6 +319,13 @@ int ReadDump(int argc, char *argv[])
 	   while(cur_file!=NULL)//Go through all the files ScanDirectory found.
 	   {
 	       if(cur_file->filename==NULL)break;//The last item in the list is empty, meaning filename is NULL too.(The last file is in the item before this)
+	       
+	       if(strstr(cur_file->filename,".bin"))//Erm, Nintendo Channel .bin converting with directories is broken, as the directory scanning code can only find one type of file currently.
+           {
+               ConvertBin(cur_file->filename);
+           }
+           else
+           {
 	       
 	           if(use_capdir)//If we're using the captures directory for the outputs' directories, process the output directory name for each capture.
 	           {
@@ -358,7 +366,9 @@ int ReadDump(int argc, char *argv[])
 
             }
 
-           cur_file=cur_file->next;//Begin processing the next capture
+        }
+
+           cur_file=cur_file->next;//Begin processing the next capture/file
       }
       
     free(outdir);//Free the output directory and copy to directory
