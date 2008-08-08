@@ -8,9 +8,10 @@
 #undef DLLIMPORT
 #define DLLIMPORT __declspec (dllexport)
 
-#define STAGE_MENU_REQ 1
+#define STAGE_ASSOC_RESPONSE 1
+#define STAGE_MENU_REQ 2
 
-int stage = STAGE_MENU_REQ;
+int stage = STAGE_ASSOC_RESPONSE;
 
 sAsmSDK_Config *CONFIG = NULL;
 bool *DEBUG = NULL;
@@ -18,7 +19,16 @@ FILE **Log = NULL;
 
 bool DidInit = 0;
 
+bool Handle_AssocResponse(unsigned char *data, int length);
 bool Handle_MenuRequest(unsigned char *data, int length);
+
+struct DLClient
+{
+    unsigned char clientID;
+    unsigned char mac[6];
+};
+DLClient DLClients[15];
+int total_clients = 0;
 
 #ifdef __cplusplus
   extern "C" {
@@ -28,10 +38,16 @@ bool Handle_MenuRequest(unsigned char *data, int length);
 
 DLLIMPORT char *GetStatus(int *error_code)
 {
+    if(stage==STAGE_ASSOC_RESPONSE)
+    {
+        *error_code = STAGE_ASSOC_RESPONSE;
+        return (char*)"02: Failed to find the Association Response packet.\n";
+    }
+    
     if(stage==STAGE_MENU_REQ)
     {
         *error_code = STAGE_MENU_REQ;
-        return (char*)"02: Failed to find the Menu Request packet.\n";
+        return (char*)"03: Failed to find the Menu Request packet.\n";
     }
 
 	*error_code=-1;
@@ -45,6 +61,12 @@ DLLIMPORT int QueryFailure()
 
 DLLIMPORT bool Handle802_11(unsigned char *data, int length)
 {
+     bool ret = 0;
+     
+     ret = Handle_AssocResponse(data, length);
+     
+     if(ret)return ret;
+     
      if(stage==STAGE_MENU_REQ)return Handle_MenuRequest(data, length);
 
      return 0;
@@ -62,16 +84,27 @@ DLLIMPORT void Reset(sAsmSDK_Config *config)
         DidInit = 1;
     }
 
-    stage=STAGE_MENU_REQ;
-    /*last_seq=0;
-
+    stage=STAGE_ASSOC_RESPONSE;
+    
+    memset(DLClients, 0, sizeof(DLClient) * 15);
+    total_clients = 0;
+    
+    /*
+    last_seq=0;
     memset(host_mac,0,6);
-	memset(client_mac,0,6);*/
+    */
 }
 
 #ifdef __cplusplus
   }
 #endif
+
+bool Handle_AssocResponse(unsigned char *data, int length)
+{
+    if(stage==STAGE_ASSOC_RESPONSE)stage = STAGE_MENU_REQ;
+    
+    return 0;
+}
 
 bool Handle_MenuRequest(unsigned char *data, int length)
 {
