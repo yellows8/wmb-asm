@@ -16,6 +16,7 @@ int stage = STAGE_ASSOC_RESPONSE;
 sAsmSDK_Config *CONFIG = NULL;
 bool *DEBUG = NULL;
 FILE **Log = NULL;
+FILE *DLog = NULL;
 
 bool DidInit = 0;
 
@@ -82,6 +83,8 @@ DLLIMPORT void Reset(sAsmSDK_Config *config)
         Log = config->Log;
         CONFIG = config;
         DidInit = 1;
+        
+        DLog = fopen("DLog.txt","w");
     }
 
     stage=STAGE_ASSOC_RESPONSE;
@@ -101,7 +104,27 @@ DLLIMPORT void Reset(sAsmSDK_Config *config)
 
 bool Handle_AssocResponse(unsigned char *data, int length)
 {
-    if(stage==STAGE_ASSOC_RESPONSE)stage = STAGE_MENU_REQ;
+    iee80211_framehead2 *fh = (iee80211_framehead2*)data;
+
+    if (((FH_FC_TYPE(fh->frame_control) == 0) && (FH_FC_SUBTYPE(fh->frame_control) == 1)))
+    {
+        DLClients[total_clients].clientID = data[0x5C];
+        memcpy(DLClients[total_clients].mac,fh->mac1, 6);
+        total_clients++;
+        
+        if(stage==STAGE_ASSOC_RESPONSE)stage = STAGE_MENU_REQ;
+        
+        printf("FOUND ASSOC RESPONSE!\n");
+        
+        return 1;
+    }
+    else
+    {
+        if(DLog!=NULL)
+        {
+            fprintf(DLog,"Fail %d %d num %d\n", FH_FC_TYPE(fh->frame_control), FH_FC_SUBTYPE(fh->frame_control));
+        }
+    }
     
     return 0;
 }
