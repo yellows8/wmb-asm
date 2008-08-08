@@ -103,6 +103,7 @@ struct PacketModule
 	#endif
 	
 	int ID;
+	char *IDStr;
 };
 PacketModule packetModules[MAX_PKT_MODULES];
 int totalPacketModules = 0;
@@ -256,6 +257,8 @@ bool InitPktModules()
 
     if(open_failed)return 0;
 
+    remove("module_log.txt");//Since we made it this far, there was no errors, so we can safely remove this file without saved errors being deleted.
+
     printf("Done.\n");
 
     #endif
@@ -386,6 +389,9 @@ int LoadPacketModule(char *filename, char *error_buffer, char *destr, LPDLL *lpd
 
                                             return 0;
                                         }
+
+                                        packetModules[totalPacketModules].ID = packetModules[totalPacketModules].GetID();
+                                        packetModules[totalPacketModules].IDStr = packetModules[totalPacketModules].GetIDStr();
 
                                         packetModules[totalPacketModules].lpdll = *lpdll;
                                         totalPacketModules++;
