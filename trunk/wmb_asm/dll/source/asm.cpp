@@ -87,6 +87,8 @@ typedef bool (*lpHandle802_11)(unsigned char *data, int length);
 typedef void (*lpReset)(sAsmSDK_Config *config);
 typedef char *(*lpGetStatus)(int *error_code);
 typedef int (*lpQueryFailure)();
+typedef int (*lpGetID)();
+typedef char *(*lpGetIDStr)();
 
 struct PacketModule
 {
@@ -94,9 +96,13 @@ struct PacketModule
     lpReset reset;
     lpGetStatus get_status;
     lpQueryFailure query_failure;
+    lpGetID GetID;
+    lpGetIDStr GetIDStr;
 	#ifndef NDS
     LPDLL lpdll;//The handle of the module if this one isn't a built-in packet handler.
 	#endif
+	
+	int ID;
 };
 PacketModule packetModules[MAX_PKT_MODULES];
 int totalPacketModules = 0;
@@ -164,7 +170,7 @@ bool PktModHandle802_11(unsigned char *data, int length)
 int LoadPacketModule(char *filename, char *error_buffer, char *destr, LPDLL *lpdll);
 FILE *modlog = NULL;
 
-void InitPktModules()
+bool InitPktModules()
 {
     LPDLL lpdll;
     char filename[256];
@@ -172,6 +178,7 @@ void InitPktModules()
 	FILE_LIST *files_list = NULL;
     FILE_LIST *cur_file = files_list;
     //memset(files_list,0,sizeof(FILE_LIST));
+    bool open_failed = 0;
 
     char *error_buffer = (char*)malloc(256);
 	char *destr = (char*)malloc(256);
@@ -187,7 +194,6 @@ void InitPktModules()
     #ifndef NDS
         files_list = (FILE_LIST*)malloc(sizeof(FILE_LIST));
         memset(files_list, 0, sizeof(FILE_LIST));
-        //C:\\AndrewConsoleStuff\\wmb_asm\\SVN\\trunk\\wmb_asm
         ScanDirectory(files_list,(char*)".",(char*)".dll");
             
             if(files_list!=NULL)
@@ -216,8 +222,12 @@ void InitPktModules()
                             //printf("Loading %s\n",cur_file->filename);
                             
                             int ret = LoadPacketModule(cur_file->filename, error_buffer, destr, &lpdll);
-                            if(ret==0)return;
-                            if(ret==2)continue;
+                            if(ret==0)return 0;
+                            if(ret==2)
+                            {
+                                open_failed = 1;
+                                continue;
+                            }
                             
                             //printf("Loaded %s\n",cur_file->filename);
                     }
@@ -244,11 +254,15 @@ void InitPktModules()
             exit(1);
         }
 
+    if(open_failed)return 0;
+
     printf("Done.\n");
 
     #endif
     
     PktModReset();
+    
+    return 1;
 }
 
 int LoadPacketModule(char *filename, char *error_buffer, char *destr, LPDLL *lpdll)
@@ -263,6 +277,8 @@ int LoadPacketModule(char *filename, char *error_buffer, char *destr, LPDLL *lpd
                                             fprintf(modlog, "%s", destr);
                                             fflush(modlog);
                                         }
+                                        
+                                        printf("An error occured while loading the packet module plugin(s). The error was written to module_log.txt\n%s\n",destr);
 
                                         return 2;
                                     }
@@ -280,6 +296,8 @@ int LoadPacketModule(char *filename, char *error_buffer, char *destr, LPDLL *lpd
                                                 }
 
                                             CloseDLL(lpdll, NULL);
+                                            
+                                            printf("An error occured while loading the packet module plugin(s). The error was written to module_log.txt\n%s\n",destr);
 
                                             return 0;
                                         }
@@ -295,6 +313,8 @@ int LoadPacketModule(char *filename, char *error_buffer, char *destr, LPDLL *lpd
                                                 }
 
                                             CloseDLL(lpdll, NULL);
+                                            
+                                            printf("An error occured while loading the packet module plugin(s). The error was written to module_log.txt\n%s\n",destr);
 
                                             return 0;
                                         }
@@ -310,6 +330,8 @@ int LoadPacketModule(char *filename, char *error_buffer, char *destr, LPDLL *lpd
                                                 }
 
                                             CloseDLL(lpdll, NULL);
+                                            
+                                            printf("An error occured while loading the packet module plugin(s). The error was written to module_log.txt\n%s\n",destr);
 
                                             return 0;
                                         }
@@ -325,6 +347,42 @@ int LoadPacketModule(char *filename, char *error_buffer, char *destr, LPDLL *lpd
                                                 }
 
                                             CloseDLL(lpdll, NULL);
+                                            
+                                            printf("An error occured while loading the packet module plugin(s). The error was written to module_log.txt\n%s\n",destr);
+
+                                            return 0;
+                                        }
+                                        
+                                        if((packetModules[totalPacketModules].GetID=(lpGetID)LoadFunctionDLL(lpdll, "GetID", NULL, error_buffer))==NULL)
+                                        {
+                                            sprintf(destr, "ERROR: In module %s: %s", filename, error_buffer);
+
+                                                if(modlog!=NULL)
+                                                {
+                                                    fprintf(modlog, "%s", destr);
+                                                    fflush(modlog);
+                                                }
+
+                                            CloseDLL(lpdll, NULL);
+                                            
+                                            printf("An error occured while loading the packet module plugin(s). The error was written to module_log.txt\n%s\n",destr);
+
+                                            return 0;
+                                        }
+                                        
+                                        if((packetModules[totalPacketModules].GetIDStr=(lpGetIDStr)LoadFunctionDLL(lpdll, "GetIDStr", NULL, error_buffer))==NULL)
+                                        {
+                                            sprintf(destr, "ERROR: In module %s: %s", filename, error_buffer);
+
+                                                if(modlog!=NULL)
+                                                {
+                                                    fprintf(modlog, "%s", destr);
+                                                    fflush(modlog);
+                                                }
+
+                                            CloseDLL(lpdll, NULL);
+                                            
+                                            printf("An error occured while loading the packet module plugin(s). The error was written to module_log.txt\n%s\n",destr);
 
                                             return 0;
                                         }
@@ -389,7 +447,7 @@ DLLIMPORT int GetModuleVersionInt(int which_number)
     return 0;
 }
 
-DLLIMPORT void InitAsm(SuccessCallback callback, bool debug, sAsmSDK_Config *config)
+DLLIMPORT bool InitAsm(SuccessCallback callback, bool debug, sAsmSDK_Config *config)
 {
     
     
@@ -414,9 +472,11 @@ DLLIMPORT void InitAsm(SuccessCallback callback, bool debug, sAsmSDK_Config *con
 	save_unused_packets=1;
 	funusedpkt=NULL;
 
-    InitPktModules();
+    AssemblySuccessCallback = callback;
 
-	AssemblySuccessCallback = callback;
+    if(!InitPktModules())return 0;
+    
+    return 1;
 }
 
 DLLIMPORT void ResetAsm()
