@@ -314,7 +314,11 @@ int ReadDump(int argc, char *argv[])
         }
     }
     
-    InitAsm(&AsmSuccessCallback, Debug, Config);//Initialize the assembler
+    if(!InitAsm(&AsmSuccessCallback, Debug, Config))//Initialize the assembler
+    {
+        printf("Failed to initialize the Wmb Asm Module! Stop!\n");
+        return 0;
+    }
     
 	   while(cur_file!=NULL)//Go through all the files ScanDirectory found.
 	   {

@@ -16,7 +16,6 @@ int stage = STAGE_ASSOC_RESPONSE;
 sAsmSDK_Config *CONFIG = NULL;
 bool *DEBUG = NULL;
 FILE **Log = NULL;
-FILE *DLog = NULL;
 
 bool DidInit = 0;
 
@@ -35,7 +34,15 @@ int total_clients = 0;
   extern "C" {
 #endif
 
+DLLIMPORT int GetID()
+{
+    return 1;
+}
 
+DLLIMPORT char *GetIDStr()
+{
+    return (char*)"DSDLSTATN";
+}
 
 DLLIMPORT char *GetStatus(int *error_code)
 {
@@ -83,8 +90,6 @@ DLLIMPORT void Reset(sAsmSDK_Config *config)
         Log = config->Log;
         CONFIG = config;
         DidInit = 1;
-        
-        DLog = fopen("DLog.txt","w");
     }
 
     stage=STAGE_ASSOC_RESPONSE;
@@ -120,10 +125,6 @@ bool Handle_AssocResponse(unsigned char *data, int length)
     }
     else
     {
-        if(DLog!=NULL)
-        {
-            fprintf(DLog,"Fail %d %d num %d\n", FH_FC_TYPE(fh->frame_control), FH_FC_SUBTYPE(fh->frame_control));
-        }
     }
     
     return 0;

@@ -238,7 +238,7 @@ struct sAsmSDK_Params
         //In this case with building dlls, DLLIMPORT really means to export the function.
         DLLIMPORT bool HandlePacket(sAsmSDK_Params *params);
 
-        DLLIMPORT void InitAsm(SuccessCallback callback, bool debug, sAsmSDK_Config *config);
+        DLLIMPORT bool InitAsm(SuccessCallback callback, bool debug, sAsmSDK_Config *config);
         DLLIMPORT void ResetAsm();
         DLLIMPORT void ExitAsm();
         DLLIMPORT char *CaptureAsmReset(int *code);
@@ -253,7 +253,7 @@ struct sAsmSDK_Params
                 #ifndef NDS
                     
                     typedef bool (*lpHandlePacket)(sAsmSDK_Params *params);
-                    typedef void (*lpInitAsm)(SuccessCallback callback, bool debug, sAsmSDK_Config *config);
+                    typedef bool (*lpInitAsm)(SuccessCallback callback, bool debug, sAsmSDK_Config *config);
                     typedef void (*lpResetAsm)(void);
                     typedef void (*lpExitAsm)(void);
                     typedef char* (*lpCaptureAsmReset)(int *code);

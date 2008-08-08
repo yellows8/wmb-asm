@@ -74,6 +74,16 @@ bool DidInit = 0;
   extern "C" {
 #endif
 
+DLLIMPORT int GetID()
+{
+    return 0;
+}
+
+DLLIMPORT char *GetIDStr()
+{
+    return (char*)"WMB";
+}
+
 DLLIMPORT char *GetStatus(int *error_code)
 {
     if(stage==SDK_STAGE_AUTH && !nds_data->finished_first_assembly)

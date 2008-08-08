@@ -24,6 +24,16 @@ bool DidInit = 0;
 
 bool Handle_ClientHello(unsigned char *data, int length);
 
+DLLIMPORT int GetID()
+{
+    return 2;
+}
+
+DLLIMPORT char *GetIDStr()
+{
+    return (char*)"NINCH";
+}
+
 DLLIMPORT char *GetStatus(int *error_code)
 {
     if(stage==STAGE_CLIENTHELLO)
