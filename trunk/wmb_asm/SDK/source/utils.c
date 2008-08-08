@@ -550,54 +550,33 @@ IPHeader *CheckGetIP(unsigned char *data, int length)
     if(ip_len!=20)return NULL;
     if(header->protocol!=0x06)return NULL;
     
+    ConvertEndian(&header->header_checksum,&header->header_checksum,sizeof(unsigned short));
+    
     unsigned short pkt_checksum = header->header_checksum;
-    //header->header_checksum = 0;
-    unsigned int checksum = 0;//CalcCRC16(data+1, length-1)
-    /*checksum += header->total_length;
-    checksum += header->id;
-    checksum += header->flags_fragment;
-    checksum += header->header_checksum;*/
+    header->header_checksum = 0;
+    unsigned int checksum = 0;
     
     unsigned short *dat_chk = (unsigned short*)data;
     
     for(int i=0; i<ip_len/2; i++)
     {
+        ConvertEndian(dat_chk,dat_chk,sizeof(unsigned short));
+        
         checksum += ((unsigned int)*dat_chk);
+        
+        ConvertEndian(dat_chk,dat_chk,sizeof(unsigned short));
+        
         dat_chk++;
     }
 
     while (checksum>>16)
-	  checksum = (checksum & 0xFFFF)+(checksum >> 16);
-
-    /*while(checksum & 0xFFFF0000)
-    {
-        checksum = (checksum & 0xFFFF) + (checksum >> 16);
-    }*/
-    
-    //checksum = 0xFFFF - checksum;
-    //checksum &= 0x0000FFFF;
-    
-    //checksum = ~checksum;
-    //checksum += (unsigned int)header->header_checksum;
-    //checksum = 0xFFFF - checksum;
-    //checksum = ~checksum;
-    
-    //checksum = (checksum & 0xFF)+(checksum >> 8);
-    
-    //checksum = ip_sum_calc((u16)ip_len, (u16*)data);
-    
-    //checksum += header->header_checksum;
-    
-    bool found=0;
-    unsigned short chk = (unsigned short)checksum;
-    for(int i=0; i<16; i++)
-    {
-        if(!(chk & 1<<i))found=1;
-    }
+	  checksum = (checksum & 0xFFFF)+(checksum >> 16);//Carry stuff... I don't really know/understand how this works... I got this off Internet.
     
     header->header_checksum = pkt_checksum;
-    printf("CALC SUM %x PKT %x\n",chk, header->header_checksum);
-    if(found)printf("ERROR\n");
+    checksum += (unsigned int)header->header_checksum;
+    
+    if(checksum!=0x0000FFFF)
+        return NULL;//Checksum check failed
     
     return header;
 }
