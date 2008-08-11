@@ -436,7 +436,11 @@ int ReadCaptureLoop(char *cap, int argc, char *argv[], bool checkrsa, char *outd
         params->pkt_data = (u_char*)pkt_data;
         
         //Send the packet to the assembler to process & assemble.
-        if(!HandlePacket(params)){printf("Eeek!\n");free(params);return 0;}
+        if(!HandlePacket(params))
+        {
+            free(params);
+            return 0;
+        }
 
     }
 
