@@ -88,7 +88,7 @@ typedef bool (*lpInit)(sAsmSDK_Config *config);
 typedef bool (*lpDeInit)();
 typedef int (*lpGetID)();
 typedef char *(*lpGetIDStr)();
-typedef Nds_data *(*lpGetNdsData)();
+typedef volatile Nds_data *(*lpGetNdsData)();
 typedef bool (*lpHandle802_11)(unsigned char *data, int length);
 typedef void (*lpReset)();
 typedef char *(*lpGetStatus)(int *error_code);
@@ -584,12 +584,12 @@ DLLIMPORT bool InitAsm(SuccessCallback callback, bool debug, sAsmSDK_Config *con
     return 1;
 }
 
-DLLIMPORT void ResetAsm(Nds_data *dat)
+DLLIMPORT void ResetAsm(volatile Nds_data *dat)
 {
                         if(dat!=NULL)nds_data = dat;
                         if(dat==NULL)
                         {
-                            Nds_data *data = NULL;
+                            volatile Nds_data *data = NULL;
                             #ifndef NDS
 		                      for(int i=0; i<totalPacketModules; i++)
 		                      {
@@ -767,7 +767,7 @@ void CaptureBacktrack()
   extern "C" {
 #endif
 
-char *CaptureAsmResetA(int *code, Nds_data *dat)
+char *CaptureAsmResetA(int *code, volatile Nds_data *dat)
 {
     char *str = NULL;
     
@@ -837,7 +837,7 @@ char *CaptureAsmResetA(int *code, Nds_data *dat)
 
 DLLIMPORT char *CaptureAsmReset(int *code)//Needs to be called after reading the whole capture.
 {
-    Nds_data *data = NULL;
+    volatile Nds_data *data = NULL;
     char *str = NULL;
         #ifndef NDS
 		    for(int i=0; i<totalPacketModules; i++)
@@ -960,7 +960,7 @@ DLLIMPORT bool HandlePacket(sAsmSDK_Params *params)
 
      }
 
-    Nds_data *dat = NULL;
+    volatile Nds_data *dat = NULL;
 
      for(int ii=0; ii<totalPacketModules; ii++)
 	 {
@@ -1073,7 +1073,8 @@ DLLIMPORT bool HandlePacket(sAsmSDK_Params *params)
 	                           #ifdef WIN32
 	                           if(params->checkrsa)
 	                           {
-	                           char rsa_cmdline[256];
+	                           char *rsa_cmdline = (char*)malloc(256);
+	                           memset(rsa_cmdline, 0, 256);
 	                           int rsai=0;
 	                           strcpy(&rsa_cmdline[rsai],"verify nintendo");
 	                           rsai+=strlen("verify nintendo");
@@ -1089,6 +1090,7 @@ DLLIMPORT bool HandlePacket(sAsmSDK_Params *params)
 	                           printf("Executing ndsrsa.exe %s\n",rsa_cmdline);
 	                           ExecuteApp("ndsrsa.exe",rsa_cmdline);
 	                           printf("\n");
+	                           free(rsa_cmdline);
                                }
                                #endif
 

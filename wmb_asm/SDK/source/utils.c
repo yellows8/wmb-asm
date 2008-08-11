@@ -618,7 +618,7 @@ void ExecuteApp(char *appname, char *cmdline)
 
      //si.dwFlags = STARTF_USESTDHANDLES;
 
-     wsprintf(acstr,"%s %s",appname,cmdline);
+     sprintf(acstr,"%s %s",appname,cmdline);
 
      if(!CreateProcess(
      NULL,//appname,
