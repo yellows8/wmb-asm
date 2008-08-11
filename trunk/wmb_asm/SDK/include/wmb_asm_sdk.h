@@ -637,7 +637,7 @@ struct Nds_data
             {
                 if(dat==NULL)return;
                 
-                *dat = (Nds_data*)malloc(sizeof(Nds_data));
+                *dat = (volatile Nds_data*)malloc(sizeof(Nds_data));
                 memset((void*)*dat, 0, sizeof(Nds_data));
             }
             

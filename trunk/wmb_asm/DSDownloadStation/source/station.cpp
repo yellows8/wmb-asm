@@ -120,9 +120,9 @@ DLLIMPORT bool AsmPlug_DeInit()
     return 1;
 }
 
-DLLIMPORT Nds_data *AsmPlug_GetNdsData()
+DLLIMPORT volatile Nds_data *AsmPlug_GetNdsData()
 {
-    return (Nds_data*)nds_data;
+    return nds_data;
 }
 
 DLLIMPORT void AsmPlug_Reset()
