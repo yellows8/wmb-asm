@@ -101,7 +101,7 @@ DLLIMPORT pcap_t *pcap_open_offline(const char *filename, char *errbuf)
 DLLIMPORT int pcap_next_ex(pcap_t *fcap, pcap_pkthdr **hdr, const u_char **pktdata)
 {
     if(fcap==NULL){strcpy(PCAP_ERROR_BUFFER,"FILE POINTER NULL");return -1;}
-    if(fcap->file==NULL){strcpy(PCAP_ERROR_BUFFER,"CAPTURE FILE NOT OPENDED");return -1;}
+    if(fcap->file==NULL){strcpy(PCAP_ERROR_BUFFER,"CAPTURE FILE NOT OPENED");return -1;}
     
     trunc:
     
@@ -148,7 +148,7 @@ DLLIMPORT void pcap_close(pcap_t *fcap)
 
 DLLIMPORT char *pcap_geterr(pcap_t *file)
 {
-    return file->error_buffer;
+    return PCAP_ERROR_BUFFER;//file->error_buffer
 }
 
 DLLIMPORT int GetPacketNumber()

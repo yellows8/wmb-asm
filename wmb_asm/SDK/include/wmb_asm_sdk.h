@@ -239,7 +239,6 @@ struct sAsmSDK_Params
         DLLIMPORT bool HandlePacket(sAsmSDK_Params *params);
 
         DLLIMPORT bool InitAsm(SuccessCallback callback, bool debug, sAsmSDK_Config *config);
-        DLLIMPORT void ResetAsm();
         DLLIMPORT void ExitAsm();
         DLLIMPORT char *CaptureAsmReset(int *code);
 
@@ -254,7 +253,6 @@ struct sAsmSDK_Params
                     
                     typedef bool (*lpHandlePacket)(sAsmSDK_Params *params);
                     typedef bool (*lpInitAsm)(SuccessCallback callback, bool debug, sAsmSDK_Config *config);
-                    typedef void (*lpResetAsm)(void);
                     typedef void (*lpExitAsm)(void);
                     typedef char* (*lpCaptureAsmReset)(int *code);
                     typedef char* (*lpGetStatusAsm)(int *error_code);
@@ -271,7 +269,6 @@ struct sAsmSDK_Params
                                 #ifdef DLLMAIN
                                     lpHandlePacket HandlePacket=NULL;
                                     lpInitAsm InitAsm=NULL;
-                                    lpResetAsm ResetAsm=NULL;
                                     lpExitAsm ExitAsm=NULL;
                                     lpCaptureAsmReset CaptureAsmReset=NULL;
                                     lpGetStatusAsm GetStatusAsm=NULL;
@@ -285,7 +282,6 @@ struct sAsmSDK_Params
                                 #ifndef DLLMAIN
                                     extern lpHandlePacket HandlePacket;//So source code outside of the one that loads the module, can use the module's functions.
                                     extern lpInitAsm InitAsm;
-                                    extern lpResetAsm ResetAsm;
                                     extern lpExitAsm ExitAsm;
                                     extern lpCaptureAsmReset CaptureAsmReset;
                                     extern lpGetStatusAsm GetStatusAsm;
@@ -519,35 +515,60 @@ struct Nds_data
        bool skipseq;
        bool FoundGameIDs;
        unsigned char clientID;
+       
+       bool trigger_assembly;//Set by 1 by the packet module plugins when it's time to assembly and write
+       //the .nds. This is reset when assembly is done.
 };
 #ifdef ASM_SDK_MODULE
     #ifdef DLLMAIN
-        Nds_data *nds_data;
+        volatile Nds_data *nds_data;
     #endif
     
     #ifndef DLLMAIN
-        extern Nds_data *nds_data;
+        extern volatile Nds_data *nds_data;
     #endif
 #endif
 
 #ifdef ASM_SDK_PLUGIN
     #ifdef DLLMAIN
-        Nds_data *nds_data;
+        volatile Nds_data *nds_data;
     #endif
     
     #ifndef DLLMAIN
-        extern Nds_data *nds_data;
+        extern volatile Nds_data *nds_data;
     #endif
 #endif
 
+    #ifndef NDS
+        #ifdef USING_DLL
+            DLLIMPORT void ResetAsm(Nds_data *nds_data);
+        #endif
+        
+        typedef void (*lpResetAsm)(Nds_data *nds_data);
+        
+        #ifndef BUILDING_SDK
+            
+            #ifndef ASM_SDK_MODULE
+                
+                #ifdef DLLMAIN
+                    lpResetAsm ResetAsm=NULL;
+                #endif
+                
+                #ifndef DLLMAIN
+                     extern lpResetAsm ResetAsm;
+                #endif
+                
+            #endif
+            
+        #endif
+        
+    #endif
     
         struct sAsmSDK_Config
         {
-            Nds_data *nds_data;
+            volatile Nds_data **nds_data;
             bool *DEBUG;
             FILE **Log;
-            bool trigger_assembly;//This will be set to 1 by the Packet Modules when it is time to write
-            //the output .nds for assembly. This will be reset to zero after assembly.
             
 			#ifndef NDS
 				lpHandlePacket HandlePacket;
@@ -590,7 +611,8 @@ struct Nds_data
                 #ifdef DLLMAIN
                     //LoadAsmDLL loads the Asm module, and puts addresses/function-pointers of
                     //the module functions into the sAsmSDK_Config struct passed to it.
-                    //This function copys the function 
+                    //This function copys the function addresses from the config struct into to an easily accessed and called
+                    //function pointers.
                     void InitDLLFunctions(sAsmSDK_Config *config)
                     {
                         HandlePacket = config->HandlePacket;
@@ -606,6 +628,26 @@ struct Nds_data
                         GetModuleVersionInt = config->GetModuleVersionInt;
                     }
                 #endif
+            
+        #endif
+        
+        #ifdef ASM_SDK_PLUGIN
+            
+            inline void AsmPlugin_Init(volatile Nds_data **dat)
+            {
+                if(dat==NULL)return;
+                
+                *dat = (Nds_data*)malloc(sizeof(Nds_data));
+                memset((void*)*dat, 0, sizeof(Nds_data));
+            }
+            
+            inline void AsmPlugin_DeInit(volatile Nds_data **dat)
+            {
+                if(dat==NULL)return;
+                if(*dat==NULL)return;
+                
+                free((void*)*dat);
+            }
             
         #endif
 

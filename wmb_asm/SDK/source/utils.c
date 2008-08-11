@@ -293,7 +293,7 @@ DLLIMPORT void ConvertAVSEndian(AVS_header *avs)
 bool CheckDataPackets(int seq)
 {
      
-     int i;
+     /*int i;
      for(i=0; i<(int)seq; i++)
      {
             if(SDK_CONFIG!=NULL)
@@ -305,13 +305,13 @@ bool CheckDataPackets(int seq)
                 printf("ACK!\n");
             }
             
-            printf("CDP %p\n",sdk_nds_data);
-            if(sdk_nds_data!=NULL)
-            printf("%p\n",sdk_nds_data->data_sizes);
+            printf("CDP %p\n",*sdk_nds_data);
+            if(*sdk_nds_data!=NULL)
+            printf("%p\n",*sdk_nds_data->data_sizes);
             
             printf("%p\n",SDK_CONFIG);
             
-            if(sdk_nds_data->data_sizes[i]==0)
+            if(*sdk_nds_data->data_sizes[i]==0)
             {
 					if(*SDK_DEBUG)
 					{
@@ -321,7 +321,7 @@ bool CheckDataPackets(int seq)
 				
                 return 0;//If we missed any packets, don't begin assembly
             }
-     }
+     }*/
      
      return 1;
 }
@@ -338,7 +338,7 @@ unsigned char GetGameID(unsigned char *data)
 
     return 0;
 
-    if(!sdk_nds_data->multipleIDs)return 0;
+    //if(!*sdk_nds_data->multipleIDs)return 0;
 
     if(Byte1==0x00)
     {
@@ -539,7 +539,7 @@ IPHeader *CheckGetIP(unsigned char *data, int length)
 {
     IPHeader *header = NULL;
     unsigned int version, ip_len;
-    if(length < sizeof(IPHeader))return NULL;
+    if(length < sizeof(IPHeader) || data==NULL)return NULL;
     
     header = (IPHeader*)data;
     
@@ -583,6 +583,8 @@ IPHeader *CheckGetIP(unsigned char *data, int length)
 
 unsigned char *GetIP(unsigned char *data, int length)
 {
+    if(data==NULL)return NULL;
+    
     if(CheckGetIP(data, length)==NULL)return NULL;
     
     return data + sizeof(IPHeader);

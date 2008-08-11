@@ -34,11 +34,11 @@ unsigned char host_client_mgc[4] = {0x06,0x01,0x02,0x00};
 
 bool CompareMAC(unsigned char *a, unsigned char *b);
 
-bool WMBProcessBeacons(unsigned char *data, int length);
-bool WMBProcessAuth(unsigned char *data, int length);
-bool WMBProcessRSA(unsigned char *data, int length);
-bool WMBProcessHeader(unsigned char *data, int length);
-bool WMBProcessData(unsigned char *data, int length);
+int WMBProcessBeacons(unsigned char *data, int length);
+int WMBProcessAuth(unsigned char *data, int length);
+int WMBProcessRSA(unsigned char *data, int length);
+int WMBProcessHeader(unsigned char *data, int length);
+int WMBProcessData(unsigned char *data, int length);
 
 unsigned int CalcCRC32(unsigned char *data, unsigned int length);
 unsigned short CalcCRC16(unsigned char *data, unsigned int length);
@@ -65,26 +65,25 @@ unsigned char *Nin_ie = NULL;
 sAsmSDK_Config *CONFIG = NULL;
 bool *DEBUG = NULL;
 FILE **Log = NULL;
+FILE *wlog;
 
 void Init();
-
-bool DidInit = 0;
 
 #ifdef __cplusplus
   extern "C" {
 #endif
 
-DLLIMPORT int GetID()
+DLLIMPORT int AsmPlug_GetID()
 {
     return 0;
 }
 
-DLLIMPORT char *GetIDStr()
+DLLIMPORT char *AsmPlug_GetIDStr()
 {
     return (char*)"WMB";
 }
 
-DLLIMPORT char *GetStatus(int *error_code)
+DLLIMPORT char *AsmPlug_GetStatus(int *error_code)
 {
     if(stage==SDK_STAGE_AUTH && !nds_data->finished_first_assembly)
     {
@@ -138,7 +137,7 @@ DLLIMPORT char *GetStatus(int *error_code)
 	return NULL;
 }
 
-DLLIMPORT int QueryFailure()
+DLLIMPORT int AsmPlug_QueryFailure()
 {
     if(stage>=SDK_STAGE_DATA)return 2;
     if(stage<=SDK_STAGE_HEADER)return 1;
@@ -146,7 +145,7 @@ DLLIMPORT int QueryFailure()
     return 0;
 }
 
-DLLIMPORT bool Handle802_11(unsigned char *data, int length)
+DLLIMPORT int AsmPlug_Handle802_11(unsigned char *data, int length)
 {
      if(stage==SDK_STAGE_BEACON)return WMBProcessBeacons(data,length);
      if(stage==SDK_STAGE_AUTH)return WMBProcessAuth(data,length);
@@ -154,28 +153,43 @@ DLLIMPORT bool Handle802_11(unsigned char *data, int length)
      if(stage==SDK_STAGE_HEADER)return WMBProcessHeader(data,length);
      if(stage==SDK_STAGE_DATA)return WMBProcessData(data,length);
      
-     return 0;
+     return 1;
 }
 
-DLLIMPORT void Reset(sAsmSDK_Config *config)
+DLLIMPORT bool AsmPlug_Init(sAsmSDK_Config *config)
 {
-    if(!DidInit)
-    {
-        //printf("B\n");
-        ResetAsm = config->ResetAsm;
-        //printf("ga n dat %p config %p\n", nds_data, CONFIG->nds_data);
-        nds_data = config->nds_data;
-        DEBUG = config->DEBUG;
-        Log = config->Log;
-        //printf("C\n");
-        CONFIG = config;
-        //printf("D\n");
-        DidInit = 1;
-        //printf("E\n");
-        
-        
-    }
+    AsmPlugin_Init(&nds_data);//Allocates memory for the nds_data struct
+    memset((void*)nds_data, 0, sizeof(Nds_data));
     
+    ResetAsm = config->ResetAsm;
+    //DEBUG = config->DEBUG;
+    //Log = config->Log;
+    DEBUG = (bool*)malloc(1);
+    *DEBUG = 0;
+    Log = &wlog;
+    //wlog = fopen("wmb_log.txt","w");
+    CONFIG = config;
+    
+    return 1;
+}
+
+DLLIMPORT bool AsmPlug_DeInit()
+{
+    AsmPlugin_DeInit(&nds_data);
+    
+    free(DEBUG);
+    //fclose(wlog);
+    
+    return 1;
+}
+
+DLLIMPORT Nds_data *AsmPlug_GetNdsData()
+{
+    return (Nds_data*)nds_data;
+}
+
+DLLIMPORT void AsmPlug_Reset()
+{   
     stage=SDK_STAGE_BEACON;
     last_seq=0;
     
@@ -237,7 +251,7 @@ void WMBBeaconGrab(unsigned char *data)
 {
      ds_element *ds = (ds_element*)Nin_ie;
      //Block start. This block is based on code from masscat's WMB client.
-     int *ptr = &nds_data->found_beacon[(int)ds->advert_sequence_number + ((int)ds->gameID * 10)];
+     int *ptr = (int*)&nds_data->found_beacon[(int)ds->advert_sequence_number + ((int)ds->gameID * 10)];
 
      *ptr+=1;
 
@@ -245,6 +259,8 @@ void WMBBeaconGrab(unsigned char *data)
 		{
 			fprintfdebug(*Log,"PROCESSING BEACON DSSEQ %d\n",(int)ds->advert_sequence_number);
 			fflushdebug(*Log);
+			
+			//printf("A\n");
 		}
      
      if(*ptr<=2)
@@ -256,10 +272,12 @@ void WMBBeaconGrab(unsigned char *data)
                             if(i==8)pos+=98;
                         }
                         
-                        memcpy(&nds_data->beacon_data[(980*(int)ds->gameID)+pos],ds->data,(size_t)ds->data_size);
+                        memcpy((void*)&nds_data->beacon_data[(980*(int)ds->gameID)+pos],ds->data,(size_t)ds->data_size);
     }
 
     //Block end
+
+    //printf("B\n");
 
      bool got_all=1;
      
@@ -283,46 +301,62 @@ void WMBBeaconGrab(unsigned char *data)
             }
      }
 
+    //printf("C\n");
+
+    got_all = 1;
+
      if(got_all)
      {
+            
+            //printf("a\n");
             
             int pos, dsize;
 
                 if(!nds_data->multipleIDs)
                 {
+                    //printf("b\n");
                     for(int i=0; i<9; i++)
                     {
                         pos=i*98;
                         if(i!=8)dsize=98;
                         if(i==8)dsize=72;
                         
-                        memcpy(&((unsigned char*)&nds_data->advert)[pos],&nds_data->beacon_data[(980*(int)nds_data->FirstBeaconID)+pos],dsize);
+                        memcpy((void*)&((unsigned char*)&nds_data->advert)[pos],(void*)&nds_data->beacon_data[(980*(int)nds_data->FirstBeaconID)+pos],dsize);
                     }
+                    
+                    //printf("c\n");
                 }
+                
+                //printf("D\n");
             
             if(nds_data->finished_first_assembly)
             {
                 
               if(!nds_data->multipleIDs)
               {
-                if(memcmp(nds_data->oldadvert.icon_pallete,nds_data->advert.icon_pallete,32)==0)
+                    //printf("E\n");
+                if(memcmp((void*)nds_data->oldadvert.icon_pallete, (void*)nds_data->advert.icon_pallete,32)==0)
                 {
                     
-                    ResetAsm();
+                    ResetAsm((Nds_data*)nds_data);
                     return;
                 }
                 else
                 {
-                    memcpy(&nds_data->oldadvert,&nds_data->advert,sizeof(ds_advert));
+                    memcpy((void*)&nds_data->oldadvert,(void*)&nds_data->advert,sizeof(ds_advert));
                     //memset(&nds_data->advert,0,sizeof(ds_advert));
                 }
+                //printf("F\n");
               }
 	                         
             }
             else
             {
+            //printf("G\n");
             if(!nds_data->multipleIDs)
-            memcpy(&nds_data->oldadvert,&nds_data->advert,sizeof(ds_advert));
+            memcpy((void*)&nds_data->oldadvert,(void*)&nds_data->advert,sizeof(ds_advert));
+            
+            //printf("H\n");
             }
             
                            stage=SDK_STAGE_AUTH;
@@ -337,11 +371,13 @@ void WMBBeaconGrab(unsigned char *data)
 									fflushdebug(*Log);
 								}
 
+        //printf("I\n");
+
 
      }
 }
 
-bool WMBProcessAuth(unsigned char *data, int length)
+int WMBProcessAuth(unsigned char *data, int length)
 {
      iee80211_framehead *fh = (iee80211_framehead*)data;
 
@@ -378,7 +414,7 @@ bool WMBProcessAuth(unsigned char *data, int length)
      return 0;
 }
 
-bool WMBProcessRSA(unsigned char *data, int length)
+int WMBProcessRSA(unsigned char *data, int length)
 {
      unsigned char *dat = NULL;
      unsigned char pos=0;
@@ -401,28 +437,22 @@ bool WMBProcessRSA(unsigned char *data, int length)
                         fflushdebug(*Log);
                     }
 					
-					return 0;
+					return -1;
                 }
-
-                    if(nds_data->finished_first_assembly)
-                    {
-                    
-                    //fprintfdebug(Log,"HIT RSA TITLE MEM %s\n",nds_data.header.gameTitle);
-                    }
     
         dat=&data[(int)pos];
         memcpy(&rsa,dat,(size_t)size);
      
                             if(nds_data->finished_first_assembly)
                             {
-                                if(memcmp(&nds_data->rsa,&rsa,sizeof(nds_rsaframe))==0)
+                                if(memcmp((void*)&nds_data->rsa,(void*)&rsa,sizeof(nds_rsaframe))==0)
                                 {
-                                        ResetAsm();
-                                        return 1;
+                                        ResetAsm((Nds_data*)nds_data);
+                                        return -1;
                                 }
                             }
      
-        memcpy(&nds_data->rsa,&rsa,sizeof(nds_rsaframe));
+        memcpy((void*)&nds_data->rsa,(void*)&rsa,sizeof(nds_rsaframe));
         
 		  if(*DEBUG)
 		  {
@@ -439,7 +469,7 @@ bool WMBProcessRSA(unsigned char *data, int length)
      return 0;
 }
 
-//Buch of data the DS Download Station's don't send in their WMB header, and possiblely other demos/WMB transfers too.
+//Bunch of data the DS Download Station's don't send in their WMB header, and possiblely other demos/WMB transfers too.
 unsigned char header_filler[]={
     0x8A, 0xC0, 0x13, 0x72, 0xA7, 0xFC, 0x9F, 0x84, 0x4D, 0x73, 0xA3, 0xCA, 0x9A, 0x61,
     0x58, 0x97, 0xA3, 0x27, 0xFC, 0x03, 0x98, 0x76, 0x23, 0x1D, 0xC7, 0x61, 0x03, 0x04,
@@ -451,7 +481,7 @@ unsigned char header_filler[]={
     0x56, 0xCF, 0x39, 0x5F
     };
 
-bool WMBProcessHeader(unsigned char *data, int length)
+int WMBProcessHeader(unsigned char *data, int length)
 {
      unsigned char *dat = NULL;
      unsigned char pos=0;
@@ -487,18 +517,18 @@ bool WMBProcessHeader(unsigned char *data, int length)
                 
                 stage=SDK_STAGE_AUTH;//If we wouldn't go back to the Auth or RSA stage, with some multi-game captures, we'd get the wrong RSA-signature.
                 
-                return 1;
+                return -1;
             }
      
      dat++;
 
-     if(*dat!=0)return 1;
+     if(*dat!=0)return 0;
 
      dat++;
      Seq = (unsigned short*)dat;
      seq=*Seq;
      ConvertEndian(&seq,&seq,2);
-     if(seq!=0)return 1;//Ignore non-header packets.
+     if(seq!=0)return -1;//Ignore non-header packets.
      dat+=2;
 
 
@@ -540,15 +570,15 @@ bool WMBProcessHeader(unsigned char *data, int length)
         
         //fprintfdebug(*Log,"HIT HEADER TITLE MEM %s CUR %s\n",nds_data.header.gameTitle,temp_header.gameTitle);
         
-        if(memcmp(&nds_data->header,&temp_header,sizeof(TNDSHeader))==0)
+        if(memcmp((void*)&nds_data->header, (void*)&temp_header,sizeof(TNDSHeader))==0)
         {
             
-            ResetAsm();
-            return 1;
+            ResetAsm((Nds_data*)nds_data);
+            return -1;
         }
     }
     
-      memcpy(&nds_data->header,&temp_header,sizeof(TNDSHeader));
+      memcpy((void*)&nds_data->header,(void*)&temp_header,sizeof(TNDSHeader));
 
      int arm7s_seq, arm7e_seq;
 
@@ -578,7 +608,7 @@ bool WMBProcessHeader(unsigned char *data, int length)
 		}
 
      char str[20];
-     strncpy(str,nds_data->header.gameTitle,12);
+     strncpy(str,(char*)nds_data->header.gameTitle,12);
      str[12]=0;
      
 		if(*DEBUG)
@@ -596,7 +626,7 @@ bool WMBProcessHeader(unsigned char *data, int length)
      return 0;
 }
 
-bool WMBProcessData(unsigned char *data, int length)
+int WMBProcessData(unsigned char *data, int length)
 {
      //unsigned short arm7s,arm7e;
      unsigned short size = 0;
@@ -626,18 +656,18 @@ bool WMBProcessData(unsigned char *data, int length)
                     fprintfdebug(*Log,"DATA FAILED ID %d MEM %d---------------------------------\n",(int)ID,(int)nds_data->gameID);
 			        fflushdebug(*Log);
                 }
-        return 0;
+        return -1;
         }
      dat++;
 
-     if(*dat!=0)return 1;
+     if(*dat!=0)return -1;
 
      dat++;
      Seq = (unsigned short*)dat;
      seq=*Seq;
      //ConvertEndian(&seq,&seq,2);//Ummm... NdsTech Wiki says this is litte-endian... And PCs are big-endian...
      //And yet, the seq is wrong with this call, correct without this call... Strange...
-     if(seq==0)return 1;//Official WMB host sends the header many times, ignore the duplicates
+     if(seq==0)return -1;//Official WMB host sends the header many times, ignore the duplicates
      dat+=2;
 
     int fh_seq=ReadSeq(&fh->sequence_control);
@@ -661,7 +691,7 @@ bool WMBProcessData(unsigned char *data, int length)
     
      if(size==102)nds_data->pkt_size=250;
      if(nds_data->pkt_size==250)seq--;
-     if(size==102 && seq==0)return 1;
+     if(size==102 && seq==0)return -1;
 
      if(seq==1)nds_data->pkt_size = size;
 
@@ -674,7 +704,7 @@ bool WMBProcessData(unsigned char *data, int length)
             //printf("CONFIG %p NDS %p\n", CONFIG, nds_data);
             //if(!CheckDataPackets((int)seq))return 1;
             
-            if(nds_data->arm7e==0)return 1;
+            if(nds_data->arm7e==0)return -1;
             }
 
      int temp=0;
@@ -767,8 +797,7 @@ bool WMBProcessData(unsigned char *data, int length)
         }
 		
      stage=SDK_STAGE_BEACON;
-     CONFIG->trigger_assembly = 1;
-     return 1;
+     nds_data->trigger_assembly = 1;
      
      }
 
@@ -779,7 +808,7 @@ bool WMBProcessData(unsigned char *data, int length)
      return 0;
 }
 
-bool WMBProcessBeacons(unsigned char *data, int length)
+int WMBProcessBeacons(unsigned char *data, int length)
 {
      iee80211_framehead2 *framehead = (iee80211_framehead2*)data;
      beacon *Beacon = (beacon*)data;
@@ -811,7 +840,7 @@ bool WMBProcessBeacons(unsigned char *data, int length)
                        //If the src MAC and BSSID are the same...
                        //It passed the Beacon frame test, time to test the Managment frame!
                        //ConvertEndian(&Beacon->interval,&Beacon->interval,2);
-                       
+                       //printf("A\n");
                        unsigned char *temp = (unsigned char*)&Beacon->capability;
                        //unsigned char *temp2 = (unsigned char*)&cap;
                        temp[1]=0;
@@ -829,10 +858,10 @@ bool WMBProcessBeacons(unsigned char *data, int length)
                                     memcmp(Beacon->tagparms,&tagparms2,4)==0 ||
                                     memcmp(Beacon->tagparms,&tagparms3,4)==0)
                                     {
-                                        
+                                        //printf("B\n");
                                          nin_ie = nintendoWMBBeacon(data,length);
                                          if(nin_ie==NULL)return 0;
-                                         
+                                         //printf("C\n");
                                          ds = (ds_element*)nin_ie;
                                          Nin_ie=nin_ie;
 
@@ -845,10 +874,11 @@ bool WMBProcessBeacons(unsigned char *data, int length)
 												fprintfdebug(*Log,"BEACON SEQ %d FAILED CRC16 CHECK!\n",(int)ds->advert_sequence_number);
 												fflushdebug(*Log);
                                             }
-                                         //return 1;
+                                         return 0;
                                          }
-                                        
-                                         if(ds->data_size==0x01)return 1;//This beacon isn't part of the advert          
+                                        //printf("D\n");
+                                         if(ds->data_size==0x01)return -1;//This beacon isn't part of the advert          
+                                         //if(ds->gameID!=5)return -1;//Fake beacon with gameID 5, and screwed data through the beacon, sent by Nintendo Spot.
                                        
                                          nds_data->foundIDs[(int)ds->gameID]=1;
                                          if(!nds_data->gotID && ds->sequence_number!=8)
@@ -863,9 +893,13 @@ bool WMBProcessBeacons(unsigned char *data, int length)
                                                     }
                                          }
                                          
+                                         //printf("E\n");
+                                         
                                          if(ds->sequence_number<8 && ds->sequence_number>0)nds_data->prev_nonadvert = ds->non_advert;
                                          if(ds->sequence_number==0 && nds_data->prev_nonadvert!=ds->non_advert)nds_data->multipleIDs=1;
                                          
+                                         //printf("F\n");
+
                                          if(ds->sequence_number==8 && nds_data->multipleIDs && nds_data->FirstBeaconID==ds->gameID)
                                          {
                                                 if(nds_data->beacon_thing==1)
@@ -901,11 +935,14 @@ bool WMBProcessBeacons(unsigned char *data, int length)
                                                     nds_data->beacon_thing=1;
                                                 }
                                          }
+                                         
+                                         //printf("G\n");
                                        
                                         memcpy(host_mac,Beacon->srcmac,6);
                                         
                                         nds_data->beacon_checksum[(int)ds->advert_sequence_number] = checksum;
                                         
+                                        //printf("H\n");
                                         
 											if(*DEBUG)
 											{

@@ -25,7 +25,7 @@ unsigned char *ConvertBinBuff(unsigned char *data, int length);
 
 void ConvertBin(char *filename)
 {
-    printf("Converting %s...\n",filename);
+    /*printf("Converting %s...\n",filename);
     
     FILE *fbin, *fnds;
     unsigned char *input_buffer, *output_buffer;
@@ -64,7 +64,7 @@ void ConvertBin(char *filename)
     
     fclose(fnds);
     
-    printf("Successfully converted the file to %s!\n",str);
+    printf("Successfully converted the file to %s!\n",str);*/
 }
 
 unsigned char *ConvertBinBuff(unsigned char *data, int length)
