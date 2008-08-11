@@ -154,6 +154,7 @@ int main(int argc, char *argv[])
                             }
                             else
                             {
+                                
                                 end=time(NULL);
                                 
                                 if(ShowTime)
@@ -297,12 +298,12 @@ int ReadDump(int argc, char *argv[])
         }
         else
         {
-            if(strstr(argv[i],".bin"))
+            /*if(strstr(argv[i],".bin"))
             {
                 ConvertBin(argv[i]);
             }
             else
-            {
+            {*/
                 if(ScanDirectory(files_list,argv[i],(char*)".cap")==NULL)
                 {
                     //ScanDirectory will put the filename contained in argv[i], in files_list, if it's a file.
@@ -310,7 +311,7 @@ int ReadDump(int argc, char *argv[])
                     //during this scanning, it will repeat, and scan that directory for captures. And so on if it finds more directories in that directory.
                     printf("Failed to open file or directory %s\n",argv[i]);
                 }
-            }
+            //}
         }
     }
     
@@ -324,12 +325,12 @@ int ReadDump(int argc, char *argv[])
 	   {
 	       if(cur_file->filename==NULL)break;//The last item in the list is empty, meaning filename is NULL too.(The last file is in the item before this)
 	       
-	       if(strstr(cur_file->filename,".bin"))//Erm, Nintendo Channel .bin converting with directories is broken, as the directory scanning code can only find one type of file currently.
+	       /*if(strstr(cur_file->filename,".bin"))//Erm, Nintendo Channel .bin converting with directories is broken, as the directory scanning code can only find one type of file currently.
            {
                ConvertBin(cur_file->filename);
            }
            else
-           {
+           {*/
 	       
 	           if(use_capdir)//If we're using the captures directory for the outputs' directories, process the output directory name for each capture.
 	           {
@@ -368,9 +369,16 @@ int ReadDump(int argc, char *argv[])
                         printf("ERROR: %s\n",str);//If we made it past the beacon assembly stage, report the error message.
                 }
 
+            free(outdir);//Free the output directory and copy to directory
+    free(copydir);
+    FreeDirectory(files_list);//Free the file list
+    ExitAsm();//Deinitialize the assembler
+
+            return 0;
+            
             }
 
-        }
+        //}
 
            cur_file=cur_file->next;//Begin processing the next capture/file
       }
@@ -388,10 +396,11 @@ int ReadCaptureLoop(char *cap, int argc, char *argv[], bool checkrsa, char *outd
     if(cap==NULL)return -1;//If the pointer to the capture's filename is NULL, abort.(Abort reading only this capture)
     
     pcap_t *fp=NULL;//Standard libpcap capture reading code. However, this program isn't using libpcap. It's using my own code for this, but with the exact same interface as libpcap.(The capture reading code is contained in the assembler module)
-	char errbuf[PCAP_ERRBUF_SIZE];
+	char *errbuf = (char*)malloc(PCAP_ERRBUF_SIZE);
 	pcap_pkthdr *header;
 	const u_char *pkt_data;
 	int res;
+    memset(errbuf, 0, PCAP_ERRBUF_SIZE);
     
     /* Open the capture file */
 	if ((fp = pcap_open_offline(cap,			// name of the file
@@ -399,7 +408,8 @@ int ReadCaptureLoop(char *cap, int argc, char *argv[], bool checkrsa, char *outd
 						 )) == NULL)
 	{
 		printf("\nUnable to open the file %s.\n", cap);
-		return 0;//If we fail to open the file, report this, and abort.
+		free(errbuf);
+        return 0;//If we fail to open the file, report this, and abort.
 	}
     //fprintfdebug(Log,"Reading capture file %s\n",cap);
     printf("Reading capture file %s\n",cap);
@@ -426,19 +436,28 @@ int ReadCaptureLoop(char *cap, int argc, char *argv[], bool checkrsa, char *outd
         params->pkt_data = (u_char*)pkt_data;
         
         //Send the packet to the assembler to process & assemble.
-        if(!HandlePacket(params)){free(params);return 0;}
+        if(!HandlePacket(params)){printf("Eeek!\n");free(params);return 0;}
 
     }
 
 	if (res == -1)
 	{
 		printf("Error reading the packets: %s\n", pcap_geterr(fp));
+		
+		pcap_close(fp);
+	   //free(fp);//Gdb debugger included with wxDev-Cpp hangs on this call...(And on the free call in pcap_close in my capture reading code)
+        
+	    free(params);
+	    free(errbuf);
+	    
+	    return 0;
 	}
 
 	pcap_close(fp);
 	//free(fp);//Gdb debugger included with wxDev-Cpp hangs on this call...(And on the free call in pcap_close in my capture reading code)
 	
 	free(params);
+	free(errbuf);
 	
 	return 1;
 }

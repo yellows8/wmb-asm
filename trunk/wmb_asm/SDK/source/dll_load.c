@@ -24,6 +24,7 @@ DEALINGS IN THE SOFTWARE.
 
     #ifndef NDS
                     LPDLL AsmDLL=0;
+                    Nds_data *ND_DAT = NULL;
 
                     bool LoadDLL(LPDLL *lpdll, const char *filename, char *error_buffer = NULL)
                     {
@@ -169,8 +170,9 @@ bool LoadAsmDLL(const char *filename, sAsmSDK_Config *config, char *error_buffer
             
         #endif
         
-        config->nds_data = (Nds_data*)malloc(sizeof(Nds_data));
-    memset(config->nds_data, 0, sizeof(Nds_data));
+        ND_DAT = (Nds_data*)malloc(sizeof(Nds_data));        
+        config->nds_data = (volatile Nds_data**)&ND_DAT;
+    memset((void*)*config->nds_data, 0, sizeof(Nds_data));
 
     config->DEBUG = (bool*)malloc(sizeof(bool));
 
