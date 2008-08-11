@@ -85,6 +85,7 @@ DLLIMPORT char *AsmPlug_GetIDStr()
 
 DLLIMPORT char *AsmPlug_GetStatus(int *error_code)
 {
+    
     if(stage==SDK_STAGE_AUTH && !nds_data->finished_first_assembly)
     {
         *error_code=SDK_STAGE_AUTH;
@@ -111,7 +112,6 @@ DLLIMPORT char *AsmPlug_GetStatus(int *error_code)
 
             if(nds_data!=NULL)
             {
-                
                 if(nds_data->data_sizes != NULL)
                 {
                     for(int i=0; i<nds_data->arm7e_seq; i++)
@@ -158,16 +158,16 @@ DLLIMPORT int AsmPlug_Handle802_11(unsigned char *data, int length)
 
 DLLIMPORT bool AsmPlug_Init(sAsmSDK_Config *config)
 {
-    AsmPlugin_Init(&nds_data);//Allocates memory for the nds_data struct
+    AsmPlugin_Init(config, &nds_data);//Allocates memory for the nds_data struct
     memset((void*)nds_data, 0, sizeof(Nds_data));
     
     ResetAsm = config->ResetAsm;
     //DEBUG = config->DEBUG;
     //Log = config->Log;
     DEBUG = (bool*)malloc(1);
-    *DEBUG = 0;
+    *DEBUG = 1;
     Log = &wlog;
-    //wlog = fopen("wmb_log.txt","w");
+    wlog = fopen("wmb_log.txt","w");
     CONFIG = config;
     
     return 1;
@@ -178,7 +178,7 @@ DLLIMPORT bool AsmPlug_DeInit()
     AsmPlugin_DeInit(&nds_data);
     
     free(DEBUG);
-    //fclose(wlog);
+    fclose(wlog);
     
     return 1;
 }
