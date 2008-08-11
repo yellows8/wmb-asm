@@ -890,7 +890,7 @@ DLLIMPORT unsigned char GetPrecentageCompleteAsm()
     int i=0;
 
     if(currentPacketModule == -1)return 0;//Prevent access violations and other problems.
-        
+    
         if(packetModules[currentPacketModule].query_failure() == 2)
         {
 
@@ -902,7 +902,6 @@ DLLIMPORT unsigned char GetPrecentageCompleteAsm()
                     if(size==0)size=nds_data->pkt_size;
                     i++;
                 }
-
 
             if(temp == 0)return 0;
 

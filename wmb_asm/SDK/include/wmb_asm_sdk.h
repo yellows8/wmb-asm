@@ -633,12 +633,14 @@ struct Nds_data
         
         #ifdef ASM_SDK_PLUGIN
             
-            inline void AsmPlugin_Init(volatile Nds_data **dat)
+            inline void AsmPlugin_Init(sAsmSDK_Config *config, volatile Nds_data **dat)
             {
                 if(dat==NULL)return;
                 
                 *dat = (volatile Nds_data*)malloc(sizeof(Nds_data));
                 memset((void*)*dat, 0, sizeof(Nds_data));
+                
+                GetPrecentageCompleteAsm = config->GetPrecentageCompleteAsm;
             }
             
             inline void AsmPlugin_DeInit(volatile Nds_data **dat)

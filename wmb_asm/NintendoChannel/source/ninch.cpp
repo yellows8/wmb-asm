@@ -81,7 +81,7 @@ DLLIMPORT int AsmPlug_Handle802_11(unsigned char *data, int length)
 
 DLLIMPORT bool AsmPlug_Init(sAsmSDK_Config *config)
 {
-    AsmPlugin_Init(&nds_data);
+    AsmPlugin_Init(config, &nds_data);
     
     ResetAsm = config->ResetAsm;
     DEBUG = config->DEBUG;
