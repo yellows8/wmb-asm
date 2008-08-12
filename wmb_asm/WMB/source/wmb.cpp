@@ -140,7 +140,8 @@ DLLIMPORT char *AsmPlug_GetStatus(int *error_code)
 DLLIMPORT int AsmPlug_QueryFailure()
 {
     if(stage>=SDK_STAGE_DATA)return 2;
-    if(stage<=SDK_STAGE_HEADER)return 1;
+    if(stage==SDK_STAGE_HEADER)return 1;
+    if(stage<SDK_STAGE_HEADER && stage>SDK_STAGE_BEACON)return 3;
     
     return 0;
 }
@@ -273,7 +274,7 @@ void WMBBeaconGrab(unsigned char *data)
                         }
                         
                         memcpy((void*)&nds_data->beacon_data[(980*(int)ds->gameID)+pos],ds->data,(size_t)ds->data_size);
-    }
+     }
 
     //Block end
 
@@ -719,7 +720,7 @@ int WMBProcessData(unsigned char *data, int length)
 
      nds_data->data_sizes[(int)seq-1] = size;
      
-     memcpy(&nds_data->saved_data[nds_data->cur_pos],dat,(size_t)(size));
+     memcpy((void*)&nds_data->saved_data[nds_data->cur_pos],dat,(size_t)(size));
      
 		if(*DEBUG)
 		{
@@ -796,7 +797,6 @@ int WMBProcessData(unsigned char *data, int length)
 			fflushdebug(*Log);
         }
 		
-     stage=SDK_STAGE_BEACON;
      nds_data->trigger_assembly = 1;
      
      }
@@ -879,7 +879,8 @@ int WMBProcessBeacons(unsigned char *data, int length)
                                         //printf("D\n");
                                          if(ds->data_size==0x01)return -1;//This beacon isn't part of the advert          
                                          //if(ds->gameID!=5)return -1;//Fake beacon with gameID 5, and screwed data through the beacon, sent by Nintendo Spot.
-                                       
+                                         
+                                         
                                          nds_data->foundIDs[(int)ds->gameID]=1;
                                          if(!nds_data->gotID && ds->sequence_number!=8)
                                          {
@@ -1002,8 +1003,8 @@ void Init()
             return;
         }
     }
-    memset(nds_data->saved_data,0,(size_t)nds_data->total_binaries_size);
-    memset(nds_data->data_sizes,0,(sizeof(int)*(7980*4)));
+    memset((void*)nds_data->saved_data,0,(size_t)nds_data->total_binaries_size);
+    memset((void*)nds_data->data_sizes,0,(sizeof(int)*(7980*4)));
     nds_data->last_dat_seq=1;
 		if(*DEBUG)
 		{

@@ -51,11 +51,12 @@ bool AssembleNds(char *output);
 
 DLLIMPORT unsigned char GetPrecentageCompleteAsm();
 
-DLLIMPORT char *CaptureAsmReset(int*);
+DLLIMPORT void CaptureAsmReset(lpAsmGetStatusCallback callback);
 
 DLLIMPORT bool HandlePacket(sAsmSDK_Params *params);
 
 DLLIMPORT char *GetStatusAsm(int *error_code);
+void GetStatusAsmA(lpAsmGetStatusCallback callback, int index);
 
 #ifdef __cplusplus
   }
@@ -190,7 +191,7 @@ bool PktModHandle802_11(unsigned char *data, int length)
     {
         ret = packetModules[currentPacketModule].handle802_11(data, length);
         
-        /*if(ret==0)
+        if(ret==0)
         {
             #ifndef NDS
 			for(int ii=0; ii<totalPacketModules; ii++)
@@ -210,7 +211,7 @@ bool PktModHandle802_11(unsigned char *data, int length)
 				}
 			}
 		    #endif
-        }*/
+        }
     }
     
     return 0;
@@ -608,8 +609,8 @@ DLLIMPORT void ResetAsm(volatile Nds_data *dat)
                             return;
                         }
     
-                        if(nds_data->saved_data!=NULL)free(nds_data->saved_data);
-                        if(nds_data->data_sizes!=NULL)free(nds_data->data_sizes);
+                        if(nds_data->saved_data!=NULL)free((void*)nds_data->saved_data);
+                        if(nds_data->data_sizes!=NULL)free((void*)nds_data->data_sizes);
                         nds_data->saved_data=NULL;
                         nds_data->data_sizes=NULL;
 
@@ -767,7 +768,9 @@ void CaptureBacktrack()
   extern "C" {
 #endif
 
-char *CaptureAsmResetA(int *code, volatile Nds_data *dat)
+int PKTINDX = 0;
+
+void CaptureAsmResetA(volatile Nds_data *dat, lpAsmGetStatusCallback callback)
 {
     char *str = NULL;
     
@@ -827,15 +830,13 @@ char *CaptureAsmResetA(int *code, volatile Nds_data *dat)
     memset((void*)nds_data->handledIDs,0,256);
     memset((void*)nds_data->found_beacon,0,(10*15) * sizeof(int));
     nds_data->FoundGameIDs=0;
-
-    str = GetStatusAsm(code);
+    
+    GetStatusAsmA(callback, PKTINDX);
 
     ResetAsm((Nds_data*)nds_data);
-
-    return str;
 }
 
-DLLIMPORT char *CaptureAsmReset(int *code)//Needs to be called after reading the whole capture.
+DLLIMPORT void CaptureAsmReset(lpAsmGetStatusCallback callback)//Needs to be called after reading the whole capture.
 {
     volatile Nds_data *data = NULL;
     char *str = NULL;
@@ -847,21 +848,21 @@ DLLIMPORT char *CaptureAsmReset(int *code)//Needs to be called after reading the
 			         if(packetModules[i].GetNdsData!=NULL)
 			         {
 				        data = packetModules[i].GetNdsData();
-				        if(data==NULL)return NULL;//Should never happen; But if it would, Wmb Asm would get into a infinite loop, and possibly crash eventually.
+				        if(data==NULL)return;//Should never happen; But if it would, Wmb Asm would get into a infinite loop, and possibly crash eventually.
+                        
+                        PKTINDX = i;
                         
                         if(currentPacketModule != -1 && i==currentPacketModule)
                         {
-				            str = CaptureAsmResetA(code, data);
+				            CaptureAsmResetA(data, callback);
                         }
                         else
                         {
-                            CaptureAsmResetA(code, data);
+                            CaptureAsmResetA(data, callback);
                         }
                      }
 		    }
 	    #endif
-	    
-	    return str;
 }
 
 DLLIMPORT char *GetStatusAsm(int *error_code)
@@ -872,6 +873,17 @@ DLLIMPORT char *GetStatusAsm(int *error_code)
     }
     
     return NULL;
+}
+
+void GetStatusAsmA(lpAsmGetStatusCallback callback, int index)
+{
+    int *error = (int*)malloc(sizeof(int));
+    *error = 0;
+    
+    if(packetModules[index].query_failure() != 3)//If these capture/transfer actually has packets for this plugin's protocol, get any errors, then trigger the callback with a pointer to the error's string.
+    callback( packetModules[index].get_status(error) );
+    
+    free(error);
 }
 
 DLLIMPORT bool QueryAssembleStatus(int *error_code)
@@ -1317,7 +1329,7 @@ bool AssembleNds(char *output)
      temp=0;
      int writtenBytes=0;
 
-     fwrite(&nds_data->saved_data[0],1,nds_data->arm7s,nds);
+     fwrite((void*)&nds_data->saved_data[0],1,nds_data->arm7s,nds);
 
      sz=((int)nds_data->header.arm7romSource-(int)ftell(nds));
      Temp = new unsigned char[sz];
@@ -1328,7 +1340,7 @@ bool AssembleNds(char *output)
      writtenBytes=0;
      if(nds_data->arm7e>nds_data->arm7s)
      {
-        fwrite(&nds_data->saved_data[nds_data->arm7s],1,nds_data->arm7e - nds_data->arm7s,nds);
+        fwrite((void*)&nds_data->saved_data[nds_data->arm7s],1,nds_data->arm7e - nds_data->arm7s,nds);
      }
 
             if(nds_data->header.bannerOffset==0)
