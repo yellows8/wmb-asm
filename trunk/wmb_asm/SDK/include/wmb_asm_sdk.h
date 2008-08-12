@@ -234,13 +234,15 @@ struct sAsmSDK_Params
 
 #ifndef NDS
 
+    typedef void (*lpAsmGetStatusCallback)(char *str);
+
     #ifdef USING_DLL
         //In this case with building dlls, DLLIMPORT really means to export the function.
         DLLIMPORT bool HandlePacket(sAsmSDK_Params *params);
 
         DLLIMPORT bool InitAsm(SuccessCallback callback, bool debug, sAsmSDK_Config *config);
         DLLIMPORT void ExitAsm();
-        DLLIMPORT char *CaptureAsmReset(int *code);
+        DLLIMPORT void CaptureAsmReset(int *code, lpAsmGetStatusCallback callback);
 
         DLLIMPORT char *GetStatusAsm(int *error_code);
         DLLIMPORT bool QueryAssembleStatus(int *error_code);
@@ -254,7 +256,7 @@ struct sAsmSDK_Params
                     typedef bool (*lpHandlePacket)(sAsmSDK_Params *params);
                     typedef bool (*lpInitAsm)(SuccessCallback callback, bool debug, sAsmSDK_Config *config);
                     typedef void (*lpExitAsm)(void);
-                    typedef char* (*lpCaptureAsmReset)(int *code);
+                    typedef void (*lpCaptureAsmReset)(lpAsmGetStatusCallback callback);
                     typedef char* (*lpGetStatusAsm)(int *error_code);
                     typedef char* (*lpQueryAssembleStatus)(int *error_code);
                     typedef unsigned char (*lpGetPrecentageCompleteAsm)(void);
@@ -485,38 +487,38 @@ typedef struct SNDSHeader {
 //Beacon code is based on masscat's WMB client code for beacons.
 struct Nds_data
 {
-       int found_beacon[10*15];//At least one if we have seen a beacon. Access it like so: nds_data.found_beacon((gameID*10)+advert_sequence_number)
-       unsigned char beacon_data[980*15];
-       unsigned short beacon_checksum[10];
-       ds_advert advert;
-       ds_advert oldadvert;
-       nds_rsaframe rsa;
-       TNDSHeader header;
-       bool data_init;
-       int arm7s, arm7e;
-       int arm7s_seq, arm7e_seq;
-       int cur_pos;
-       int last_dat_seq;
-       int total_binaries_size;
-       unsigned char *saved_data;//The data for Arm7/9
-       int *data_sizes;//Size of each seq block
-       int pkt_size;//The size of most of the data packets
-       bool pkt_fixed;
-       bool finished_first_assembly;//Set to true when we finished assembling the first transfer in the capture
-       int beacon_thing;
-       unsigned char prev_nonadvert;
-       bool handledIDs[256];
-       unsigned char gameID;
-       bool gotID;
-       bool multipleIDs;
-       bool FoundAllBeacons;
-       unsigned char FirstBeaconID;
-       bool foundIDs[15];
-       bool skipseq;
-       bool FoundGameIDs;
-       unsigned char clientID;
+       volatile int found_beacon[10*15];//At least one if we have seen a beacon. Access it like so: nds_data.found_beacon((gameID*10)+advert_sequence_number)
+       volatile unsigned char beacon_data[980*15];
+       volatile unsigned short beacon_checksum[10];
+       volatile ds_advert advert;
+       volatile ds_advert oldadvert;
+       volatile nds_rsaframe rsa;
+       volatile TNDSHeader header;
+       volatile bool data_init;
+       volatile int arm7s, arm7e;
+       volatile int arm7s_seq, arm7e_seq;
+       volatile int cur_pos;
+       volatile int last_dat_seq;
+       volatile int total_binaries_size;
+       volatile unsigned char *saved_data;//The data for Arm7/9
+       volatile int *data_sizes;//Size of each seq block
+       volatile int pkt_size;//The size of most of the data packets
+       volatile bool pkt_fixed;
+       volatile bool finished_first_assembly;//Set to true when we finished assembling the first transfer in the capture
+       volatile int beacon_thing;
+       volatile unsigned char prev_nonadvert;
+       volatile bool handledIDs[256];
+       volatile unsigned char gameID;
+       volatile bool gotID;
+       volatile bool multipleIDs;
+       volatile bool FoundAllBeacons;
+       volatile unsigned char FirstBeaconID;
+       volatile bool foundIDs[15];
+       volatile bool skipseq;
+       volatile bool FoundGameIDs;
+       volatile unsigned char clientID;
        
-       bool trigger_assembly;//Set by 1 by the packet module plugins when it's time to assembly and write
+       volatile bool trigger_assembly;//Set by 1 by the packet module plugins when it's time to assembly and write
        //the .nds. This is reset when assembly is done.
 };
 #ifdef ASM_SDK_MODULE

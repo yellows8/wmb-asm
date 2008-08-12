@@ -30,6 +30,7 @@ DEALINGS IN THE SOFTWARE.
 #define DLLIMPORT __declspec (dllexport)
 
 #define STAGE_CLIENTHELLO 1
+#define STAGE_SERVERHELLO 2
 
 int stage = STAGE_CLIENTHELLO;
 
@@ -69,6 +70,9 @@ DLLIMPORT char *AsmPlug_GetStatus(int *error_code)
 
 DLLIMPORT int AsmPlug_QueryFailure()
 {
+    if(stage==STAGE_CLIENTHELLO)return 3;
+    if(stage==STAGE_SERVERHELLO)return 1;
+    
     return 0;
 }
 
@@ -135,6 +139,8 @@ int Handle_ClientHello(unsigned char *data, int length)
     
     version = hdr->version;
     ip_length = hdr->length * 4;
+    
+    stage = STAGE_SERVERHELLO;
     
     printf("FOUND AN TCP PACKET!\n");
     

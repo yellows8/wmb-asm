@@ -183,6 +183,15 @@ void AsmSuccessCallback()
     printf("Success!\n");
 }
 
+//Called for every packet module plugin, after reading each capture, when an error occures.
+void ErrorCallback(char *str)
+{
+    if(str!=NULL)
+    {
+        printf("ERROR: %s\n",str);
+    }
+}
+
 void HandleOptions(int i, char *argv[], bool *checkrsa, char *outdir, bool *use_capdir, bool *run, char *copydir, bool *use_copydir)
 {
             if(strcmp(argv[i],"-rsa")==0)*checkrsa=1;//If the option -rsa is detected in the parameters, check the RSA-signature after assembly of each demo.
@@ -360,14 +369,7 @@ int ReadDump(int argc, char *argv[])
 	       //Read and assemble the capture.
            if(!ReadCaptureLoop(cur_file->filename,argc,argv,checkrsa,outdir,run,copydir,use_copydir)==0)
            {
-           
-           int error_code=0;
-	       char *str = CaptureAsmReset(&error_code);
-	       
-                if(str!=NULL)
-                {
-                        printf("ERROR: %s\n",str);//If we made it past the beacon assembly stage, report the error message.
-                }
+	       CaptureAsmReset(&ErrorCallback);
 
             free(outdir);//Free the output directory and copy to directory
     free(copydir);
@@ -438,6 +440,7 @@ int ReadCaptureLoop(char *cap, int argc, char *argv[], bool checkrsa, char *outd
         //Send the packet to the assembler to process & assemble.
         if(!HandlePacket(params))
         {
+            printf("?!\n");
             free(params);
             return 0;
         }

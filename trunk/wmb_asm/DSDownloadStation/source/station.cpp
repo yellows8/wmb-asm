@@ -67,6 +67,8 @@ DLLIMPORT char *AsmPlug_GetIDStr()
 
 DLLIMPORT char *AsmPlug_GetStatus(int *error_code)
 {
+    printf("Haha\n");
+    
     if(stage==STAGE_ASSOC_RESPONSE)
     {
         *error_code = STAGE_ASSOC_RESPONSE;
@@ -85,6 +87,9 @@ DLLIMPORT char *AsmPlug_GetStatus(int *error_code)
 
 DLLIMPORT int AsmPlug_QueryFailure()
 {
+    if(stage==STAGE_ASSOC_RESPONSE)return 3;
+    if(stage==STAGE_MENU_REQ)return 1;
+    
     return 0;
 }
 
@@ -155,7 +160,7 @@ int Handle_AssocResponse(unsigned char *data, int length)
         
         if(stage==STAGE_ASSOC_RESPONSE)stage = STAGE_MENU_REQ;
         
-        printf("FOUND ASSOC RESPONSE!\n");
+        //printf("FOUND ASSOC RESPONSE!\n");
         
         return 1;
     }
