@@ -83,6 +83,11 @@ DLLIMPORT char *AsmPlug_GetIDStr()
     return (char*)"WMB";
 }
 
+DLLIMPORT int AsmPlug_GetPriority()
+{
+    return ASMPLUG_PRI_LOW;//Why the lowest priority of all the default Wmb Asm plugins? The DS Download Station plugin needs to check some WMB packets. If the priority of this WMB plugin was normal, the DS Download Station plugin most likely wouldn't work correctly, if at all.
+}
+
 DLLIMPORT char *AsmPlug_GetStatus(int *error_code)
 {
     
