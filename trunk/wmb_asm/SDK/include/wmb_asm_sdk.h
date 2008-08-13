@@ -635,6 +635,10 @@ struct Nds_data
         
         #ifdef ASM_SDK_PLUGIN
             
+            #define ASMPLUG_PRI_LOW -1//Plugin priorities. The plugins with the highest priority are dealt with first, then the ones with the lower priority, and so on. The plugins with the highest pritority with have the Handle802_11 function called first, then that function will be called after the current/highest, for the lower priority, and so on.
+            #define ASMPLUG_PRI_NORMAL 0//You can use priorites higher or lower than the ones defined here in the SDK, it's not restricted to only these defines. But you'll need to either make a new define, or just return the prioritiy directly from AsmPlug_GetPriority.
+            #define ASMPLUG_PRI_HIGH 1
+            
             inline void AsmPlugin_Init(sAsmSDK_Config *config, volatile Nds_data **dat)
             {
                 if(dat==NULL)return;

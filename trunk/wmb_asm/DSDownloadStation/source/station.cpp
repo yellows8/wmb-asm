@@ -31,17 +31,18 @@ DEALINGS IN THE SOFTWARE.
 #undef DLLIMPORT
 #define DLLIMPORT __declspec (dllexport)
 
-#define STAGE_ASSOC_RESPONSE 1
-#define STAGE_MENU_REQ 2
+#define STAGEDL_ASSOC_RESPONSE 1
+#define STAGEDL_MENU_REQ 2
 
-int stage = STAGE_ASSOC_RESPONSE;
+int stage = STAGEDL_ASSOC_RESPONSE;
+bool IsSpot = 0;//Zero if the protocol for the packets being handled are DS Download Station pacekts, 1 if it's Japanese Nintendo Spot packets.(New DLStations in japan)
 
 sAsmSDK_Config *CONFIG = NULL;
 bool *DEBUG = NULL;
 FILE **Log = NULL;
 
-int Handle_AssocResponse(unsigned char *data, int length);
-int Handle_MenuRequest(unsigned char *data, int length);
+int HandleDL_AssocResponse(unsigned char *data, int length);
+int HandleDL_MenuRequest(unsigned char *data, int length);
 
 struct DLClient
 {
@@ -65,20 +66,27 @@ DLLIMPORT char *AsmPlug_GetIDStr()
     return (char*)"DSDLSTATN";
 }
 
+DLLIMPORT int AsmPlug_GetPriority()
+{
+    return ASMPLUG_PRI_NORMAL;
+}
+
 DLLIMPORT char *AsmPlug_GetStatus(int *error_code)
 {
-    printf("Haha\n");
     
-    if(stage==STAGE_ASSOC_RESPONSE)
+    if(!IsSpot)
     {
-        *error_code = STAGE_ASSOC_RESPONSE;
-        return (char*)"02: Failed to find the Association Response packet.\n";
-    }
-    
-    if(stage==STAGE_MENU_REQ)
-    {
-        *error_code = STAGE_MENU_REQ;
-        return (char*)"03: Failed to find the Menu Request packet.\n";
+        if(stage==STAGEDL_ASSOC_RESPONSE)
+        {
+            *error_code = STAGEDL_ASSOC_RESPONSE;
+            return (char*)"02: DS DL Station: Failed to find the Association Response packet.\n";
+        }
+        
+        if(stage==STAGEDL_MENU_REQ)
+        {
+            *error_code = STAGEDL_MENU_REQ;
+            return (char*)"03: DS DL Station: Failed to find the Menu Request packet.\n";
+        }
     }
 
 	*error_code=-1;
@@ -87,22 +95,29 @@ DLLIMPORT char *AsmPlug_GetStatus(int *error_code)
 
 DLLIMPORT int AsmPlug_QueryFailure()
 {
-    if(stage==STAGE_ASSOC_RESPONSE)return 3;
-    if(stage==STAGE_MENU_REQ)return 1;
-    
+    if(!IsSpot)
+    {
+        if(stage==STAGEDL_ASSOC_RESPONSE)return 3;
+        if(stage==STAGEDL_MENU_REQ)return 1;
+    }
+        
     return 0;
 }
 
 DLLIMPORT int AsmPlug_Handle802_11(unsigned char *data, int length)
 {
-     int ret = 0;
      
-     ret = Handle_AssocResponse(data, length);
+     if(!IsSpot)
+     {
+        int ret = 0;
+        
+        ret = HandleDL_AssocResponse(data, length);
+        
+        if(ret)return ret;
+        
+        if(stage==STAGEDL_MENU_REQ)return HandleDL_MenuRequest(data, length);
+     }
      
-     if(ret)return ret;
-     
-     if(stage==STAGE_MENU_REQ)return Handle_MenuRequest(data, length);
-
      return 0;
 }
 
@@ -133,7 +148,8 @@ DLLIMPORT volatile Nds_data *AsmPlug_GetNdsData()
 DLLIMPORT void AsmPlug_Reset()
 {
 
-    stage=STAGE_ASSOC_RESPONSE;
+    IsSpot = 0;
+    stage=STAGEDL_ASSOC_RESPONSE;
     
     memset(DLClients, 0, sizeof(DLClient) * 15);
     total_clients = 0;
@@ -148,7 +164,7 @@ DLLIMPORT void AsmPlug_Reset()
   }
 #endif
 
-int Handle_AssocResponse(unsigned char *data, int length)
+int HandleDL_AssocResponse(unsigned char *data, int length)
 {
     iee80211_framehead2 *fh = (iee80211_framehead2*)data;
 
@@ -158,7 +174,7 @@ int Handle_AssocResponse(unsigned char *data, int length)
         memcpy(DLClients[total_clients].mac,fh->mac1, 6);
         total_clients++;
         
-        if(stage==STAGE_ASSOC_RESPONSE)stage = STAGE_MENU_REQ;
+        if(stage==STAGEDL_ASSOC_RESPONSE)stage = STAGEDL_MENU_REQ;
         
         //printf("FOUND ASSOC RESPONSE!\n");
         
@@ -166,12 +182,13 @@ int Handle_AssocResponse(unsigned char *data, int length)
     }
     else
     {
+        
     }
     
     return 0;
 }
 
-int Handle_MenuRequest(unsigned char *data, int length)
+int HandleDL_MenuRequest(unsigned char *data, int length)
 {
     return 0;
 }

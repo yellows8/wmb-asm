@@ -56,12 +56,17 @@ DLLIMPORT char *AsmPlug_GetIDStr()
     return (char*)"NINCH";
 }
 
+DLLIMPORT int AsmPlug_GetPriority()
+{
+    return ASMPLUG_PRI_NORMAL;
+}
+
 DLLIMPORT char *AsmPlug_GetStatus(int *error_code)
 {
     if(stage==STAGE_CLIENTHELLO)
     {
         *error_code = STAGE_CLIENTHELLO;
-        return (char*)"02: Failed to find the TLS Client Hello packet.\n";
+        return (char*)"02: Nintendo Channel: Failed to find the TLS Client Hello packet.\n";
     }
 
 	*error_code=-1;

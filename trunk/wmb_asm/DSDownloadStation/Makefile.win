@@ -1,7 +1,7 @@
 # Project: DSDownloadStation
 # Compiler: Default GCC compiler
 # Compiler Type: MingW 3
-# Makefile created by wxDev-C++ 6.10.2 on 11/08/08 22:17
+# Makefile created by wxDev-C++ 6.10.2 on 13/08/08 14:20
 
 CPP       = g++.exe
 CC        = gcc.exe

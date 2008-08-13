@@ -89,6 +89,7 @@ typedef bool (*lpInit)(sAsmSDK_Config *config);
 typedef bool (*lpDeInit)();
 typedef int (*lpGetID)();
 typedef char *(*lpGetIDStr)();
+typedef int (*lpGetPriority)();
 typedef volatile Nds_data *(*lpGetNdsData)();
 typedef bool (*lpHandle802_11)(unsigned char *data, int length);
 typedef void (*lpReset)();
@@ -106,16 +107,20 @@ struct PacketModule
     lpQueryFailure query_failure;
     lpGetID GetID;
     lpGetIDStr GetIDStr;
+    lpGetPriority GetPriority;
 	#ifndef NDS
     LPDLL lpdll;//The handle of the module if this one isn't a built-in packet handler.
 	#endif
 	
 	int ID;
 	char *IDStr;
+	int Priority;
 };
 PacketModule packetModules[MAX_PKT_MODULES];
 int totalPacketModules = 0;
 int currentPacketModule = -1;
+
+bool PktModReorder();
 
 void PktModClose()
 {
@@ -132,19 +137,92 @@ void PktModClose()
 	#endif
 }
 
-void PktModInit()
+bool PktModInit()
 {
 	#ifndef NDS
 	Nds_data *dat = NULL;
+	
+	if(!PktModReorder())return 0;
 	
 		for(int i=0; i<totalPacketModules; i++)
 		{
 			if(packetModules[i].lpdll==NULL)break;
 
 			if(packetModules[i].Init!=NULL)
-				packetModules[i].Init(CONFIG);
+			{
+				if(!packetModules[i].Init(CONFIG))
+				    return 0;
+            }
 		}
 	#endif
+	
+	return 1;
+}
+
+//This function reorders the plugins in the packetMoudles array, according to the priorties. In this way, priority code is only needed in the initialization function, not across several plugin function calling code, also.
+bool PktModReorder()
+{
+    PacketModule *list = (PacketModule*)malloc(sizeof(PacketModule) * 256);
+    int pri = 0;
+    int high_pri = 0;//Highest priority found so far.
+    int lowest_pri = 0;//Lowest priority found so far.
+    bool found = 0;//Did we find a plugin's priority yet?
+    int cur = 0;//Current index in the priorities array.
+    int plug_cur = 0;//Current index in the packetModules array.
+    if(list==NULL)
+    {
+        printf("ERROR: Failed to allocate memory\n");
+        return 0;
+    }
+    memset(list, 0, sizeof(PacketModule) * MAX_PKT_MODULES);
+    
+    while(packetModules[plug_cur].lpdll!=NULL)
+    {
+        pri = packetModules[plug_cur].Priority;
+        
+            if(!found)
+            {
+                high_pri = pri;
+                lowest_pri = pri;
+                found = 1;
+            }
+            else
+            {   
+                if(pri > high_pri)
+                    high_pri = pri;
+                
+                if(pri < lowest_pri)
+                    lowest_pri = pri;
+                
+            }
+            
+        plug_cur++;
+    }
+    plug_cur = 0;
+    found = 0;
+    
+    cur = high_pri;
+    while(cur>=lowest_pri)
+    {
+            while(packetModules[plug_cur].lpdll!=NULL)
+            {
+                pri = packetModules[plug_cur].Priority;
+                
+                    if(pri==cur)
+                    {
+                        memcpy(&list[plug_cur], &packetModules[plug_cur], sizeof(PacketModule));
+                    }
+                
+                plug_cur++;
+            }
+        plug_cur = 0;
+        cur--;
+    }
+    
+    memcpy(packetModules, list, sizeof(PacketModule) * MAX_PKT_MODULES);
+    free(list);
+    
+    return 1;
 }
 
 void PktModReset()
@@ -313,7 +391,9 @@ bool InitPktModules()
 
     #endif
     
-    PktModInit();
+    if(!PktModInit())
+        return 0;
+    
     PktModReset();
     
     return 1;
@@ -475,6 +555,23 @@ int LoadPacketModule(char *filename, char *error_buffer, char *destr, LPDLL *lpd
                                             return 0;
                                         }
                                         
+                                        if((packetModules[totalPacketModules].GetPriority=(lpGetPriority)LoadFunctionDLL(lpdll, "AsmPlug_GetPriority", NULL, error_buffer))==NULL)
+                                        {
+                                            sprintf(destr, "ERROR: In module %s: %s", filename, error_buffer);
+
+                                                if(modlog!=NULL)
+                                                {
+                                                    fprintf(modlog, "%s", destr);
+                                                    fflush(modlog);
+                                                }
+
+                                            CloseDLL(lpdll, NULL);
+
+                                            printf("An error occured while loading the packet module plugin(s). The error was written to module_log.txt\n%s\n",destr);
+
+                                            return 0;
+                                        }
+                                        
                                         if((packetModules[totalPacketModules].GetNdsData=(lpGetNdsData)LoadFunctionDLL(lpdll, "AsmPlug_GetNdsData", NULL, error_buffer))==NULL)
                                         {
                                             sprintf(destr, "ERROR: In module %s: %s", filename, error_buffer);
@@ -494,6 +591,7 @@ int LoadPacketModule(char *filename, char *error_buffer, char *destr, LPDLL *lpd
 
                                         packetModules[totalPacketModules].ID = packetModules[totalPacketModules].GetID();
                                         packetModules[totalPacketModules].IDStr = packetModules[totalPacketModules].GetIDStr();
+                                        packetModules[totalPacketModules].Priority = packetModules[totalPacketModules].GetPriority();
 
                                         packetModules[totalPacketModules].lpdll = *lpdll;
                                         totalPacketModules++;
