@@ -34,7 +34,7 @@ DEALINGS IN THE SOFTWARE.
 #define STAGEDL_ASSOC_RESPONSE 1
 #define STAGEDL_MENU_REQ 2
 
-int stage = STAGEDL_ASSOC_RESPONSE;
+int stage = STAGEDL_MENU_REQ;
 bool IsSpot = 0;//Zero if the protocol for the packets being handled are DS Download Station pacekts, 1 if it's Japanese Nintendo Spot packets.(New DLStations in japan)
 
 sAsmSDK_Config *CONFIG = NULL;
@@ -48,9 +48,29 @@ struct DLClient
 {
     unsigned char clientID;
     unsigned char mac[6];
+    int is_dl;//Is this client really using the DLStation/N Spot protocol, not WMB or some other protocol?
+    bool has_data;//Does this entry contain any data?
 };
+
+struct WMBHost
+{
+    unsigned char mac[6];//Any host that sends binary data over WMB, has their MAC put into the WMBHosts array. If any of the DLClients ack the WMB Host, they are kicked from the DLClients list, as they are using WMB, not DLStation/N Spot protocol.
+    bool has_data;
+};
+
 DLClient DLClients[15];
+WMBHost WMBHosts[256];
 int total_clients = 0;
+int total_wmbhosts = 0;
+
+unsigned char host_mac[6];
+
+void AddClient(DLClient client);
+void AddWMBHost(WMBHost host);
+void RemoveClient(int index);
+void RemoveWMBHost(int index);
+void RemoveClients();
+void RemoveWMBHosts();
 
 #ifdef __cplusplus
   extern "C" {
@@ -76,16 +96,10 @@ DLLIMPORT char *AsmPlug_GetStatus(int *error_code)
     
     if(!IsSpot)
     {
-        if(stage==STAGEDL_ASSOC_RESPONSE)
-        {
-            *error_code = STAGEDL_ASSOC_RESPONSE;
-            return (char*)"02: DS DL Station: Failed to find the Association Response packet.\n";
-        }
-        
         if(stage==STAGEDL_MENU_REQ)
         {
             *error_code = STAGEDL_MENU_REQ;
-            return (char*)"03: DS DL Station: Failed to find the Menu Request packet.\n";
+            return (char*)"02: DS DL Station: Failed to find the Menu Request packet.\n";
         }
     }
 
@@ -97,8 +111,7 @@ DLLIMPORT int AsmPlug_QueryFailure()
 {
     if(!IsSpot)
     {
-        if(stage==STAGEDL_ASSOC_RESPONSE)return 3;
-        if(stage==STAGEDL_MENU_REQ)return 1;
+        if(stage==STAGEDL_MENU_REQ)return 3;
     }
         
     return 0;
@@ -137,6 +150,9 @@ DLLIMPORT bool AsmPlug_DeInit()
 {
     AsmPlugin_DeInit(&nds_data);
     
+    RemoveClients();
+    RemoveWMBHosts();
+    
     return 1;
 }
 
@@ -147,36 +163,103 @@ DLLIMPORT volatile Nds_data *AsmPlug_GetNdsData()
 
 DLLIMPORT void AsmPlug_Reset()
 {
-
     IsSpot = 0;
-    stage=STAGEDL_ASSOC_RESPONSE;
+    stage=STAGEDL_MENU_REQ;
     
     memset(DLClients, 0, sizeof(DLClient) * 15);
+    memset(WMBHosts, 0, sizeof(WMBHost) * 256);
     total_clients = 0;
+    total_wmbhosts = 0;
     
-    /*
-    last_seq=0;
     memset(host_mac,0,6);
-    */
 }
 
 #ifdef __cplusplus
   }
 #endif
 
+void AddClient(DLClient client)
+{
+    bool found = 0;
+    client.has_data = 1;
+    
+    for(int i=0; i<15; i++)
+    {
+        if(!DLClients[i].has_data)
+        
+        if(memcmp(DLClients[i].mac, client.mac, 6))found = 1;
+    }
+    if(found)return;
+    
+    if(!DLClients[client.clientID - 1].has_data)
+    {
+        memcpy(&DLClients[client.clientID - 1], &client, sizeof(DLClient));
+        total_clients++;
+    }
+}
+
+void RemoveClient(int index)
+{
+    if(index<0 || index>14)return;
+    
+    memset(&DLClients[index], 0, sizeof(DLClient));
+}
+
+void RemoveClients()
+{
+    for(int i=0; i<15; i++)
+        RemoveClient(i);
+}
+
+void AddWMBHost(WMBHost host)
+{
+    bool found = 0;
+    host.has_data = 1;
+    
+    for(int i=0; i<256; i++)
+    {
+        if(!WMBHosts[i].has_data)continue;
+        
+        if(memcmp(WMBHosts[i].mac, host.mac, 6))found = 1;
+    }
+    if(found)return;
+
+    for(int i=0; i<15; i++)
+    {
+        if(!WMBHosts[i].has_data)
+        {
+            memcpy(&WMBHosts[i], &host, sizeof(WMBHost));
+            break;
+        }
+    }
+    
+    total_wmbhosts++;
+}
+
+void RemoveWMBHost(int index)
+{
+    if(index<0 || index>255)return;
+
+    memset(&WMBHosts[index], 0, sizeof(WMBHost));
+}
+
+void RemoveWMBHosts()
+{
+    for(int i=0; i<256; i++)
+        RemoveWMBHost(i);
+}
+
 int HandleDL_AssocResponse(unsigned char *data, int length)
 {
     iee80211_framehead2 *fh = (iee80211_framehead2*)data;
-
+    DLClient client;
+    memset(&client,0, sizeof(DLClient));
+    
     if (((FH_FC_TYPE(fh->frame_control) == 0) && (FH_FC_SUBTYPE(fh->frame_control) == 1)))
     {
-        DLClients[total_clients].clientID = data[0x5C];
-        memcpy(DLClients[total_clients].mac,fh->mac1, 6);
-        total_clients++;
-        
-        if(stage==STAGEDL_ASSOC_RESPONSE)stage = STAGEDL_MENU_REQ;
-        
-        //printf("FOUND ASSOC RESPONSE!\n");
+        client.clientID = data[0x5C];
+        memcpy(client.mac, fh->mac1, 6);
+        AddClient(client);
         
         return 1;
     }
