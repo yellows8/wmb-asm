@@ -33,6 +33,9 @@ DEALINGS IN THE SOFTWARE.
 
 #define STAGEDL_ASSOC_RESPONSE 1
 #define STAGEDL_MENU_REQ 2
+#define STAGEDL_MENU_DL 3
+
+unsigned char mgc_num[4] = {0x06, 0x01, 0x02, 0x00};
 
 int stage = STAGEDL_MENU_REQ;
 bool IsSpot = 0;//Zero if the protocol for the packets being handled are DS Download Station pacekts, 1 if it's Japanese Nintendo Spot packets.(New DLStations in japan)
@@ -47,6 +50,7 @@ int HandleWMB_Data(unsigned char *data, int length);
 int HandleWMB_DataAck(unsigned char *data, int length);
 
 int HandleDL_MenuRequest(unsigned char *data, int length);
+int HandleDL_MenuDownload(unsigned char *data, int length);
 
 struct DLClient
 {
@@ -89,7 +93,7 @@ DLLIMPORT int AsmPlug_GetID()
 
 DLLIMPORT char *AsmPlug_GetIDStr()
 {
-    return (char*)"DSDLSTATN";
+    return (char*)"DLSTATION";
 }
 
 DLLIMPORT int AsmPlug_GetPriority()
@@ -140,6 +144,7 @@ DLLIMPORT int AsmPlug_Handle802_11(unsigned char *data, int length)
         if(ret)return 0;
         
         if(stage==STAGEDL_MENU_REQ)return HandleDL_MenuRequest(data, length);
+        if(stage==STAGEDL_MENU_DL)return HandleDL_MenuDownload(data, length);
      }
      
      return 0;
@@ -354,11 +359,66 @@ int HandleWMB_DataAck(unsigned char *data, int length)
     return 0;
 }
 
+unsigned char *CheckDLFrame(unsigned char *data, int length, unsigned char type, int *size, unsigned short *seq, unsigned char *clientID)
+{
+    int sz = 0;
+    unsigned short *Seq = NULL;
+    unsigned char *dat = &data[0x18];
+    iee80211_framehead2 *frm = (iee80211_framehead2*)data;
+    
+    if(CheckFrameControl(frm, 2, 1))
+    {
+        if(CheckFlow(frm->mac3, 0x10))
+        {
+            if(memcmp(dat, mgc_num, 4))
+            {
+                dat+=4;
+                
+                if(dat[1]==type)
+                {
+                    sz = (int)dat[0];
+                    sz *= 2;
+                    sz -= 2;//Remove what seems to be the sequence number for the next byte, from the total length.
+                    
+                    if(type==0x1f)sz+=32;//The sizes need increased for data packets
+                    *size = sz;
+                    
+                    dat+=2;
+                    
+                    Seq = (unsigned short*)dat;
+                    *seq = *Seq;
+                    
+                    dat+=2;
+                    
+                    if(type==0x1f)*clientID = dat[sz+2];
+
+                    unsigned int checksum = CalcCRC32(data, length - 4);
+                    unsigned int *chk = (unsigned int*)&data[length-4];
+                    
+                    if(checksum!=*chk)
+                    {
+                        fprintf(*Log, "CHECKSUM FAIL %d %d\n",checksum,*chk);
+                        return NULL;
+                    }
+                    
+                    return dat;
+                }
+                else
+                {
+                    fprintf(*Log, "MTYPE FAIL %x wanted %x\n",(int)dat[1],(int)type);
+                }
+            }
+        }
+    }
+    
+    return NULL;
+}
+
 int HandleDL_MenuRequest(unsigned char *data, int length)
 {
     iee80211_framehead2 *frm = (iee80211_framehead2*)data;
     unsigned char *dat = &data[0x18];
-    unsigned char req[256];
+    char req[256];
     memset(req, 0, 256);
     
     if(CheckFrameControl(frm, 2, 1))
@@ -368,10 +428,31 @@ int HandleDL_MenuRequest(unsigned char *data, int length)
             if(dat[0]==0x04 && dat[2]!=0xFF)
             {
                 memcpy(req, &dat[2], 9);
-                fprintf(*Log ,"DLSTATION: FOUND DL REQ %s\n", req);
+                
+                if(strstr(req, "menu"))
+                {
+                    fprintf(*Log ,"DLSTATION: FOUND DL REQ %s\n", req);
+                    stage = STAGEDL_MENU_DL;
+                }
             }
         }
     }
     
+    return 0;
+}
+
+int HandleDL_MenuDownload(unsigned char *data, int length)
+{
+    unsigned char *dat = NULL;
+    int size = 0;
+    unsigned short seq = 0;
+    unsigned char clientID = 0;
+    
+    dat = CheckDLFrame(data, length, 0x1e, &size, &seq, &clientID);
+    if(dat)
+    {
+        fprintf(*Log, "FOUND MENU PKT SEQ %d SZ %d CID %d\n",(int)seq, size, (int)clientID);
+    }
+
     return 0;
 }
