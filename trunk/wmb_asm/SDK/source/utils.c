@@ -25,6 +25,10 @@ DEALINGS IN THE SOFTWARE.
 
 #include "..\include\wmb_asm_sdk.h"
 
+#ifdef __cplusplus
+  extern "C" {
+#endif
+
 unsigned char normal_mac[5] = {0x03,0x09,0xBF,0x00,0x00};
 
 DLLIMPORT void ConvertAVSEndian(AVS_header *avs);
@@ -126,7 +130,7 @@ int ReadSeq(unsigned short *seq)
     return Seq>>4;
 }
 
-//*******************COMAPATE MAC*************************************************
+//*******************COMPARE MAC*************************************************
 bool CompareMAC(unsigned char *a, unsigned char *b)
 {
      if(memcmp(a,b,6)==0)return 1;
@@ -165,6 +169,53 @@ bool CheckFlow(unsigned char *mac, unsigned char flow)
      if(memcmp(mac,normal_mac,5)!=0)return 0;
 
      if(mac[5]==flow)return 1;
+
+     return 0;
+}
+
+unsigned char host_client_mgc[4] = {0x06,0x01,0x02,0x00};
+//******************CHECK FRAME*********************************************************
+bool CheckFrame(unsigned char *data, unsigned char *host_mac, unsigned char command, unsigned short *size, unsigned char *pos)
+{
+     iee80211_framehead *fh = (iee80211_framehead*)data;
+     unsigned char *dat = &data[24];
+     unsigned char rsize=0;
+     unsigned short Size=0;
+
+     if (((FH_FC_TYPE(fh->frame_control) == 2) && (FH_FC_SUBTYPE(fh->frame_control) == 2)) && CompareMAC(host_mac, fh->mac2))
+     {
+          if(CheckFlow(fh->mac1,0))
+          {
+
+                                   if(memcmp(dat,host_client_mgc,4)==0)
+                                   {
+                                   dat+=4;
+
+                                   rsize=*dat;
+                                   Size = ((unsigned short)(rsize<<1));
+
+                                   dat++;
+
+                                     if(*dat==0x11)//Command packet, ignore non-command packets
+                                     {
+                                     dat++;
+                                       if(*dat==command)
+                                       {
+                                       if(command==0x04 || command==0x00)
+                                       Size-=6;
+
+                                       dat++;
+
+                                       if(pos)
+                                       *pos=(unsigned char)((int)dat - (int)data)+2;
+                                       if(size)*size=Size;
+
+                                       return 1;
+                                       }
+                                     }
+                                   }
+          }
+     }
 
      return 0;
 }
@@ -648,4 +699,9 @@ void ExecuteApp(char *appname, char *cmdline)
      CloseHandle(pi.hProcess);
      CloseHandle(pi.hThread);
 }
+
+#endif
+
+#ifdef __cplusplus
+    }
 #endif

@@ -118,11 +118,19 @@ DEALINGS IN THE SOFTWARE.
             #endif
     #endif
 
+#ifdef __cplusplus
+    extern "C" {
+#endif
+
 #include "../include/pcap.h"
 
-#include "../include/dirscan.h"
-
 #include "../include/inet.h"
+
+#ifdef __cplusplus
+    }
+#endif
+
+#include "../include/dirscan.h"
 
     #ifndef NDS
         #include <windows.h>
@@ -205,11 +213,11 @@ extern unsigned char *Nin_ie;
 #define NIN_WMB_IE_PAYLOAD_DATA 0x26
 #define NIN_WMB_IE_SOME_FLAGS 0x10
 
-int GetFileLength(FILE* _pfile);
-
 #ifdef __cplusplus
   extern "C" {
 #endif
+
+int GetFileLength(FILE* _pfile);
 
 struct sAsmSDK_Config;
 
@@ -304,9 +312,9 @@ struct sAsmSDK_Params
 struct iee80211_framehead2 {//<----------This is the struct actually used in the program. The other is a backup.
 	unsigned short frame_control;
 	unsigned short duration_id;
-	unsigned char mac1[6];//dest
-	unsigned char mac2[6];//src
-	unsigned char mac3[6];//bssid
+	unsigned char mac1[6];
+	unsigned char mac2[6];
+	unsigned char mac3[6];
 	unsigned short sequence_control;
 };
 
@@ -638,6 +646,26 @@ struct Nds_data
             #define ASMPLUG_PRI_LOW -1//Plugin priorities. The plugins with the highest priority are dealt with first, then the ones with the lower priority, and so on. The plugins with the highest pritority with have the Handle802_11 function called first, then that function will be called after the current/highest, for the lower priority, and so on.
             #define ASMPLUG_PRI_NORMAL 0//You can use priorites higher or lower than the ones defined here in the SDK, it's not restricted to only these defines. But you'll need to either make a new define, or just return the prioritiy directly from AsmPlug_GetPriority.
             #define ASMPLUG_PRI_HIGH 1
+            
+            #ifdef __cplusplus
+                extern "C" {
+            #endif
+            
+            bool CheckFrame(unsigned char *data, unsigned char *host_mac, unsigned char command, unsigned short *size, unsigned char *pos);
+            bool CheckFlow(unsigned char *mac,unsigned char flow);
+            unsigned int CalcCRC32(unsigned char *data, unsigned int length);
+            unsigned short CalcCRC16(unsigned char *data, unsigned int length);
+            unsigned char *nintendoWMBBeacon( unsigned char *frame, int frame_size);
+            bool CheckDataPackets(int seq);
+            int ReadSeq(unsigned short *seq);
+            bool CheckFrameControl(iee80211_framehead2 *framehead, int type, int subtype);
+            unsigned short computeBeaconChecksum(unsigned short *data, int length);
+            unsigned char GetGameID(unsigned char *data);
+            bool CompareMAC(unsigned char *a, unsigned char *b);
+            
+            #ifdef __cplusplus
+                }
+            #endif
             
             inline void AsmPlugin_Init(sAsmSDK_Config *config, volatile Nds_data **dat)
             {
