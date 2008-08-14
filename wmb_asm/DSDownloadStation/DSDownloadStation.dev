@@ -69,7 +69,7 @@ ResourceIncludes=
 MakeIncludes=
 Compiler=-DBUILDING_DLL=1_@@_
 CppCompiler=-DBUILDING_DLL=1_@@_
-Linker=--no-export-all-symbols_@@_--add-stdcall-alias_@@_../../../../../../Downloads/lzo-2.03/lzo-2.03/lib/liblzo.a_@@_
+Linker=--no-export-all-symbols_@@_--add-stdcall-alias_@@_../../../../../../Downloads/lzo-2.03/lzo-2.03/lib/liblzo.a_@@_../SDK/lib/WmbAsmSDK.a_@@_
 PreprocDefines=
 CompilerSettings=0000000001001000000000
 Icon=
@@ -78,7 +78,7 @@ ObjectOutput=Output\MingW
 OverrideOutput=0
 OverrideOutputName=DSDownloadStation.dll
 HostApplication=C:\AndrewConsoleStuff\wmb_asm\SVN\trunk\wmb_asm\wmb_asm.exe
-CommandLine=C:\AndrewConsoleStuff\wmb_asm\captures\other_captures\captureBBA.cap
+CommandLine=
 UseCustomMakefile=0
 CustomMakefile=
 IncludeVersionInfo=0
@@ -105,7 +105,7 @@ ObjectOutput=Objects\Visual C++ 2005
 OverrideOutput=0
 OverrideOutputName=
 HostApplication=
-CommandLine=C:\AndrewConsoleStuff\wmb_asm\captures\other_captures\captureBBA.cap
+CommandLine=
 UseCustomMakefile=0
 CustomMakefile=
 IncludeVersionInfo=0

@@ -30,9 +30,6 @@ DEALINGS IN THE SOFTWARE.
 #define DLLIMPORT __declspec (dllexport)
 
 unsigned char BroadcastMAC[6]={0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
-unsigned char host_client_mgc[4] = {0x06,0x01,0x02,0x00};
-
-bool CompareMAC(unsigned char *a, unsigned char *b);
 
 int WMBProcessBeacons(unsigned char *data, int length);
 int WMBProcessAuth(unsigned char *data, int length);
@@ -40,18 +37,7 @@ int WMBProcessRSA(unsigned char *data, int length);
 int WMBProcessHeader(unsigned char *data, int length);
 int WMBProcessData(unsigned char *data, int length);
 
-unsigned int CalcCRC32(unsigned char *data, unsigned int length);
-unsigned short CalcCRC16(unsigned char *data, unsigned int length);
 bool CheckFrame(unsigned char *data, unsigned char command, unsigned short *size, unsigned char *pos);
-unsigned char *nintendoWMBBeacon( unsigned char *frame, int frame_size);
-bool CheckDataPackets(int seq);
-int ReadSeq(unsigned short *seq);
-bool CheckFrameControl(iee80211_framehead2 *framehead, int type, int subtype);
-unsigned short computeBeaconChecksum(unsigned short *data, int length);
-
-bool CheckFlow(unsigned char *mac,unsigned char flow);
-
-unsigned char GetGameID(unsigned char *data);
 
 int stage=SDK_STAGE_BEACON;
 
@@ -206,52 +192,6 @@ DLLIMPORT void AsmPlug_Reset()
 #ifdef __cplusplus
   }
 #endif
-
-//******************CHECK FRAME*********************************************************
-bool CheckFrame(unsigned char *data, unsigned char command, unsigned short *size, unsigned char *pos)
-{
-     iee80211_framehead *fh = (iee80211_framehead*)data;
-     unsigned char *dat = &data[24];
-     unsigned char rsize=0;
-     unsigned short Size=0;
-
-     if (((FH_FC_TYPE(fh->frame_control) == 2) && (FH_FC_SUBTYPE(fh->frame_control) == 2)) && CompareMAC(host_mac, fh->mac2))
-     {
-          if(CheckFlow(fh->mac1,0))
-          {
-                
-                                   if(memcmp(dat,host_client_mgc,4)==0)
-                                   {
-                                   dat+=4;
-
-                                   rsize=*dat;
-                                   Size = ((unsigned short)(rsize<<1));
-
-                                   dat++;
-                                    
-                                     if(*dat==0x11)//Command packet, ignore non-command packets
-                                     {
-                                     dat++;
-                                       if(*dat==command)
-                                       {
-                                       if(command==0x04 || command==0x00)
-                                       Size-=6;
-
-                                       dat++;
-                                       
-                                       if(pos)
-                                       *pos=(unsigned char)((int)dat - (int)data)+2;
-                                       if(size)*size=Size;
-                                        
-                                       return 1;
-                                       }
-                                     }
-                                   }
-          }
-     }
-
-     return 0;
-}
 
 void WMBBeaconGrab(unsigned char *data)
 {
@@ -428,7 +368,7 @@ int WMBProcessRSA(unsigned char *data, int length)
      nds_rsaframe rsa;
      memset(&rsa,0,sizeof(nds_rsaframe));
 
-     if(CheckFrame(data,0x03,&size,&pos))
+     if(CheckFrame(data, host_mac, 0x03, &size, &pos))
      {
             
             size=230;
@@ -498,7 +438,7 @@ int WMBProcessHeader(unsigned char *data, int length)
 	TNDSHeader temp_header;
 	memset(&temp_header,0,sizeof(TNDSHeader));
 
-     if(CheckFrame(data,0x04,&size,&pos))
+     if(CheckFrame(data, host_mac, 0x04, &size, &pos))
      {
         
         
@@ -649,7 +589,7 @@ int WMBProcessData(unsigned char *data, int length)
 
 	iee80211_framehead *fh = (iee80211_framehead*)data;
 
-	if(CheckFrame(data,0x04,&size,&pos))
+	if(CheckFrame(data, host_mac, 0x04, &size, &pos))
 	{
 
     dat=&data[(int)pos-2];

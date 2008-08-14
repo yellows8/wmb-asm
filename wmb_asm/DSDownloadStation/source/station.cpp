@@ -42,6 +42,9 @@ bool *DEBUG = NULL;
 FILE **Log = NULL;
 
 int HandleDL_AssocResponse(unsigned char *data, int length);
+int HandleWMB_Data(unsigned char *data, int length);
+int HandleWMB_DataAck(unsigned char *data, int length);
+
 int HandleDL_MenuRequest(unsigned char *data, int length);
 
 struct DLClient
@@ -55,6 +58,8 @@ struct DLClient
 struct WMBHost
 {
     unsigned char mac[6];//Any host that sends binary data over WMB, has their MAC put into the WMBHosts array. If any of the DLClients ack the WMB Host, they are kicked from the DLClients list, as they are using WMB, not DLStation/N Spot protocol.
+    bool sent_data;
+    int data_seq;
     bool has_data;
 };
 
@@ -66,7 +71,7 @@ int total_wmbhosts = 0;
 unsigned char host_mac[6];
 
 void AddClient(DLClient client);
-void AddWMBHost(WMBHost host);
+int AddWMBHost(WMBHost host);
 void RemoveClient(int index);
 void RemoveWMBHost(int index);
 void RemoveClients();
@@ -125,8 +130,13 @@ DLLIMPORT int AsmPlug_Handle802_11(unsigned char *data, int length)
         int ret = 0;
         
         ret = HandleDL_AssocResponse(data, length);
-        
         if(ret)return ret;
+        
+        ret = HandleWMB_Data(data, length);
+        if(ret)return 0;//This plugin doesn't use WMB data packets, for there actual data - only kicking clients in the DLClients list when they ack/reply to WMB data packets. This plugin must return 0, not 1, for these WMB packets, otherwise this plugin would interfer with the WMB plugin. 
+        
+        ret = HandleWMB_DataAck(data, length);
+        if(ret)return 0;
         
         if(stage==STAGEDL_MENU_REQ)return HandleDL_MenuRequest(data, length);
      }
@@ -203,6 +213,8 @@ void RemoveClient(int index)
     if(index<0 || index>14)return;
     
     memset(&DLClients[index], 0, sizeof(DLClient));
+    
+    total_clients--;
 }
 
 void RemoveClients()
@@ -211,29 +223,32 @@ void RemoveClients()
         RemoveClient(i);
 }
 
-void AddWMBHost(WMBHost host)
+int AddWMBHost(WMBHost host)
 {
-    bool found = 0;
+    int found = -1;
+    int index = 0;
     host.has_data = 1;
     
     for(int i=0; i<256; i++)
     {
         if(!WMBHosts[i].has_data)continue;
         
-        if(memcmp(WMBHosts[i].mac, host.mac, 6))found = 1;
+        if(memcmp(WMBHosts[i].mac, host.mac, 6))found = i;
     }
-    if(found)return;
-
+    if(found>=0)return found;
+    
     for(int i=0; i<15; i++)
     {
         if(!WMBHosts[i].has_data)
         {
             memcpy(&WMBHosts[i], &host, sizeof(WMBHost));
+            index = i;
             break;
         }
     }
     
     total_wmbhosts++;
+    return index;
 }
 
 void RemoveWMBHost(int index)
@@ -241,6 +256,8 @@ void RemoveWMBHost(int index)
     if(index<0 || index>255)return;
 
     memset(&WMBHosts[index], 0, sizeof(WMBHost));
+    
+    total_wmbhosts--;
 }
 
 void RemoveWMBHosts()
@@ -268,6 +285,32 @@ int HandleDL_AssocResponse(unsigned char *data, int length)
         
     }
     
+    return 0;
+}
+
+int HandleWMB_Data(unsigned char *data, int length)
+{
+    iee80211_framehead2 *dat = (iee80211_framehead2*)data;
+    unsigned short size = 0;
+    unsigned char pos = 0;
+    WMBHost host;
+    int host_index = 0;
+    
+    if(CheckFrame(data, dat->mac3, 0x04, &size, &pos))
+    {
+        memcpy(&host.mac, dat->mac3, 6);
+        host_index = AddWMBHost(host);
+        WMBHosts[host_index].sent_data = 1;
+        WMBHosts[host_index].data_seq = ReadSeq(&dat->sequence_control);
+        
+        return 1;
+    }
+    
+    return 0;
+}
+
+int HandleWMB_DataAck(unsigned char *data, int length)
+{
     return 0;
 }
 

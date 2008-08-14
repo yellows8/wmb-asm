@@ -1,7 +1,7 @@
 # Project: WMB
 # Compiler: Default GCC compiler
 # Compiler Type: MingW 3
-# Makefile created by wxDev-C++ 6.10.2 on 13/08/08 14:33
+# Makefile created by wxDev-C++ 6.10.2 on 13/08/08 22:56
 
 CPP       = g++.exe
 CC        = gcc.exe
@@ -29,10 +29,10 @@ clean: clean-custom
 $(BIN): $(OBJ)
 	$(LINK) -shared $(STATICLIB) $(LINKOBJ) $(LIBS) -Wl,--out-implib,libWMB.a -o WMB.dll
 
-Output/MingW/dllmain.o: $(GLOBALDEPS) source/dllmain.cpp include/dll.h ../SDK/include/wmb_asm_sdk_plugin.h ../SDK/include/wmb_asm_sdk.h ../SDK/include/pcap.h ../SDK/include/dirscan.h ../SDK/include/inet.h ../SDK/include/win32dirent.h ../SDK/include/ndsdirent.h ../SDK/include/wmb_asm_sdk_internal.h
+Output/MingW/dllmain.o: $(GLOBALDEPS) source/dllmain.cpp include/dll.h ../SDK/include/wmb_asm_sdk_plugin.h ../SDK/include/wmb_asm_sdk.h ../SDK/include/pcap.h ../SDK/include/inet.h ../SDK/include/dirscan.h ../SDK/include/win32dirent.h ../SDK/include/ndsdirent.h ../SDK/include/wmb_asm_sdk_internal.h
 	$(CPP) -c source/dllmain.cpp -o Output/MingW/dllmain.o $(CXXFLAGS)
 
-Output/MingW/wmb.o: $(GLOBALDEPS) source/wmb.cpp ../SDK/include/wmb_asm_sdk_plugin.h ../SDK/include/wmb_asm_sdk.h ../SDK/include/pcap.h ../SDK/include/dirscan.h ../SDK/include/inet.h ../SDK/include/win32dirent.h ../SDK/include/ndsdirent.h ../SDK/include/wmb_asm_sdk_internal.h
+Output/MingW/wmb.o: $(GLOBALDEPS) source/wmb.cpp ../SDK/include/wmb_asm_sdk_plugin.h ../SDK/include/wmb_asm_sdk.h ../SDK/include/pcap.h ../SDK/include/inet.h ../SDK/include/dirscan.h ../SDK/include/win32dirent.h ../SDK/include/ndsdirent.h ../SDK/include/wmb_asm_sdk_internal.h
 	$(CPP) -c source/wmb.cpp -o Output/MingW/wmb.o $(CXXFLAGS)
 
 Output/MingW/WMB_private.res: Output/MingW/WMB_private.rc 
