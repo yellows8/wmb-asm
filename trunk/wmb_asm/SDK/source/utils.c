@@ -25,10 +25,6 @@ DEALINGS IN THE SOFTWARE.
 
 #include "..\include\wmb_asm_sdk.h"
 
-/*#ifdef __cplusplus
-  extern "C" {
-#endif*/
-
 unsigned char normal_mac[5] = {0x03,0x09,0xBF,0x00,0x00};
 
 DLLIMPORT void ConvertAVSEndian(AVS_header *avs);
@@ -701,7 +697,3 @@ void ExecuteApp(char *appname, char *cmdline)
 }
 
 #endif
-
-/*#ifdef __cplusplus
-    }
-#endif*/
