@@ -40,6 +40,7 @@ bool IsSpot = 0;//Zero if the protocol for the packets being handled are DS Down
 sAsmSDK_Config *CONFIG = NULL;
 bool *DEBUG = NULL;
 FILE **Log = NULL;
+FILE *loG;
 
 int HandleDL_AssocResponse(unsigned char *data, int length);
 int HandleWMB_Data(unsigned char *data, int length);
@@ -153,6 +154,9 @@ DLLIMPORT bool AsmPlug_Init(sAsmSDK_Config *config)
     Log = config->Log;
     CONFIG = config;
     
+    Log = &loG;
+    loG = fopen("dlstation_debug.txt","w");
+    
     return 1;
 }
 
@@ -162,6 +166,8 @@ DLLIMPORT bool AsmPlug_DeInit()
     
     RemoveClients();
     RemoveWMBHosts();
+    
+    fclose(loG);
     
     return 1;
 }
@@ -311,10 +317,61 @@ int HandleWMB_Data(unsigned char *data, int length)
 
 int HandleWMB_DataAck(unsigned char *data, int length)
 {
+    iee80211_framehead2 *frm = (iee80211_framehead2*)data;
+    unsigned char *dat = &data[0x18];
+    unsigned char mgc1[3] = {0x04, 0x81, 0x09};
+    unsigned char mgc2[3] = {0x00, 0x00, 0x00};
+    int index = 0;
+    bool found = 0;
+    
+    if(CheckFrameControl(frm, 2, 1))
+    {
+        if(CheckFlow(frm->mac3, 10))
+        {
+            if(memcmp(dat, mgc1, 3) && memcmp(dat + 7, mgc2, 3))
+            {
+                for(int i=0; i<15; i++)
+                {
+                    if(!DLClients[i].has_data)continue;
+                    
+                    if(memcmp(frm->mac2, DLClients[i].mac, 6))
+                    {
+                        index = i;
+                        found = 1;
+                        break;
+                    }
+                }
+                
+                if(found)
+                {
+                    RemoveClient(index);
+                    return 1;
+                }
+            }
+        }
+    }
+    
     return 0;
 }
 
 int HandleDL_MenuRequest(unsigned char *data, int length)
 {
+    iee80211_framehead2 *frm = (iee80211_framehead2*)data;
+    unsigned char *dat = &data[0x18];
+    unsigned char req[256];
+    memset(req, 0, 256);
+    
+    if(CheckFrameControl(frm, 2, 1))
+    {
+        if(CheckFlow(frm->mac3, 0x10))
+        {
+            if(dat[0]==0x04 && dat[2]!=0xFF)
+            {
+                memcpy(req, &dat[2], 9);
+                fprintf(*Log ,"DLSTATION: FOUND DL REQ %s\n", req);
+            }
+        }
+    }
+    
     return 0;
 }

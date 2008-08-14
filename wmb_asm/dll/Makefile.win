@@ -1,7 +1,7 @@
 # Project: wmb_asm_module
 # Compiler: Default GCC compiler
 # Compiler Type: MingW 3
-# Makefile created by wxDev-C++ 6.10.2 on 13/08/08 17:08
+# Makefile created by wxDev-C++ 6.10.2 on 14/08/08 12:29
 
 CPP       = g++.exe
 CC        = gcc.exe
@@ -29,10 +29,10 @@ clean: clean-custom
 $(BIN): $(OBJ)
 	$(LINK) -shared $(STATICLIB) $(LINKOBJ) $(LIBS) -Wl,--out-implib,libwmb_asm.a -o wmb_asm.dll
 
-source/dllmain.o: $(GLOBALDEPS) source/dllmain.cpp include/dll.h ../SDK/include/wmb_asm_sdk_module.h ../SDK/include/wmb_asm_sdk.h ../SDK/include/pcap.h ../SDK/include/dirscan.h ../SDK/include/inet.h ../SDK/include/win32dirent.h ../SDK/include/ndsdirent.h ../SDK/include/wmb_asm_sdk_internal.h
+source/dllmain.o: $(GLOBALDEPS) source/dllmain.cpp include/dll.h ../SDK/include/wmb_asm_sdk_module.h ../SDK/include/wmb_asm_sdk.h ../SDK/include/pcap.h ../SDK/include/inet.h ../SDK/include/dirscan.h ../SDK/include/win32dirent.h ../SDK/include/ndsdirent.h ../SDK/include/wmb_asm_sdk_internal.h
 	$(CPP) -c source/dllmain.cpp -o source/dllmain.o $(CXXFLAGS)
 
-source/asm.o: $(GLOBALDEPS) source/asm.cpp ../SDK/include/wmb_asm_sdk_module.h ../SDK/include/wmb_asm_sdk.h ../SDK/include/pcap.h ../SDK/include/dirscan.h ../SDK/include/inet.h ../SDK/include/win32dirent.h ../SDK/include/ndsdirent.h ../SDK/include/wmb_asm_sdk_internal.h
+source/asm.o: $(GLOBALDEPS) source/asm.cpp ../SDK/include/wmb_asm_sdk_module.h ../SDK/include/wmb_asm_sdk.h ../SDK/include/pcap.h ../SDK/include/inet.h ../SDK/include/dirscan.h ../SDK/include/win32dirent.h ../SDK/include/ndsdirent.h ../SDK/include/wmb_asm_sdk_internal.h
 	$(CPP) -c source/asm.cpp -o source/asm.o $(CXXFLAGS)
 
 wmb_asm_module_private.res: wmb_asm_module_private.rc 
