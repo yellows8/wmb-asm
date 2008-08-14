@@ -169,6 +169,7 @@ bool PktModReorder()
     bool found = 0;//Did we find a plugin's priority yet?
     int cur = 0;//Current index in the priorities array.
     int plug_cur = 0;//Current index in the packetModules array.
+    int pri_cur = 0;//Plugin index for the re-ordering code.
     if(list==NULL)
     {
         printf("ERROR: Failed to allocate memory\n");
@@ -202,15 +203,18 @@ bool PktModReorder()
     found = 0;
     
     cur = high_pri;
+    pri_cur = 0;
     while(cur>=lowest_pri)
     {
+        
             while(packetModules[plug_cur].lpdll!=NULL)
             {
                 pri = packetModules[plug_cur].Priority;
                 
                     if(pri==cur)
                     {
-                        memcpy(&list[plug_cur], &packetModules[plug_cur], sizeof(PacketModule));
+                        memcpy(&list[pri_cur], &packetModules[plug_cur], sizeof(PacketModule));
+                        pri_cur++;
                     }
                 
                 plug_cur++;

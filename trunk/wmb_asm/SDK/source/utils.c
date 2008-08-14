@@ -25,9 +25,9 @@ DEALINGS IN THE SOFTWARE.
 
 #include "..\include\wmb_asm_sdk.h"
 
-#ifdef __cplusplus
+/*#ifdef __cplusplus
   extern "C" {
-#endif
+#endif*/
 
 unsigned char normal_mac[5] = {0x03,0x09,0xBF,0x00,0x00};
 
@@ -153,11 +153,11 @@ bool CheckFrameControl(iee80211_framehead2 *framehead, int type, int subtype)
         unsigned char temp[2];
         memcpy((void*)temp,&framehead->frame_control,2);
 
-              if(temp[1]==0x00)
-              {
-                            if(framehead->duration_id==0x0000)
+              //if(temp[1]==0x00)
+              //{
+                            //if(framehead->duration_id==0x0000)
                             return 1;
-              }
+              //}
         }
 
         return 0;
@@ -702,6 +702,6 @@ void ExecuteApp(char *appname, char *cmdline)
 
 #endif
 
-#ifdef __cplusplus
+/*#ifdef __cplusplus
     }
-#endif
+#endif*/
