@@ -1,7 +1,7 @@
 # Project: wmb_asm_cmd
 # Compiler: Default GCC compiler
 # Compiler Type: MingW 3
-# Makefile created by wxDev-C++ 6.10.2 on 11/08/08 22:09
+# Makefile created by wxDev-C++ 6.10.2 on 15/08/08 14:34
 
 CPP       = g++.exe
 CC        = gcc.exe
@@ -29,13 +29,13 @@ clean: clean-custom
 $(BIN): $(OBJ)
 	$(LINK) $(LINKOBJ) -o "wmb_asm.exe" $(LIBS)
 
-source/console.o: $(GLOBALDEPS) source/console.cpp SDK/include/wmb_asm_sdk_client.h SDK/include/wmb_asm_sdk.h SDK/include/pcap.h SDK/include/dirscan.h SDK/include/inet.h SDK/include/win32dirent.h SDK/include/ndsdirent.h SDK/include/wmb_asm_sdk_internal.h
+source/console.o: $(GLOBALDEPS) source/console.cpp SDK/include/wmb_asm_sdk_client.h SDK/include/wmb_asm_sdk.h SDK/include/pcap.h SDK/include/inet.h SDK/include/dirscan.h SDK/include/win32dirent.h SDK/include/ndsdirent.h SDK/include/wmb_asm_sdk_internal.h
 	$(CPP) -c source/console.cpp -o source/console.o $(CXXFLAGS)
 
-source/main.o: $(GLOBALDEPS) source/main.cpp SDK/include/wmb_asm_sdk_client.h SDK/include/wmb_asm_sdk.h SDK/include/pcap.h SDK/include/dirscan.h SDK/include/inet.h SDK/include/win32dirent.h SDK/include/ndsdirent.h SDK/include/wmb_asm_sdk_internal.h
+source/main.o: $(GLOBALDEPS) source/main.cpp SDK/include/wmb_asm_sdk_client.h SDK/include/wmb_asm_sdk.h SDK/include/pcap.h SDK/include/inet.h SDK/include/dirscan.h SDK/include/win32dirent.h SDK/include/ndsdirent.h SDK/include/wmb_asm_sdk_internal.h
 	$(CPP) -c source/main.cpp -o source/main.o $(CXXFLAGS)
 
-source/binconv.o: $(GLOBALDEPS) source/binconv.cpp SDK/include/wmb_asm_sdk_client.h SDK/include/wmb_asm_sdk.h SDK/include/pcap.h SDK/include/dirscan.h SDK/include/inet.h SDK/include/win32dirent.h SDK/include/ndsdirent.h SDK/include/wmb_asm_sdk_internal.h
+source/binconv.o: $(GLOBALDEPS) source/binconv.cpp SDK/include/wmb_asm_sdk_client.h SDK/include/wmb_asm_sdk.h SDK/include/pcap.h SDK/include/inet.h SDK/include/dirscan.h SDK/include/win32dirent.h SDK/include/ndsdirent.h SDK/include/wmb_asm_sdk_internal.h
 	$(CPP) -c source/binconv.cpp -o source/binconv.o $(CXXFLAGS)
 
 wmb_asm_cmd_private.res: wmb_asm_cmd_private.rc 

@@ -272,6 +272,8 @@ struct sAsmSDK_Params
                     typedef char *(*lpGetModuleVersionStr)();
                     typedef int (*lpGetModuleVersionInt)(int);
                     
+                    typedef int (*lpGetPacketNumber)();
+                    
                         #ifndef BUILDING_SDK
                             
                             #ifndef ASM_SDK_MODULE
@@ -287,6 +289,11 @@ struct sAsmSDK_Params
                                     
                                     lpGetModuleVersionStr GetModuleVersionStr=NULL;
                                     lpGetModuleVersionInt GetModuleVersionInt=NULL;
+                                    
+                                    #ifndef ASM_SDK_CLIENT
+                                        lpGetPacketNumber GetPacketNum=NULL;
+                                    #endif
+                                    
                                 #endif
                                 
                                 #ifndef DLLMAIN
@@ -300,6 +307,11 @@ struct sAsmSDK_Params
                                     
                                     extern lpGetModuleVersionStr GetModuleVersionStr;
                                     extern lpGetModuleVersionInt GetModuleVersionInt;
+                                    
+                                    #ifndef ASM_SDK_CLIENT
+                                        extern lpGetPacketNumber GetPacketNum;
+                                    #endif
+                                    
                                 #endif
                             
                             #endif
@@ -592,6 +604,8 @@ struct Nds_data
 				
 				lpGetModuleVersionStr GetModuleVersionStr;
 				lpGetModuleVersionInt GetModuleVersionInt;
+				
+				lpGetPacketNumber GetPacketNumber;
 			#endif
         };
     
@@ -619,6 +633,12 @@ struct Nds_data
             bool CloseAsmDLL(char *error_buffer);
             
                 #ifdef DLLMAIN
+                
+                    int getpacketnumber()
+                    {
+                        return GetPacketNumber();
+                    }
+                
                     //LoadAsmDLL loads the Asm module, and puts addresses/function-pointers of
                     //the module functions into the sAsmSDK_Config struct passed to it.
                     //This function copys the function addresses from the config struct into to an easily accessed and called
@@ -636,6 +656,8 @@ struct Nds_data
                         
                         GetModuleVersionStr = config->GetModuleVersionStr;
                         GetModuleVersionInt = config->GetModuleVersionInt;
+                        
+                        config->GetPacketNumber = &getpacketnumber;
                     }
                 #endif
             
@@ -667,6 +689,7 @@ struct Nds_data
                 memset((void*)*dat, 0, sizeof(Nds_data));
                 
                 GetPrecentageCompleteAsm = config->GetPrecentageCompleteAsm;
+                GetPacketNum = config->GetPacketNumber;
             }
             
             inline void AsmPlugin_DeInit(volatile Nds_data **dat)

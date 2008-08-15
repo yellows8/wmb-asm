@@ -111,6 +111,12 @@ DLLIMPORT char *AsmPlug_GetStatus(int *error_code)
             *error_code = STAGEDL_MENU_REQ;
             return (char*)"02: DS DL Station: Failed to find the Menu Request packet.\n";
         }
+        
+        if(stage==STAGEDL_MENU_DL)
+        {
+            *error_code = STAGEDL_MENU_DL;
+            return (char*)"03: DS DL Station: Failed to find all of the Menu packets.\n";
+        }
     }
 
 	*error_code=-1;
@@ -365,12 +371,13 @@ unsigned char *CheckDLFrame(unsigned char *data, int length, unsigned char type,
     unsigned short *Seq = NULL;
     unsigned char *dat = &data[0x18];
     iee80211_framehead2 *frm = (iee80211_framehead2*)data;
+    unsigned char fcs_mgc[2] = {0x02, 0x00};
     
-    if(CheckFrameControl(frm, 2, 1))
+    if(CheckFrameControl(frm, 2, 2))
     {
-        if(CheckFlow(frm->mac3, 0x10))
+        if(CheckFlow(frm->mac1, 0x00))
         {
-            if(memcmp(dat, mgc_num, 4))
+            if(memcmp(dat, mgc_num, 4)==0)
             {
                 dat+=4;
                 
@@ -391,21 +398,22 @@ unsigned char *CheckDLFrame(unsigned char *data, int length, unsigned char type,
                     dat+=2;
                     
                     if(type==0x1f)*clientID = dat[sz+2];
-
-                    unsigned int checksum = CalcCRC32(data, length - 4);
-                    unsigned int *chk = (unsigned int*)&data[length-4];
                     
-                    if(checksum!=*chk)
+                    if(memcmp(&data[length-6], fcs_mgc, 2)==0)
                     {
-                        fprintf(*Log, "CHECKSUM FAIL %d %d\n",checksum,*chk);
-                        return NULL;
+                        unsigned int checksum = CalcCRC32(data, length - 4);
+                        unsigned int *chk = (unsigned int*)&data[length-4];
+                        
+                        if(checksum!=*chk)
+                        {
+                            fprintf(*Log, "CHECKSUM FAIL %d %d NUM %d\n",checksum,*chk, GetPacketNum());
+                            return NULL;
+                        }
                     }
                     
+                    if(type==0x1e && *Seq==0xffff)return NULL;//Strange menu packet with seq ffff. This might be a packet telling the client(s) that the whole menu has been transmited, or an end-of-menu packet.
+                    
                     return dat;
-                }
-                else
-                {
-                    fprintf(*Log, "MTYPE FAIL %x wanted %x\n",(int)dat[1],(int)type);
                 }
             }
         }
@@ -431,8 +439,10 @@ int HandleDL_MenuRequest(unsigned char *data, int length)
                 
                 if(strstr(req, "menu"))
                 {
-                    fprintf(*Log ,"DLSTATION: FOUND DL REQ %s\n", req);
+                    fprintf(*Log ,"DLSTATION: FOUND DL REQ %s NUM %d\n", req, GetPacketNum());
                     stage = STAGEDL_MENU_DL;
+                    
+                    return 1;
                 }
             }
         }
@@ -451,7 +461,9 @@ int HandleDL_MenuDownload(unsigned char *data, int length)
     dat = CheckDLFrame(data, length, 0x1e, &size, &seq, &clientID);
     if(dat)
     {
-        fprintf(*Log, "FOUND MENU PKT SEQ %d SZ %d CID %d\n",(int)seq, size, (int)clientID);
+        fprintf(*Log, "FOUND MENU PKT SEQ %d SZ %d CID %d NUM %d\n",(int)seq, size, (int)clientID, GetPacketNum());
+    
+        return 1;
     }
 
     return 0;
