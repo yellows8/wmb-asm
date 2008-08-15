@@ -67,7 +67,14 @@ DEALINGS IN THE SOFTWARE.
         void    pcap_close(pcap_t *file);
         char    *pcap_geterr(pcap_t *file);
         
-        int GetPacketNumber();
+        #ifdef ASM_SDK_CLIENT
+            int GetPacketNumber();
+        #endif
+        
+        #ifdef BUILDING_SDK
+            int GetPacketNumber();
+        #endif
+        
         int GetSnapshotLength();
         bool GetPacketHasAVS();
         void SetPacketHasAVS(bool val);
