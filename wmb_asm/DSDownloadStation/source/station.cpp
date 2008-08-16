@@ -34,6 +34,7 @@ DEALINGS IN THE SOFTWARE.
 #define STAGEDL_ASSOC_RESPONSE 1
 #define STAGEDL_MENU_REQ 2
 #define STAGEDL_MENU_DL 3
+#define STAGEDL_DATA 4
 
 unsigned char mgc_num[4] = {0x06, 0x01, 0x02, 0x00};
 
@@ -51,6 +52,7 @@ int HandleWMB_DataAck(unsigned char *data, int length);
 
 int HandleDL_MenuRequest(unsigned char *data, int length);
 int HandleDL_MenuDownload(unsigned char *data, int length);
+int HandleDL_Data(unsigned char *data, int length);
 
 struct DLClient
 {
@@ -81,6 +83,10 @@ void RemoveClient(int index);
 void RemoveWMBHost(int index);
 void RemoveClients();
 void RemoveWMBHosts();
+
+unsigned char *menu_data = NULL;
+int *found_menu = NULL;
+int *menu_sizes = NULL;
 
 #ifdef __cplusplus
   extern "C" {
@@ -117,6 +123,12 @@ DLLIMPORT char *AsmPlug_GetStatus(int *error_code)
             *error_code = STAGEDL_MENU_DL;
             return (char*)"03: DS DL Station: Failed to find all of the Menu packets.\n";
         }
+        
+        if(stage==STAGEDL_DATA)
+        {
+            *error_code = STAGEDL_DATA;
+            return (char*)"04: DS DL Station: Failed to find all of the data packets.\n";
+        }
     }
 
 	*error_code=-1;
@@ -151,6 +163,7 @@ DLLIMPORT int AsmPlug_Handle802_11(unsigned char *data, int length)
         
         if(stage==STAGEDL_MENU_REQ)return HandleDL_MenuRequest(data, length);
         if(stage==STAGEDL_MENU_DL)return HandleDL_MenuDownload(data, length);
+        if(stage==STAGEDL_DATA)return HandleDL_Data(data, length);
      }
      
      return 0;
@@ -165,6 +178,18 @@ DLLIMPORT bool AsmPlug_Init(sAsmSDK_Config *config)
     Log = config->Log;
     CONFIG = config;
     
+    menu_data = (unsigned char*)malloc(32 * 1000);//1000 because there doesn't seem to be any total-menu packets, or total packet length dat sent to the clients in the DLStation protocol - only the seq with ffff tells when the last menu packet was sent.
+    found_menu = (int*)malloc(sizeof(int) * 1000);
+    menu_sizes = (int*)malloc(sizeof(int) * 1000);
+    if(menu_data==NULL || found_menu==NULL || menu_sizes==NULL)
+    {
+        printf("Failed to allocate memory!\n");
+        return 0;
+    }
+    memset(menu_data, 0, 32 * 1000);
+    memset(found_menu, 0, sizeof(int) * 1000);
+    memset(menu_sizes, 0, sizeof(int) * 1000);
+    
     Log = &loG;
     loG = fopen("dlstation_debug.txt","w");
     
@@ -177,6 +202,9 @@ DLLIMPORT bool AsmPlug_DeInit()
     
     RemoveClients();
     RemoveWMBHosts();
+    
+    free(menu_data);
+    free(found_menu);
     
     fclose(loG);
     
@@ -411,8 +439,6 @@ unsigned char *CheckDLFrame(unsigned char *data, int length, unsigned char type,
                         }
                     }
                     
-                    if(type==0x1e && *Seq==0xffff)return NULL;//Strange menu packet with seq ffff. This might be a packet telling the client(s) that the whole menu has been transmited, or an end-of-menu packet.
-                    
                     return dat;
                 }
             }
@@ -439,8 +465,10 @@ int HandleDL_MenuRequest(unsigned char *data, int length)
                 
                 if(strstr(req, "menu"))
                 {
-                    fprintf(*Log ,"DLSTATION: FOUND DL REQ %s NUM %d\n", req, GetPacketNum());
+                    fprintf(*Log, "DLSTATION: FOUND DL REQ %s NUM %d\n", req, GetPacketNum());
+                    fprintf(*Log, "ENTERING MENU PACKET STAGE\n");
                     stage = STAGEDL_MENU_DL;
+                    nds_data->multipleIDs = 1;
                     
                     return 1;
                 }
@@ -457,14 +485,74 @@ int HandleDL_MenuDownload(unsigned char *data, int length)
     int size = 0;
     unsigned short seq = 0;
     unsigned char clientID = 0;
+    int cur_pos = 0;
+    int high = 0;
+    FILE *fdump = NULL;
     
     dat = CheckDLFrame(data, length, 0x1e, &size, &seq, &clientID);
     if(dat)
     {
-        fprintf(*Log, "FOUND MENU PKT SEQ %d SZ %d CID %d NUM %d\n",(int)seq, size, (int)clientID, GetPacketNum());
+        if(seq!=0xffff)
+        {
+            found_menu[(int)seq] = 1;
+            menu_sizes[(int)seq] = size;
+            
+            for(int i=0; i<(int)seq-1; i++)
+            {
+                if(found_menu[i])cur_pos+=menu_sizes[i];
+                if(!found_menu[i])cur_pos+=0x10;
+            }
+            
+            memcpy(&menu_data[cur_pos], dat, (size_t)size);
+            
+            fprintf(*Log, "FOUND MENU PKT SEQ %d SZ %d CID %d NUM %d\n",(int)seq, size, (int)clientID, GetPacketNum());
+        }
+        else
+        {
+            if(!found_menu[0])return 3;//Missed a packet, but return 1 because this is for our protocol.
+            cur_pos += menu_sizes[0];
+            for(int i=1; i<1000; i++)//This is supposed to find the end of the menu data in the menu_data buffer, but this might be broken, I'm not sure. There's a bunch of zeroes at the end of my dump.
+            {
+                if((!found_menu[i-1] && found_menu[i]))return 3;
+                if(!found_menu[i+1] && found_menu[i-1] && found_menu[i])break;
+                
+                if(found_menu[i])cur_pos += menu_sizes[0];
+                if(!found_menu[i])cur_pos += 0x10;
+            }
+            
+            fdump = fopen("menu.bin","wb");//Right now, this will only dump the compressed menu data.
+            fwrite(menu_data, 1, cur_pos, fdump);
+            fclose(fdump);
+            
+            fdump = fopen("found.bin","wb");
+            fwrite(found_menu, 1, 1000, fdump);
+            fclose(fdump);
+            
+            stage = STAGEDL_DATA;
+            fprintf(*Log, "FOUND ALL MENU PACKETS!\n");
+            fprintf(*Log, "ENTERING DATA STAGE!\n");
+        }
     
         return 1;
     }
 
+    return 0;
+}
+
+int HandleDL_Data(unsigned char *data, int length)
+{
+    unsigned char *dat = NULL;
+    int size = 0;
+    unsigned short seq = 0;
+    unsigned char clientID = 0;
+
+    dat = CheckDLFrame(data, length, 0x1f, &size, &seq, &clientID);
+    if(dat)
+    {
+        fprintf(*Log, "FOUND DATA PKT SEQ %d SZ %d CID %d NUM %d\n",(int)seq, size, (int)clientID, GetPacketNum());
+        
+        return 1;
+    }
+    
     return 0;
 }
