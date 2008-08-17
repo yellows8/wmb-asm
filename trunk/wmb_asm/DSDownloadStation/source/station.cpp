@@ -24,7 +24,16 @@ DEALINGS IN THE SOFTWARE.
 #define BUILDING_DLL
 #endif
 
+#include <lzo\lzoconf.h>
 #include <lzo\lzo1.h>
+#include <lzo\lzo1a.h>
+#include <lzo\lzo1b.h>
+#include <lzo\lzo1c.h>
+#include <lzo\lzo1f.h>
+#include <lzo\lzo1x.h>
+#include <lzo\lzo1y.h>
+#include <lzo\lzo1z.h>
+#include <lzo\lzo2a.h>
 
 #include "..\..\SDK\include\wmb_asm_sdk_plugin.h"
 
@@ -177,6 +186,12 @@ DLLIMPORT bool AsmPlug_Init(sAsmSDK_Config *config)
     DEBUG = config->DEBUG;
     Log = config->Log;
     CONFIG = config;
+    
+    if(lzo_init()!=LZO_E_OK)
+    {
+        printf("Failed to initialize LZO library!\n");
+        return 0;
+    }
     
     menu_data = (unsigned char*)malloc(32 * 1000);//1000 because there doesn't seem to be any total-menu packets, or total packet length dat sent to the clients in the DLStation protocol - only the seq with ffff tells when the last menu packet was sent.
     found_menu = (int*)malloc(sizeof(int) * 1000);
@@ -413,7 +428,7 @@ unsigned char *CheckDLFrame(unsigned char *data, int length, unsigned char type,
                 {
                     sz = (int)dat[0];
                     sz *= 2;
-                    sz -= 2;//Remove what seems to be the sequence number for the next byte, from the total length.
+                    sz -= 2;//Remove what seems to be the sequence number for the next data packet, from the total length.
                     
                     if(type==0x1f)sz+=32;//The sizes need increased for data packets
                     *size = sz;
@@ -488,6 +503,9 @@ int HandleDL_MenuDownload(unsigned char *data, int length)
     int cur_pos = 0;
     int high = 0;
     FILE *fdump = NULL;
+    unsigned char *buffer = NULL;
+    lzo_uint out_len = 0;
+    int lzo_ret = 0;
     
     dat = CheckDLFrame(data, length, 0x1e, &size, &seq, &clientID);
     if(dat)
@@ -520,7 +538,21 @@ int HandleDL_MenuDownload(unsigned char *data, int length)
                 if(!found_menu[i])cur_pos += 0x10;
             }
             
-            fdump = fopen("menu.bin","wb");//Right now, this will only dump the compressed menu data.
+            
+            buffer = (unsigned char*)malloc(cur_pos * 10);
+            memset(buffer, 0, cur_pos);
+            
+            
+            lzo_ret = lzo1x_decompress(menu_data,(lzo_uint)cur_pos-17,buffer,&out_len,NULL);
+            if(lzo_ret!=LZO_E_OK)printf("Menu decompression failed: error %d\n",lzo_ret);
+            
+            memset(menu_data, 0, cur_pos);
+            memcpy(menu_data, buffer, out_len);
+            free(buffer);
+            cur_pos = out_len;
+            
+            
+            fdump = fopen("menu.bin","wb");//This can dump a decompressed menu, but the decompressed menu data/the decompression code is broke. The sizes of the menu items aren't correct, and several fields aren't at the correct offset.
             fwrite(menu_data, 1, cur_pos, fdump);
             fclose(fdump);
             
