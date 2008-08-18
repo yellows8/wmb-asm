@@ -1311,20 +1311,27 @@ bool AssembleNds(char *output)
      
      unsigned char *ptr;
      ptr = (unsigned char*)&nds_data->advert;
+
+     int pos, dsize;
      
+     if(!nds_data->use_advert)
+     {
+        for(int i=0; i<9; i++)
+        {
+            pos=i*98;
+            if(i!=8)dsize=98;
+            if(i==8)dsize=72;
+            memcpy((void*) &((unsigned char*)&nds_data->advert)[pos], (void*)&nds_data->beacon_data[(980*(int)nds_data->gameID)+pos],dsize);
+        }
+     }
+     else
+     {
+            memcpy((void*)&nds_data->advert, (void*)&nds_data->adverts[(int)nds_data->gameID], sizeof(ds_advert));
+     }
+
      FILE *fdump = fopen("advertM.bin","wb");
      fwrite((void*)&nds_data->advert, 1, sizeof(ds_advert), fdump);
      fclose(fdump);
-
-     int pos, dsize;
-
-     for(int i=0; i<9; i++)
-     {
-     pos=i*98;
-     if(i!=8)dsize=98;
-     if(i==8)dsize=72;
-     memcpy((void*) &((unsigned char*)&nds_data->advert)[pos], (void*)&nds_data->beacon_data[(980*(int)nds_data->gameID)+pos],dsize);
-     }
 
      memcpy((void*)banner.palette, (void*)ad->icon_pallete,32);
      memcpy((void*)banner.icon, (void*)ad->icon,512);

@@ -281,6 +281,8 @@ void HandleOptions(int i, char *argv[], bool *checkrsa, char *outdir, bool *use_
             if(strcmp(argv[i],"-nodebug")==0)Debug=0;//Similar to the previous option, except don't write a debug log.(Default)
 }
 
+unsigned char conv_hdr[] = {0xD4, 0xC3, 0xB2, 0xA1, 0x02, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0x69, 0x00, 0x00, 0x00};
+
 int ReadDump(int argc, char *argv[])
 {
     bool checkrsa=0;//Do we check the RSA-signature after assembling each demo?
@@ -404,6 +406,8 @@ int ReadCaptureLoop(char *cap, int argc, char *argv[], bool checkrsa, char *outd
 	int res;
     memset(errbuf, 0, PCAP_ERRBUF_SIZE);
     
+    FILE *fconv;
+    
     /* Open the capture file */
 	if ((fp = pcap_open_offline(cap,			// name of the file
 						 errbuf					// error buffer
@@ -440,11 +444,9 @@ int ReadCaptureLoop(char *cap, int argc, char *argv[], bool checkrsa, char *outd
         //Send the packet to the assembler to process & assemble.
         if(!HandlePacket(params))
         {
-            printf("?!\n");
             free(params);
             return 0;
         }
-
     }
 
 	if (res == -1)
