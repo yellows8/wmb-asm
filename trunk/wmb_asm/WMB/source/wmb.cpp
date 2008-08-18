@@ -275,6 +275,8 @@ void WMBBeaconGrab(unsigned char *data)
                 
                 //printf("D\n");
             
+            
+            
             if(nds_data->finished_first_assembly)
             {
                 
@@ -304,6 +306,10 @@ void WMBBeaconGrab(unsigned char *data)
             
             //printf("H\n");
             }
+            
+            FILE *fdump = fopen("advertW.bin","wb");
+            fwrite((void*)&nds_data->advert, 1, sizeof(ds_advert), fdump);
+            fclose(fdump);
             
                            stage=SDK_STAGE_AUTH;
 								if(*DEBUG)
@@ -671,7 +677,7 @@ int WMBProcessData(unsigned char *data, int length)
 		{
 			fprintfdebug(*Log,"FOUND THE DATA SIZE %d SEQ %d DZ %d",(int)size,(int)*Seq,(int)seq-1);
 				#ifdef _H_CUSTOM_PCAP
-					fprintfdebug(*Log," PKTNUM %d",GetPacketNumber());
+					//fprintfdebug(*Log," PKTNUM %d",GetPacketNumber());
 				#endif
 			fprintfdebug(*Log,"\n");
 			fflushdebug(*Log);
@@ -895,7 +901,7 @@ int WMBProcessBeacons(unsigned char *data, int length)
 												fprintfdebug(*Log,"FOUND BEACON DSSEQ %d AD %d BC %d CON %d LEN %d DS %d BC %d LEN %d ID %d NONAD %d PKTNUM %d\n",
 												(int)ds->sequence_number,(int)ds->advert_sequence_number,
 												ReadSeq(&Beacon->seq), (int)ds->connected_clients, (int)ds->advert_len,
-												(int)ds->data_size,(int)ds->advert_len,(int)ds->advert_len,(int)ds->gameID,(int)ds->non_advert, (int)GetPacketNumber());
+												(int)ds->data_size,(int)ds->advert_len,(int)ds->advert_len,(int)ds->gameID,(int)ds->non_advert, 1);
 												fflushdebug(*Log);
                                             }
 

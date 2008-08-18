@@ -193,7 +193,7 @@ DLLIMPORT bool AsmPlug_Init(sAsmSDK_Config *config)
         return 0;
     }
     
-    menu_data = (unsigned char*)malloc(32 * 1000);//1000 because there doesn't seem to be any total-menu packets, or total packet length dat sent to the clients in the DLStation protocol - only the seq with ffff tells when the last menu packet was sent.
+    menu_data = (unsigned char*)malloc(30 * 1000);//1000 because there doesn't seem to be any total-menu packets, or total packet length dat sent to the clients in the DLStation protocol - only the seq with ffff tells when the last menu packet was sent.
     found_menu = (int*)malloc(sizeof(int) * 1000);
     menu_sizes = (int*)malloc(sizeof(int) * 1000);
     if(menu_data==NULL || found_menu==NULL || menu_sizes==NULL)
@@ -201,7 +201,7 @@ DLLIMPORT bool AsmPlug_Init(sAsmSDK_Config *config)
         printf("Failed to allocate memory!\n");
         return 0;
     }
-    memset(menu_data, 0, 32 * 1000);
+    memset(menu_data, 0, 30 * 1000);
     memset(found_menu, 0, sizeof(int) * 1000);
     memset(menu_sizes, 0, sizeof(int) * 1000);
     
@@ -506,24 +506,31 @@ int HandleDL_MenuDownload(unsigned char *data, int length)
     unsigned char *buffer = NULL;
     lzo_uint out_len = 0;
     int lzo_ret = 0;
+    unsigned char mgc_num[8] = {0x4C, 0x5A, 0x4F, 0x6E, 0x00, 0x2F, 0xF1, 0x71};
+    unsigned int lzon_size = 0;
+    unsigned int *lz_size = NULL;
     
     dat = CheckDLFrame(data, length, 0x1e, &size, &seq, &clientID);
     if(dat)
     {
         if(seq!=0xffff)
-        {
+        {   
+            if(seq!=0)
+            {
+                for(int i=0; i<(int)seq; i++)
+                {
+                    cur_pos+=menu_sizes[i];
+                    if(menu_sizes[i]==0)
+                        cur_pos+=0x10;
+                }
+            }
+            
             found_menu[(int)seq] = 1;
             menu_sizes[(int)seq] = size;
             
-            for(int i=0; i<(int)seq-1; i++)
-            {
-                if(found_menu[i])cur_pos+=menu_sizes[i];
-                if(!found_menu[i])cur_pos+=0x10;
-            }
-            
             memcpy(&menu_data[cur_pos], dat, (size_t)size);
             
-            fprintf(*Log, "FOUND MENU PKT SEQ %d SZ %d CID %d NUM %d\n",(int)seq, size, (int)clientID, GetPacketNum());
+            fprintf(*Log, "FOUND MENU PKT SEQ %d SZ %d CID %d CURPOS %d NUM %d\n",(int)seq, size, (int)clientID, cur_pos, GetPacketNum());
         }
         else
         {
@@ -532,18 +539,30 @@ int HandleDL_MenuDownload(unsigned char *data, int length)
             for(int i=1; i<1000; i++)//This is supposed to find the end of the menu data in the menu_data buffer, but this might be broken, I'm not sure. There's a bunch of zeroes at the end of my dump.
             {
                 if((!found_menu[i-1] && found_menu[i]))return 3;
-                if(!found_menu[i+1] && found_menu[i-1] && found_menu[i])break;
                 
-                if(found_menu[i])cur_pos += menu_sizes[0];
+                if(found_menu[i])cur_pos += menu_sizes[i];
                 if(!found_menu[i])cur_pos += 0x10;
+                
+                if(!found_menu[i+1] && found_menu[i-1] && found_menu[i])break;
+                if(!found_menu[i] && found_menu[i-1])break;
             }
             
+            fprintf(*Log, "DUMPING, CURPOS %d\n",cur_pos);
             
             buffer = (unsigned char*)malloc(cur_pos * 10);
             memset(buffer, 0, cur_pos);
             
+            fdump = fopen("rawmenu.bin","wb");//This can dump a decompressed menu, but the decompressed menu data/the decompression code is broke. The sizes of the menu items aren't correct, and several fields aren't at the correct offset.
+            fwrite(menu_data, 1, cur_pos, fdump);
+            fclose(fdump);
             
-            lzo_ret = lzo1x_decompress(menu_data,(lzo_uint)cur_pos-17,buffer,&out_len,NULL);
+            if(memcmp(menu_data, mgc_num, 8)!=0)return 3;
+            lz_size = (unsigned int*)&menu_data[0x0C];
+            lzon_size = *lz_size;
+            ConvertEndian(&lzon_size, &lzon_size, sizeof(unsigned int));
+            fprintf(*Log, "LZO SZ %d\n",(int)lzon_size);
+            
+            lzo_ret = lzo1x_decompress(menu_data + 0x10,lzon_size,buffer,&out_len,NULL);
             if(lzo_ret!=LZO_E_OK)printf("Menu decompression failed: error %d\n",lzo_ret);
             
             memset(menu_data, 0, cur_pos);

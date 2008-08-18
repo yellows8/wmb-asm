@@ -1311,6 +1311,10 @@ bool AssembleNds(char *output)
      
      unsigned char *ptr;
      ptr = (unsigned char*)&nds_data->advert;
+     
+     FILE *fdump = fopen("advertM.bin","wb");
+     fwrite((void*)&nds_data->advert, 1, sizeof(ds_advert), fdump);
+     fclose(fdump);
 
      int pos, dsize;
 
