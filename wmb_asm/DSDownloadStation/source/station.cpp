@@ -79,12 +79,25 @@ struct WMBHost
     bool has_data;
 };
 
+struct MenuItem
+{
+    unsigned char icon[512];
+    unsigned short palette[16];
+    char title[0x80];
+    char subtitle[0x80];
+    char controls[0x402];
+    char id[8];
+    unsigned char zeroes[2]; 
+};
+
 DLClient DLClients[15];
 WMBHost WMBHosts[256];
 int total_clients = 0;
 int total_wmbhosts = 0;
 
 unsigned char host_mac[6];
+
+char gameIDs[15][8];
 
 void AddClient(DLClient client);
 int AddWMBHost(WMBHost host);
@@ -170,7 +183,9 @@ DLLIMPORT int AsmPlug_Handle802_11(unsigned char *data, int length)
         ret = HandleWMB_DataAck(data, length);
         if(ret)return 0;
         
-        if(stage==STAGEDL_MENU_REQ)return HandleDL_MenuRequest(data, length);
+        ret = HandleDL_MenuRequest(data, length);
+        if(ret)return 1;
+        
         if(stage==STAGEDL_MENU_DL)return HandleDL_MenuDownload(data, length);
         if(stage==STAGEDL_DATA)return HandleDL_Data(data, length);
      }
@@ -181,6 +196,7 @@ DLLIMPORT int AsmPlug_Handle802_11(unsigned char *data, int length)
 DLLIMPORT bool AsmPlug_Init(sAsmSDK_Config *config)
 {
     AsmPlugin_Init(config, &nds_data);
+    nds_data->use_advert = 1;
     
     ResetAsm = config->ResetAsm;
     DEBUG = config->DEBUG;
@@ -204,6 +220,8 @@ DLLIMPORT bool AsmPlug_Init(sAsmSDK_Config *config)
     memset(menu_data, 0, 30 * 1000);
     memset(found_menu, 0, sizeof(int) * 1000);
     memset(menu_sizes, 0, sizeof(int) * 1000);
+    
+    memset(gameIDs, 0, 15 * 8);
     
     Log = &loG;
     loG = fopen("dlstation_debug.txt","w");
@@ -474,19 +492,27 @@ int HandleDL_MenuRequest(unsigned char *data, int length)
     {
         if(CheckFlow(frm->mac3, 0x10))
         {
-            if(dat[0]==0x04 && dat[2]!=0xFF)
+            if(dat[0]==0x04 && dat[2]!=0xFF && dat[2]!=0x09 && dat[2]!=0x08 && dat[2]!=0x07 && dat[2]!=0x00 && dat[1]!=0x81)
             {
                 memcpy(req, &dat[2], 9);
                 
                 if(strstr(req, "menu"))
                 {
-                    fprintf(*Log, "DLSTATION: FOUND DL REQ %s NUM %d\n", req, GetPacketNum());
-                    fprintf(*Log, "ENTERING MENU PACKET STAGE\n");
-                    stage = STAGEDL_MENU_DL;
-                    nds_data->multipleIDs = 1;
+                    fprintf(*Log, "DLSTATION: FOUND MENU REQ %s NUM %d\n", req, GetPacketNum());
                     
-                    return 1;
+                    if(stage==STAGEDL_MENU_REQ)
+                    {
+                        fprintf(*Log, "ENTERING MENU PACKET STAGE\n");
+                        stage = STAGEDL_MENU_DL;
+                        nds_data->multipleIDs = 1;
+                    }
                 }
+                else
+                {
+                    fprintf(*Log, "DLSTATION: FOUND DL REQ %s NUM %d\n", req, GetPacketNum());
+                }
+                
+                return 1;
             }
         }
     }
@@ -509,6 +535,11 @@ int HandleDL_MenuDownload(unsigned char *data, int length)
     unsigned char mgc_num[8] = {0x4C, 0x5A, 0x4F, 0x6E, 0x00, 0x2F, 0xF1, 0x71};
     unsigned int lzon_size = 0;
     unsigned int *lz_size = NULL;
+    int item_sizes = 0;
+    MenuItem *item = NULL;
+    int gameID = 0;
+    char str[9];
+    memset(str, 0, 9);
     
     dat = CheckDLFrame(data, length, 0x1e, &size, &seq, &clientID);
     if(dat)
@@ -578,6 +609,32 @@ int HandleDL_MenuDownload(unsigned char *data, int length)
             fdump = fopen("found.bin","wb");
             fwrite(found_menu, 1, 1000, fdump);
             fclose(fdump);
+            
+            fprintf(*Log, "PROCESSING MENU...\n");
+            
+            item = (MenuItem*)menu_data + 4;
+            
+            item_sizes = (int)out_len - 4;
+            while(item_sizes>0)
+            {
+                memcpy(str, item->id, 8);
+                
+                fprintf(*Log, "PROCESSING MENU GAMEINDEX %d, ID %x...\n", gameID, str);
+                memcpy(&gameIDs[gameID][0], item->id, 8);
+                memcpy((void*)&nds_data->adverts[gameID].icon, (void*)&item->icon, 512);
+                memcpy((void*)&nds_data->adverts[gameID].icon_pallete, (void*)&item->palette, sizeof(unsigned short) * 16);
+                memcpy((void*)&nds_data->adverts[gameID].game_name, (void*)&item->title, 48);
+                memcpy((void*)&nds_data->adverts[gameID].game_description, (void*)&item->subtitle, 96);
+                
+                sprintf(str, "advert%d.bin", gameID);
+                fdump = fopen(str, "wb");
+                fwrite((void*)&nds_data->adverts[gameID], 1, sizeof(ds_advert), fdump);
+                fclose(fdump);
+                
+                item = (MenuItem*)((int)item + (int)sizeof(MenuItem));
+                item_sizes-=sizeof(MenuItem);
+                gameID++;
+            }
             
             stage = STAGEDL_DATA;
             fprintf(*Log, "FOUND ALL MENU PACKETS!\n");

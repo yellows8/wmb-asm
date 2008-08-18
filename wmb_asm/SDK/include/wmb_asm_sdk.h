@@ -512,6 +512,7 @@ struct Nds_data
        volatile unsigned short beacon_checksum[10];
        volatile ds_advert advert;
        volatile ds_advert oldadvert;
+       volatile ds_advert adverts[15];
        volatile nds_rsaframe rsa;
        volatile TNDSHeader header;
        volatile bool data_init;
@@ -540,6 +541,7 @@ struct Nds_data
        
        volatile bool trigger_assembly;//Set by 1 by the packet module plugins when it's time to assembly and write
        //the .nds. This is reset when assembly is done.
+       volatile bool use_advert;//This is only used when multipleIDs is true. When this variable is 0, advert will be used directly for assembly, with beacon_data being copyed into it first, however when 1, the adverts array will be used during assembly, instead of copying in data from the beacon_data array.
 };
 #ifdef ASM_SDK_MODULE
     #ifdef DLLMAIN
