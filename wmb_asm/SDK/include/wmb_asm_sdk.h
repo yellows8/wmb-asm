@@ -341,15 +341,15 @@ struct iee80211_framehead {
 };
 
 struct ds_advert {
-	unsigned short icon_pallete[16];
-	unsigned char icon[512];
-	unsigned char unk220;
-	unsigned char hostname_len;
-	unsigned short hostname[10];
-	unsigned char max_players;
-	unsigned char unk237;
-	unsigned short game_name[48];
-	unsigned short game_description[96];
+	volatile unsigned short icon_pallete[16];
+	volatile unsigned char icon[512];
+	volatile unsigned char unk220;
+	volatile unsigned char hostname_len;
+	volatile unsigned short hostname[10];
+	volatile unsigned char max_players;
+	volatile unsigned char unk237;
+	volatile unsigned short game_name[48];
+	volatile unsigned short game_description[96];
 } __attribute__ ((__packed__));
 
 typedef struct SNDSBanner {
