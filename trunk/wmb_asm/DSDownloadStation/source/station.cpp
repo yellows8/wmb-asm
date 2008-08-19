@@ -109,6 +109,7 @@ unsigned char *menu_data = NULL;
 int *found_menu = NULL;
 int *menu_sizes = NULL;
 bool assembled_menu = 0;//Set to true when the menu has been assembled.
+int high_pos = 0;
 
 unsigned int data_size = 0;//Size of the LZO compressed data, excluding the LZO header.
 unsigned int de_data_size = 0;//Size of the decompressed data.
@@ -702,7 +703,7 @@ int HandleDL_MenuDownload(unsigned char *data, int length)
             buffer = (unsigned char*)malloc(cur_pos * 10);
             memset(buffer, 0, cur_pos);
             
-            fdump = fopen("rawmenu.bin","wb");//This can dump a decompressed menu, but the decompressed menu data/the decompression code is broke. The sizes of the menu items aren't correct, and several fields aren't at the correct offset.
+            fdump = fopen("rawmenu.bin","wb");
             fwrite(menu_data, 1, cur_pos, fdump);
             fclose(fdump);
             
@@ -720,7 +721,7 @@ int HandleDL_MenuDownload(unsigned char *data, int length)
             cur_pos = out_len;
             
             
-            fdump = fopen("menu.bin","wb");//This can dump a decompressed menu, but the decompressed menu data/the decompression code is broke. The sizes of the menu items aren't correct, and several fields aren't at the correct offset.
+            fdump = fopen("menu.bin","wb");
             fwrite(menu_data, 1, cur_pos, fdump);
             fclose(fdump);
             
@@ -870,18 +871,22 @@ int HandleDL_Header(unsigned char *data, int length)
         fprintf(*Log, "LZO   COMPRESSED DATA SIZE %d\n", (int)data_size);
         fprintf(*Log, "LZO DECOMPRESSED DATA SIZE %d\n", (int)de_data_size);
         
-        nds_data->saved_data = (unsigned char*)malloc(data_size);
+        nds_data->saved_data = (unsigned char*)malloc(data_size * 2);
         nds_data->data_sizes = (int*)malloc(sizeof(int) * 32440);
         if(nds_data->saved_data==NULL || nds_data->data_sizes==NULL)
         {
             printf("ERROR: Failed to allocate memory.\n");
             return 5;//Fatal error. However, the Wmb Asm Module doesn't handle fatal errors from plugins returning this error code, yet.
         }
-        memset((void*)nds_data->saved_data, 0, data_size);
+        memset((void*)nds_data->saved_data, 0, data_size * 2);
         memset((void*)nds_data->data_sizes, 0, sizeof(int) * 32440);
         
+        dat-=8;
+        
         memcpy((void*)nds_data->saved_data, dat, length);
-        nds_data->data_sizes[0] = (volatile int)length;
+        nds_data->data_sizes[0] = length;
+        nds_data->pkt_size = length;
+        high_pos = length;
         
         stage = STAGEDL_DATA;
 
@@ -897,16 +902,87 @@ int HandleDL_Data(unsigned char *data, int length)
     int size = 0;
     unsigned short seq = 0;
     unsigned short clientID = 0;
-
+    unsigned char *buffer = NULL;
+    int cur_pos = 0;
+    int temp = nds_data->data_sizes[0];
+    int end_temp = nds_data->data_sizes[0];
+    int lzo_ret = 0;
+    lzo_uint out_len = 0;
+    
     dat = CheckDLFrame(data, length, 0x1f, &size, &seq, &clientID);
     if(dat)
     {
-        if(seq==0)return 3;//This is the LZO header packet, ignore it.
+        if(seq==0)return 3;//This is the LZO header packet, ignore it. Or, this is the end-of-data packet, ignore it to prevent crashes.
         
         if(!LookupClientsGameID(clientID, nds_data->gameID))
             return 3;
         
-        fprintf(*Log, "FOUND DATA PKT SEQ %d SZ %d CID %d NUM %d\n",(int)seq, size, (int)clientID, GetPacketNum());
+        //fprintf(*Log, "ACK SEQ %d ", (int)seq);
+        //fprintf(*Log, "%d\n", (int)nds_data->data_sizes[(int)seq]);
+        
+        if(seq!=0xFFFF)
+        {
+            
+            for(int i=0; i<(int)seq; i++)
+            {
+                
+                temp+=nds_data->data_sizes[i+1];
+                //end_temp+=nds_data->data_sizes[i+1];
+                
+                if(nds_data->data_sizes[i+1]==0)temp+=nds_data->pkt_size;
+            }
+            
+            if(!nds_data->data_sizes[seq])
+            {
+                fprintf(*Log, "FOUND DATA PKT SEQ %d SZ %d CID %d TEMP %d ENDTEMP %d NUM %d\n",(int)seq, size, (int)clientID, temp, end_temp, GetPacketNum());
+                memcpy((void*)&nds_data->saved_data[temp], dat, length);
+                nds_data->data_sizes[(int)seq] = length;
+                temp+=nds_data->data_sizes[(int)seq];
+            }
+            
+            if(temp>high_pos)high_pos = temp;
+            
+        }
+        else
+        {
+            end_temp = high_pos;
+        }
+        
+        if(end_temp>=data_size + 0x10)
+        {
+            buffer = (unsigned char*)nds_data->saved_data;
+            data_size = end_temp;
+            
+            FILE *fdump = fopen("compressed_data.bin","wb");
+            fwrite(buffer, 1, data_size, fdump);
+            fclose(fdump);
+            
+            fprintf(*Log, "FOUND ALL DATA PACKETS!\n");
+            fprintf(*Log, "DECOMPRESSING DATA DECOM SIZE %d!\n", data_size);
+            
+            nds_data->saved_data = (unsigned char*)malloc(de_data_size);
+            if(nds_data->saved_data==NULL)return 3;
+            memset((void*)nds_data->saved_data, 0, de_data_size);
+            
+            fprintf(*Log, "A\n");
+            
+            lzo_ret = lzo1x_decompress((unsigned char*)buffer + 0x10, data_size - 0x10, (unsigned char*)nds_data->saved_data, &out_len, NULL);
+            if(lzo_ret!=LZO_E_OK)printf("Menu decompression failed: error %d\n",lzo_ret);
+            
+            fprintf(*Log, "B\n");
+            
+            fdump = fopen("data.bin","wb");
+            fwrite((void*)nds_data->saved_data, 1, out_len, fdump);
+            fclose(fdump);
+            
+            fprintf(*Log, "C\n");
+            
+            free(buffer);
+            
+            fprintf(*Log, "D\n");
+            
+            //nds_data->trigger_assembly = 1;
+        }
         
         return 1;
     }
