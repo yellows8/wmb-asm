@@ -110,6 +110,11 @@ int *found_menu = NULL;
 int *menu_sizes = NULL;
 bool assembled_menu = 0;//Set to true when the menu has been assembled.
 
+unsigned int data_size = 0;//Size of the LZO compressed data, excluding the LZO header.
+unsigned int de_data_size = 0;//Size of the decompressed data.
+
+unsigned char lzo_mgc_num[8] = {0x4C, 0x5A, 0x4F, 0x6E, 0x00, 0x2F, 0xF1, 0x71};
+
 #ifdef __cplusplus
   extern "C" {
 #endif
@@ -645,7 +650,6 @@ int HandleDL_MenuDownload(unsigned char *data, int length)
     unsigned char *buffer = NULL;
     lzo_uint out_len = 0;
     int lzo_ret = 0;
-    unsigned char mgc_num[8] = {0x4C, 0x5A, 0x4F, 0x6E, 0x00, 0x2F, 0xF1, 0x71};
     unsigned int lzon_size = 0;
     unsigned int *lz_size = NULL;
     int item_sizes = 0;
@@ -702,7 +706,7 @@ int HandleDL_MenuDownload(unsigned char *data, int length)
             fwrite(menu_data, 1, cur_pos, fdump);
             fclose(fdump);
             
-            if(memcmp(menu_data, mgc_num, 8)!=0)return 3;
+            if(memcmp(menu_data, lzo_mgc_num, 8)!=0)return 3;
             lz_size = (unsigned int*)&menu_data[0x0C];
             lzon_size = *lz_size;
             ConvertEndian(&lzon_size, &lzon_size, sizeof(unsigned int));
@@ -856,6 +860,29 @@ int HandleDL_Header(unsigned char *data, int length)
         
         fprintf(*Log, "FOUND HEADER SZ %d CID %d NUM %d\n",size, (int)clientID, GetPacketNum());
 
+        if(memcmp(dat, lzo_mgc_num, 8)!=0)return 3;
+        dat+=8;
+        
+        memcpy(&de_data_size, dat, sizeof(unsigned int));
+        memcpy(&data_size, &dat[0x04], sizeof(unsigned int));
+        ConvertEndian(&de_data_size, &de_data_size, sizeof(unsigned int));
+        ConvertEndian(&data_size, &data_size, sizeof(unsigned int));
+        fprintf(*Log, "LZO   COMPRESSED DATA SIZE %d\n", (int)data_size);
+        fprintf(*Log, "LZO DECOMPRESSED DATA SIZE %d\n", (int)de_data_size);
+        
+        nds_data->saved_data = (unsigned char*)malloc(data_size);
+        nds_data->data_sizes = (int*)malloc(sizeof(int) * 32440);
+        if(nds_data->saved_data==NULL || nds_data->data_sizes==NULL)
+        {
+            printf("ERROR: Failed to allocate memory.\n");
+            return 5;//Fatal error. However, the Wmb Asm Module doesn't handle fatal errors from plugins returning this error code, yet.
+        }
+        memset((void*)nds_data->saved_data, 0, data_size);
+        memset((void*)nds_data->data_sizes, 0, sizeof(int) * 32440);
+        
+        memcpy((void*)nds_data->saved_data, dat, length);
+        nds_data->data_sizes[0] = (volatile int)length;
+        
         stage = STAGEDL_DATA;
 
         return 1;
