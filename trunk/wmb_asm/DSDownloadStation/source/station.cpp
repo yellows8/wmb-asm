@@ -25,15 +25,7 @@ DEALINGS IN THE SOFTWARE.
 #endif
 
 #include <lzo\lzoconf.h>
-#include <lzo\lzo1.h>
-#include <lzo\lzo1a.h>
-#include <lzo\lzo1b.h>
-#include <lzo\lzo1c.h>
-#include <lzo\lzo1f.h>
 #include <lzo\lzo1x.h>
-#include <lzo\lzo1y.h>
-#include <lzo\lzo1z.h>
-#include <lzo\lzo2a.h>
 
 #include "..\..\SDK\include\wmb_asm_sdk_plugin.h"
 
@@ -43,7 +35,9 @@ DEALINGS IN THE SOFTWARE.
 #define STAGEDL_ASSOC_RESPONSE 1
 #define STAGEDL_MENU_REQ 2
 #define STAGEDL_MENU_DL 3
-#define STAGEDL_DATA 4
+#define STAGEDL_DL_REQ 4
+#define STAGEDL_HEADER 5
+#define STAGEDL_DATA 6
 
 unsigned char mgc_num[4] = {0x06, 0x01, 0x02, 0x00};
 
@@ -56,17 +50,20 @@ FILE **Log = NULL;
 FILE *loG;
 
 int HandleDL_AssocResponse(unsigned char *data, int length);
+int HandleDL_Deauth(unsigned char *data, int length);
 int HandleWMB_Data(unsigned char *data, int length);
 int HandleWMB_DataAck(unsigned char *data, int length);
 
-int HandleDL_MenuRequest(unsigned char *data, int length);
+int HandleDL_PacketRequest(unsigned char *data, int length);
 int HandleDL_MenuDownload(unsigned char *data, int length);
+int HandleDL_Header(unsigned char *data, int length);
 int HandleDL_Data(unsigned char *data, int length);
 
 struct DLClient
 {
     unsigned char clientID;
     unsigned char mac[6];
+    int gameID;
     int is_dl;//Is this client really using the DLStation/N Spot protocol, not WMB or some other protocol?
     bool has_data;//Does this entry contain any data?
 };
@@ -88,12 +85,10 @@ struct MenuItem
     char controls[0x402];
     char id[8];
     unsigned char zeroes[2]; 
-};
+} __attribute__((__packed__));
 
 DLClient DLClients[15];
 WMBHost WMBHosts[256];
-int total_clients = 0;
-int total_wmbhosts = 0;
 
 unsigned char host_mac[6];
 
@@ -101,14 +96,19 @@ char gameIDs[15][8];
 
 void AddClient(DLClient client);
 int AddWMBHost(WMBHost host);
+int GetClient(unsigned char *mac);
+int GetWMBHost(unsigned char *mac);
 void RemoveClient(int index);
 void RemoveWMBHost(int index);
 void RemoveClients();
 void RemoveWMBHosts();
 
+int LookupGameID(char *id);
+
 unsigned char *menu_data = NULL;
 int *found_menu = NULL;
 int *menu_sizes = NULL;
+bool assembled_menu = 0;//Set to true when the menu has been assembled.
 
 #ifdef __cplusplus
   extern "C" {
@@ -177,16 +177,20 @@ DLLIMPORT int AsmPlug_Handle802_11(unsigned char *data, int length)
         ret = HandleDL_AssocResponse(data, length);
         if(ret)return ret;
         
+        ret = HandleDL_Deauth(data, length);
+        if(ret)return ret;
+        
         ret = HandleWMB_Data(data, length);
         if(ret)return 0;//This plugin doesn't use WMB data packets, for there actual data - only kicking clients in the DLClients list when they ack/reply to WMB data packets. This plugin must return 0, not 1, for these WMB packets, otherwise this plugin would interfer with the WMB plugin. 
         
         ret = HandleWMB_DataAck(data, length);
         if(ret)return 0;
         
-        ret = HandleDL_MenuRequest(data, length);
+        ret = HandleDL_PacketRequest(data, length);
         if(ret)return 1;
         
         if(stage==STAGEDL_MENU_DL)return HandleDL_MenuDownload(data, length);
+        if(stage==STAGEDL_HEADER)return HandleDL_Header(data, length);
         if(stage==STAGEDL_DATA)return HandleDL_Data(data, length);
      }
      
@@ -217,11 +221,6 @@ DLLIMPORT bool AsmPlug_Init(sAsmSDK_Config *config)
         printf("Failed to allocate memory!\n");
         return 0;
     }
-    memset(menu_data, 0, 30 * 1000);
-    memset(found_menu, 0, sizeof(int) * 1000);
-    memset(menu_sizes, 0, sizeof(int) * 1000);
-    
-    memset(gameIDs, 0, 15 * 8);
     
     Log = &loG;
     loG = fopen("dlstation_debug.txt","w");
@@ -254,10 +253,15 @@ DLLIMPORT void AsmPlug_Reset()
     IsSpot = 0;
     stage=STAGEDL_MENU_REQ;
     
-    memset(DLClients, 0, sizeof(DLClient) * 15);
-    memset(WMBHosts, 0, sizeof(WMBHost) * 256);
-    total_clients = 0;
-    total_wmbhosts = 0;
+    RemoveClients();
+    RemoveWMBHosts();
+    
+    memset(menu_data, 0, 30 * 1000);
+    memset(found_menu, 0, sizeof(int) * 1000);
+    memset(menu_sizes, 0, sizeof(int) * 1000);
+    assembled_menu = 0;
+
+    memset(gameIDs, 0, 15 * 8);
     
     memset(host_mac,0,6);
 }
@@ -273,16 +277,16 @@ void AddClient(DLClient client)
     
     for(int i=0; i<15; i++)
     {
-        if(!DLClients[i].has_data)
-        
-        if(memcmp(DLClients[i].mac, client.mac, 6))found = 1;
+        if(DLClients[i].has_data)
+        {
+            if(memcmp(DLClients[i].mac, client.mac, 6)==0)found = 1;
+        }
     }
     if(found)return;
     
     if(!DLClients[client.clientID - 1].has_data)
     {
         memcpy(&DLClients[client.clientID - 1], &client, sizeof(DLClient));
-        total_clients++;
     }
 }
 
@@ -291,8 +295,7 @@ void RemoveClient(int index)
     if(index<0 || index>14)return;
     
     memset(&DLClients[index], 0, sizeof(DLClient));
-    
-    total_clients--;
+    DLClients[index].gameID = -1;
 }
 
 void RemoveClients()
@@ -311,7 +314,7 @@ int AddWMBHost(WMBHost host)
     {
         if(!WMBHosts[i].has_data)continue;
         
-        if(memcmp(WMBHosts[i].mac, host.mac, 6))found = i;
+        if(memcmp(WMBHosts[i].mac, host.mac, 6)==0)found = i;
     }
     if(found>=0)return found;
     
@@ -325,7 +328,42 @@ int AddWMBHost(WMBHost host)
         }
     }
     
-    total_wmbhosts++;
+    return index;
+}
+
+int GetClient(unsigned char *mac)
+{
+    int index = -1;
+    
+    for(int i=0; i<16; i++)
+    {
+        if(!DLClients[i].has_data)continue;
+        
+        if(memcmp(DLClients[i].mac, mac, 6)==0)
+        {
+            index = i;
+            break;
+        }
+    }
+    
+    return index;
+}
+
+int GetWMBHost(unsigned char *mac)
+{
+    int index = -1;
+
+    for(int i=0; i<15; i++)
+    {
+        if(!WMBHosts[i].has_data)continue;
+        
+        if(memcmp(WMBHosts[i].mac, mac, 6)==0)
+        {
+            index = i;
+            break;
+        }
+    }
+
     return index;
 }
 
@@ -334,14 +372,28 @@ void RemoveWMBHost(int index)
     if(index<0 || index>255)return;
 
     memset(&WMBHosts[index], 0, sizeof(WMBHost));
-    
-    total_wmbhosts--;
 }
 
 void RemoveWMBHosts()
 {
     for(int i=0; i<256; i++)
         RemoveWMBHost(i);
+}
+
+int LookupGameID(char *id)
+{
+    int index = -1;
+    
+    for(int i=0; i<16; i++)
+    {
+        if(memcmp(id, gameIDs[i], 8)==0)
+        {
+            index = i;
+            break;
+        }
+    }
+    
+    return index;
 }
 
 int HandleDL_AssocResponse(unsigned char *data, int length)
@@ -352,7 +404,7 @@ int HandleDL_AssocResponse(unsigned char *data, int length)
     
     if (((FH_FC_TYPE(fh->frame_control) == 0) && (FH_FC_SUBTYPE(fh->frame_control) == 1)))
     {
-        client.clientID = data[0x5C];
+        client.clientID = data[0x1C];
         memcpy(client.mac, fh->mac1, 6);
         AddClient(client);
         
@@ -361,6 +413,30 @@ int HandleDL_AssocResponse(unsigned char *data, int length)
     else
     {
         
+    }
+    
+    return 0;
+}
+
+int HandleDL_Deauth(unsigned char *data, int length)
+{
+    iee80211_framehead2 *fh = (iee80211_framehead2*)data;
+    int index = 0;
+    
+    if (((FH_FC_TYPE(fh->frame_control) == 0) && (FH_FC_SUBTYPE(fh->frame_control) == 12)))
+    {
+        index = GetClient(fh->mac2);
+        if(index != -1)
+        {
+            RemoveClient(index);
+            
+        }
+
+        return 1;
+    }
+    else
+    {
+
     }
     
     return 0;
@@ -416,6 +492,7 @@ int HandleWMB_DataAck(unsigned char *data, int length)
                 
                 if(found)
                 {
+                    fprintf(*Log, "KICKING CLIENT FOR ACKNOWLEDGING WMB DATA, CLIENT ID %d MAC %x:%x:%x:%x:%x:%x NUM %d\n", index, frm->mac2[0], frm->mac2[1], frm->mac2[2], frm->mac2[3], frm->mac2[4], frm->mac2[5], GetPacketNum());
                     RemoveClient(index);
                     return 1;
                 }
@@ -426,13 +503,14 @@ int HandleWMB_DataAck(unsigned char *data, int length)
     return 0;
 }
 
-unsigned char *CheckDLFrame(unsigned char *data, int length, unsigned char type, int *size, unsigned short *seq, unsigned char *clientID)
+unsigned char *CheckDLFrame(unsigned char *data, int length, unsigned char type, int *size, unsigned short *seq, unsigned short *clientID)
 {
     int sz = 0;
     unsigned short *Seq = NULL;
     unsigned char *dat = &data[0x18];
     iee80211_framehead2 *frm = (iee80211_framehead2*)data;
     unsigned char fcs_mgc[2] = {0x02, 0x00};
+    unsigned short *id;
     
     if(CheckFrameControl(frm, 2, 2))
     {
@@ -448,7 +526,6 @@ unsigned char *CheckDLFrame(unsigned char *data, int length, unsigned char type,
                     sz *= 2;
                     sz -= 2;//Remove what seems to be the sequence number for the next data packet, from the total length.
                     
-                    if(type==0x1f)sz+=32;//The sizes need increased for data packets
                     *size = sz;
                     
                     dat+=2;
@@ -458,7 +535,11 @@ unsigned char *CheckDLFrame(unsigned char *data, int length, unsigned char type,
                     
                     dat+=2;
                     
-                    if(type==0x1f)*clientID = dat[sz+2];
+                    if(type==0x1f)
+                    {
+                        id = (unsigned short*)&dat[sz+2];
+                        *clientID = *id;
+                    }
                     
                     if(memcmp(&data[length-6], fcs_mgc, 2)==0)
                     {
@@ -481,20 +562,32 @@ unsigned char *CheckDLFrame(unsigned char *data, int length, unsigned char type,
     return NULL;
 }
 
-int HandleDL_MenuRequest(unsigned char *data, int length)
+int HandleDL_PacketRequest(unsigned char *data, int length)
 {
     iee80211_framehead2 *frm = (iee80211_framehead2*)data;
     unsigned char *dat = &data[0x18];
-    char req[256];
+    char *req = (char*)malloc(256);
+    int index = 0;
     memset(req, 0, 256);
     
     if(CheckFrameControl(frm, 2, 1))
     {
         if(CheckFlow(frm->mac3, 0x10))
         {
-            if(dat[0]==0x04 && dat[2]!=0xFF && dat[2]!=0x09 && dat[2]!=0x08 && dat[2]!=0x07 && dat[2]!=0x00 && dat[1]!=0x81)
+            if(dat[0]==0x04 && dat[2]!=0xFF && dat[2]!=0x09 && dat[2]!=0x08 && dat[2]!=0x07 && dat[2]!=0x00 && dat[1]!=0x81)//Check if this is a packet request packet, and make sure this is not a WMB ack packet.
             {
-                memcpy(req, &dat[2], 9);
+                memcpy(req, &dat[2], 8);
+                
+                index = GetClient(frm->mac2);
+                if(index != -1)
+                {
+                    DLClients[index].is_dl = 1;
+                }
+                else
+                {
+                    free(req);
+                    return 3;//Do not continue; We don't know what this client's clientID is.
+                }
                 
                 if(strstr(req, "menu"))
                 {
@@ -510,12 +603,32 @@ int HandleDL_MenuRequest(unsigned char *data, int length)
                 else
                 {
                     fprintf(*Log, "DLSTATION: FOUND DL REQ %s NUM %d\n", req, GetPacketNum());
+                    
+                    if(assembled_menu)
+                    {
+                        DLClients[index].gameID = LookupGameID(req);
+                        fprintf(*Log, "DLSTATION: CLIENTID %d GAMEID SET TO %d MAC %x:%x:%x:%x:%x:%x NUM %d\n", index, DLClients[index].gameID, frm->mac2[0], frm->mac2[1], frm->mac2[2], frm->mac2[3], frm->mac2[4], frm->mac2[5], GetPacketNum());
+                        
+                        if(stage==STAGEDL_DL_REQ && DLClients[index].gameID != -1)
+                        {
+                            fprintf(*Log, "FOUND DL REQUEST CLIENTID %d GAMEINDEX %d GAMEID %s\n", index, DLClients[index].gameID, req);
+                            fprintf(*Log, "ENTERING HEADER STAGE\n");
+                            
+                            nds_data->gameID = (volatile unsigned char)DLClients[index].gameID;
+                            nds_data->clientID = index;
+                            stage = STAGEDL_HEADER;
+                        }
+                    }
                 }
+                
+                free(req);
                 
                 return 1;
             }
         }
     }
+    
+    free(req);
     
     return 0;
 }
@@ -525,7 +638,7 @@ int HandleDL_MenuDownload(unsigned char *data, int length)
     unsigned char *dat = NULL;
     int size = 0;
     unsigned short seq = 0;
-    unsigned char clientID = 0;
+    unsigned short clientID = 0;
     int cur_pos = 0;
     int high = 0;
     FILE *fdump = NULL;
@@ -538,30 +651,34 @@ int HandleDL_MenuDownload(unsigned char *data, int length)
     int item_sizes = 0;
     MenuItem *item = NULL;
     int gameID = 0;
-    char str[9];
-    memset(str, 0, 9);
+    char *str = NULL;
+    
+    if(assembled_menu)return 3;
     
     dat = CheckDLFrame(data, length, 0x1e, &size, &seq, &clientID);
     if(dat)
     {
         if(seq!=0xffff)
         {   
-            if(seq!=0)
+            if(!found_menu[(int)seq])
             {
-                for(int i=0; i<(int)seq; i++)
+                if(seq!=0)
                 {
-                    cur_pos+=menu_sizes[i];
-                    if(menu_sizes[i]==0)
-                        cur_pos+=0x10;
+                    for(int i=0; i<(int)seq; i++)
+                    {
+                        cur_pos+=menu_sizes[i];
+                        if(menu_sizes[i]==0)
+                            cur_pos+=0x10;
+                    }
                 }
+                
+                found_menu[(int)seq] = 1;
+                menu_sizes[(int)seq] = size;
+                
+                memcpy(&menu_data[cur_pos], dat, (size_t)size);
+                
+                fprintf(*Log, "FOUND MENU PKT SEQ %d SZ %d CID %d CURPOS %d NUM %d\n",(int)seq, size, (int)clientID, cur_pos, GetPacketNum());
             }
-            
-            found_menu[(int)seq] = 1;
-            menu_sizes[(int)seq] = size;
-            
-            memcpy(&menu_data[cur_pos], dat, (size_t)size);
-            
-            fprintf(*Log, "FOUND MENU PKT SEQ %d SZ %d CID %d CURPOS %d NUM %d\n",(int)seq, size, (int)clientID, cur_pos, GetPacketNum());
         }
         else
         {
@@ -578,8 +695,6 @@ int HandleDL_MenuDownload(unsigned char *data, int length)
                 if(!found_menu[i] && found_menu[i-1])break;
             }
             
-            fprintf(*Log, "DUMPING, CURPOS %d\n",cur_pos);
-            
             buffer = (unsigned char*)malloc(cur_pos * 10);
             memset(buffer, 0, cur_pos);
             
@@ -591,7 +706,6 @@ int HandleDL_MenuDownload(unsigned char *data, int length)
             lz_size = (unsigned int*)&menu_data[0x0C];
             lzon_size = *lz_size;
             ConvertEndian(&lzon_size, &lzon_size, sizeof(unsigned int));
-            fprintf(*Log, "LZO SZ %d\n",(int)lzon_size);
             
             lzo_ret = lzo1x_decompress(menu_data + 0x10,lzon_size,buffer,&out_len,NULL);
             if(lzo_ret!=LZO_E_OK)printf("Menu decompression failed: error %d\n",lzo_ret);
@@ -610,17 +724,23 @@ int HandleDL_MenuDownload(unsigned char *data, int length)
             fwrite(found_menu, 1, 1000, fdump);
             fclose(fdump);
             
-            fprintf(*Log, "PROCESSING MENU...\n");
+            item = (MenuItem*)((int)menu_data + 4);
             
-            item = (MenuItem*)menu_data + 4;
+            fprintf(*Log, "PROCESSING MENU...\n", item, menu_data);
             
             item_sizes = (int)out_len - 4;
+            
+            str = (char*)malloc(256);
+            memset(str, 0, 256);
+            
+            nds_data->FoundGameIDs = 1;
+            
             while(item_sizes>0)
             {
-                memcpy(str, item->id, 8);
-                
-                fprintf(*Log, "PROCESSING MENU GAMEINDEX %d, ID %x...\n", gameID, str);
-                memcpy(&gameIDs[gameID][0], item->id, 8);
+                strcpy(&gameIDs[gameID][0], item->id);
+                strcpy(str, &gameIDs[gameID][0]);
+                fprintf(*Log, "PROCESSING MENU GAMEINDEX %d, ID %s TITLE %s SUBTITLE %s...\n", gameID, str, item->title, item->subtitle);
+                memset(str, 0, 256);
                 memcpy((void*)&nds_data->adverts[gameID].icon, (void*)&item->icon, 512);
                 memcpy((void*)&nds_data->adverts[gameID].icon_pallete, (void*)&item->palette, sizeof(unsigned short) * 16);
                 memcpy((void*)&nds_data->adverts[gameID].game_name, (void*)&item->title, 48);
@@ -631,16 +751,113 @@ int HandleDL_MenuDownload(unsigned char *data, int length)
                 fwrite((void*)&nds_data->adverts[gameID], 1, sizeof(ds_advert), fdump);
                 fclose(fdump);
                 
+                nds_data->foundIDs[gameID] = 1;
+                
                 item = (MenuItem*)((int)item + (int)sizeof(MenuItem));
                 item_sizes-=sizeof(MenuItem);
                 gameID++;
             }
             
-            stage = STAGEDL_DATA;
+            free(str);
+            
+            stage = STAGEDL_DL_REQ;
             fprintf(*Log, "FOUND ALL MENU PACKETS!\n");
-            fprintf(*Log, "ENTERING DATA STAGE!\n");
+            fprintf(*Log, "ENTERING DL REQUEST STAGE!\n");
+            
+            assembled_menu = 1;
         }
     
+        return 1;
+    }
+
+    return 0;
+}
+
+//This function returns 1 if the clientID, from the header/data packets, has the same gameID, as in the value in the gameID variable.
+bool LookupClientsGameID(unsigned short clientID, unsigned char gameID)
+{
+    
+    for(int i=0; i<6; i++)
+    {
+        
+        if(clientID > 8 * (i+1))continue;
+        
+        if(clientID != ((8 * i) + 6))//If this isn't the clientID for two IDs combined...
+        {
+            if(clientID == ((8 * i) + 2))
+            {
+                if(DLClients[(int)clientID - 2].gameID == gameID)
+                {
+                    return 1;
+                }
+                else
+                {
+                    return 0;
+                }
+            }
+            
+            if(clientID == ((8 * i) + 4))
+            {
+                if(DLClients[(int)clientID - 2].gameID == gameID)
+                {
+                    return 1;
+                }
+                else
+                {
+                    return 0;
+                }
+            }
+            
+            if(clientID == ((8 * i) + 8))
+            {
+                if(DLClients[(int)clientID - 5].gameID == gameID)
+                {
+                    return 1;
+                }
+                else
+                {
+                    return 0;
+                }
+            }
+        }
+        else
+        {
+            fprintf(*Log, "COMBINED ID CHECK\n");
+            
+                if(DLClients[((2 * i))].gameID == gameID)
+                {
+                    return 1;
+                }
+                
+                if(DLClients[((2 * i) + 1)].gameID == gameID)
+                {
+                    return 1;
+                }
+        }
+    }
+    
+    return 0;
+}
+
+int HandleDL_Header(unsigned char *data, int length)
+{
+    unsigned char *dat = NULL;
+    int size = 0;
+    unsigned short seq = 0;
+    unsigned short clientID = 0;
+
+    dat = CheckDLFrame(data, length, 0x1f, &size, &seq, &clientID);
+    if(dat)
+    {
+        if(seq!=0)return 3;//This is not the LZO header packet, ignore it.
+        
+        if(!LookupClientsGameID(clientID, nds_data->gameID))
+            return 3;
+        
+        fprintf(*Log, "FOUND HEADER SZ %d CID %d NUM %d\n",size, (int)clientID, GetPacketNum());
+
+        stage = STAGEDL_DATA;
+
         return 1;
     }
 
@@ -652,11 +869,16 @@ int HandleDL_Data(unsigned char *data, int length)
     unsigned char *dat = NULL;
     int size = 0;
     unsigned short seq = 0;
-    unsigned char clientID = 0;
+    unsigned short clientID = 0;
 
     dat = CheckDLFrame(data, length, 0x1f, &size, &seq, &clientID);
     if(dat)
     {
+        if(seq==0)return 3;//This is the LZO header packet, ignore it.
+        
+        if(!LookupClientsGameID(clientID, nds_data->gameID))
+            return 3;
+        
         fprintf(*Log, "FOUND DATA PKT SEQ %d SZ %d CID %d NUM %d\n",(int)seq, size, (int)clientID, GetPacketNum());
         
         return 1;
