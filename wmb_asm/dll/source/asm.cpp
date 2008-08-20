@@ -1294,7 +1294,6 @@ bool AssembleNds(char *output)
      unsigned char *Temp=NULL;
      size_t sz=0;
      char *download_play = (char*)malloc(35);
-
      strcpy(download_play,"DS DOWNLOAD PLAY----------------");
 
      char gdtemp[128*10];
@@ -1314,17 +1313,7 @@ bool AssembleNds(char *output)
 
      int pos, dsize;
      
-     if(!nds_data->use_advert)
-     {
-        for(int i=0; i<9; i++)
-        {
-            pos=i*98;
-            if(i!=8)dsize=98;
-            if(i==8)dsize=72;
-            memcpy((void*) &((unsigned char*)&nds_data->advert)[pos], (void*)&nds_data->beacon_data[(980*(int)nds_data->gameID)+pos],dsize);
-        }
-     }
-     else
+     if(nds_data->use_advert)
      {
             memcpy((void*)&nds_data->advert, (void*)&nds_data->adverts[(int)nds_data->gameID], sizeof(ds_advert));
      }
@@ -1332,57 +1321,79 @@ bool AssembleNds(char *output)
      FILE *fdump = fopen("advertM.bin","wb");
      fwrite((void*)&nds_data->advert, 1, sizeof(ds_advert), fdump);
      fclose(fdump);
-
-     memcpy((void*)banner.palette, (void*)ad->icon_pallete,32);
-     memcpy((void*)banner.icon, (void*)ad->icon,512);
-     memset((void*)banner.titles,0,6*(128*2));
-     int tempi=0;
-     for(int i=0; i<48; i++)
+     
+     if(nds_data->banner==NULL)
      {
+        
+        memcpy((void*)banner.palette, (void*)ad->icon_pallete,32);
+        memcpy((void*)banner.icon, (void*)ad->icon,512);
+        memset((void*)banner.titles,0,6*(128*2));
+        
+        int tempi=0;
+        for(int i=0; i<48; i++)
+        {
             if(nds_data->advert.game_name[i]==0)
             {
             break;
             }
-
+            
             tempi+=2;
-     }
-     memcpy((void*)&gdtemp[0], (void*)&nds_data->advert.game_name[0],(size_t)tempi);//Copy the game name into the banner discription, add a newline character after that, then copy in the actual discription.
-     //tempi+=2;
-     gdtemp[tempi] = '\n';
-     tempi+=2;
-
-
-     memcpy((void*)&gdtemp[tempi], (void*)&nds_data->advert.game_description[0],96*2);
-     //tempi+=96*2+2;
-
-     for(int i=0; i<96; i++)
-     {
+        }
+     
+        memcpy((void*)&gdtemp[0], (void*)&nds_data->advert.game_name[0],(size_t)tempi);//Copy the game name into the banner discription, add a newline character after that, then copy in the actual discription.
+        gdtemp[tempi] = '\n';
+        tempi+=2;
+        
+        
+        memcpy((void*)&gdtemp[tempi], (void*)&nds_data->advert.game_description[0],96*2);
+        
+        for(int i=0; i<96; i++)
+        {
             if(nds_data->advert.game_description[i]==0)
             {
             break;
             }
-
+            
             tempi+=2;
+        }
+        
+        if(tempi>0 && tempi<256)
+        memset(&gdtemp[tempi],0,256-tempi);//One capture had a discription from another demo, after it's own discription. This gets rid of the extra one.
+        
+        memcpy(&banner.titles[0][0],gdtemp,192*2);
+        memcpy(&banner.titles[1][0],gdtemp,192*2);
+        memcpy(&banner.titles[2][0],gdtemp,192*2);
+        memcpy(&banner.titles[3][0],gdtemp,192*2);
+        memcpy(&banner.titles[4][0],gdtemp,192*2);
+        memcpy(&banner.titles[5][0],gdtemp,192*2);
+        
+        banner.version = 1;
+        banner.crc = CalcCRC16(banner.icon, 2080);
+        
      }
-
-     if(tempi>0 && tempi<256)
-     memset(&gdtemp[tempi],0,256-tempi);//One capture had a discription from another demo, after it's own discription. This gets rid of the extra one.
-
-     memcpy(&banner.titles[0][0],gdtemp,192*2);
-     memcpy(&banner.titles[1][0],gdtemp,192*2);
-     memcpy(&banner.titles[2][0],gdtemp,192*2);
-     memcpy(&banner.titles[3][0],gdtemp,192*2);
-     memcpy(&banner.titles[4][0],gdtemp,192*2);
-     memcpy(&banner.titles[5][0],gdtemp,192*2);
-
-     banner.version = 1;
-     banner.crc = CalcCRC16(banner.icon, 2080);
-
+     else
+     {
+        memcpy(&banner, (void*)&nds_data->banner, sizeof(TNDSBanner));
+     }
+        
      nds=fopen(output,"w+b");
      if(nds==NULL)
      {
             printf("Failed to open output file for writing: %s\n",output);
             return 0;
+     }
+
+     if(nds_data->build_raw>0)
+     {
+        fwrite((void*)nds_data->saved_data, 1, (size_t)nds_data->build_raw, nds);
+        fclose(nds);
+        
+        nds_data->beacon_thing=0;
+        nds_data->multipleIDs=0;
+        nds_data->handledIDs[(int)nds_data->gameID] = 1;
+        prev_total=0;
+        
+        return 1;
      }
 
      unsigned int temp1, temp2;

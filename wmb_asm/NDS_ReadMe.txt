@@ -22,4 +22,4 @@ Juglak, for his data structures and defines for WMB.
 Masscat, for his WMB client for reference and code.
 Frz, for his CRC calculation code, and other things.
 sgstair, for his packet capture on DS example code.
-chishm, for his DS Demo Decompressor tool, and for the DS Download Station LZO header format.
+chishm, for his DS Demo Decompressor tool, and for the DS Download Station LZO header format information.

@@ -54,6 +54,8 @@ int HandleDL_Deauth(unsigned char *data, int length);
 int HandleWMB_Data(unsigned char *data, int length);
 int HandleWMB_DataAck(unsigned char *data, int length);
 
+int HandleSP_MenuDownload(unsigned char *data, int length);
+
 int HandleDL_PacketRequest(unsigned char *data, int length);
 int HandleDL_MenuDownload(unsigned char *data, int length);
 int HandleDL_Header(unsigned char *data, int length);
@@ -197,6 +199,9 @@ DLLIMPORT int AsmPlug_Handle802_11(unsigned char *data, int length)
         ret = HandleDL_PacketRequest(data, length);
         if(ret)return 1;
         
+        ret = HandleSP_MenuDownload(data, length);
+        if(ret)return 1;
+        
         if(stage==STAGEDL_MENU_DL)return HandleDL_MenuDownload(data, length);
         if(stage==STAGEDL_HEADER)return HandleDL_Header(data, length);
         if(stage==STAGEDL_DATA)return HandleDL_Data(data, length);
@@ -224,6 +229,7 @@ DLLIMPORT bool AsmPlug_Init(sAsmSDK_Config *config)
     menu_data = (unsigned char*)malloc(30 * 1000);//1000 because there doesn't seem to be any total-menu packets, or total packet length dat sent to the clients in the DLStation protocol - only the seq with ffff tells when the last menu packet was sent.
     found_menu = (int*)malloc(sizeof(int) * 1000);
     menu_sizes = (int*)malloc(sizeof(int) * 1000);
+    
     if(menu_data==NULL || found_menu==NULL || menu_sizes==NULL)
     {
         printf("Failed to allocate memory!\n");
@@ -399,6 +405,11 @@ int LookupGameID(char *id)
             index = i;
             break;
         }
+    }
+    
+    if(index != -1)
+    {
+        if(nds_data->handledIDs[index])return -1;//We don't need to assemle the same demo twice.
     }
     
     return index;
@@ -619,6 +630,9 @@ int HandleDL_PacketRequest(unsigned char *data, int length)
                         
                         if(stage==STAGEDL_DL_REQ && DLClients[index].gameID != -1)
                         {
+                            MenuItem *item = (MenuItem*)(((int)menu_data + 4) + (sizeof(MenuItem) * DLClients[index].gameID));
+                            printf("DLSTATION: Found download request for %s. Download title: %s\n", req, item->title);
+                            
                             fprintf(*Log, "FOUND DL REQUEST CLIENTID %d GAMEINDEX %d GAMEID %s\n", index, DLClients[index].gameID, req);
                             fprintf(*Log, "ENTERING HEADER STAGE\n");
                             
@@ -637,6 +651,59 @@ int HandleDL_PacketRequest(unsigned char *data, int length)
     }
     
     free(req);
+    
+    return 0;
+}
+
+//This function attempts to dump Nintendo Spot menu packets.
+int HandleSP_MenuDownload(unsigned char *data, int length)
+{
+    iee80211_framehead2 *frm = (iee80211_framehead2*)data;
+    unsigned char *dat;
+    unsigned char sp_mgc_num[4] = {0x7e, 0x01, 0x02, 0x00};
+    int size = 0;
+    unsigned short *seq = 0;
+    unsigned char *buffer;
+    int lzo_ret = 0;
+    lzo_uint out_len = 0;
+    FILE *dump;
+    char str[256];
+    memset(str, 0, 256);
+    
+    if(CheckFrameControl(frm, 2, 2))
+    {
+        if(CheckFlow(frm->mac1, 0x00))
+        {
+            dat = &data[0x18];
+            if(memcmp(dat, sp_mgc_num, 4)!=0)return 0;
+            dat+=4;
+            
+            size = (int)*dat;
+            size *= 2;
+            size-=32;
+            
+            if(size<=0)return 3;
+            
+            dat+=1;
+            seq = (unsigned short*)dat;
+            dat+=2;
+            
+            buffer = (unsigned char*)malloc(5000);
+            memset(buffer, 0, 5000);
+            
+            //printf("Copying seq %d sz %d\n", (int)*seq, size);
+            memcpy(buffer, dat, size);
+            //lzo_ret = lzo1x_decompress(dat,size,buffer,&out_len,NULL);
+            //if(lzo_ret!=LZO_E_OK)printf("Menu decompression failed: error %d\n",lzo_ret);
+            
+            sprintf(str, "SpotMenu\\menu_%d.bin",(int)*seq);
+            dump = fopen(str, "wb");
+            fwrite(buffer, 1, out_len, dump);
+            fclose(dump);
+            
+            free(buffer);
+        }
+    }
     
     return 0;
 }
@@ -705,10 +772,6 @@ int HandleDL_MenuDownload(unsigned char *data, int length)
             buffer = (unsigned char*)malloc(cur_pos * 10);
             memset(buffer, 0, cur_pos);
             
-            fdump = fopen("rawmenu.bin","wb");
-            fwrite(menu_data, 1, cur_pos, fdump);
-            fclose(fdump);
-            
             if(memcmp(menu_data, lzo_mgc_num, 8)!=0)return 3;
             lz_size = (unsigned int*)&menu_data[0x0C];
             lzon_size = *lz_size;
@@ -722,15 +785,6 @@ int HandleDL_MenuDownload(unsigned char *data, int length)
             free(buffer);
             cur_pos = out_len;
             
-            
-            fdump = fopen("menu.bin","wb");
-            fwrite(menu_data, 1, cur_pos, fdump);
-            fclose(fdump);
-            
-            fdump = fopen("found.bin","wb");
-            fwrite(found_menu, 1, 1000, fdump);
-            fclose(fdump);
-            
             item = (MenuItem*)((int)menu_data + 4);
             
             fprintf(*Log, "PROCESSING MENU...\n", item, menu_data);
@@ -741,6 +795,7 @@ int HandleDL_MenuDownload(unsigned char *data, int length)
             memset(str, 0, 256);
             
             nds_data->FoundGameIDs = 1;
+            int end = 0;
             
             while(item_sizes>0)
             {
@@ -750,13 +805,20 @@ int HandleDL_MenuDownload(unsigned char *data, int length)
                 memset(str, 0, 256);
                 memcpy((void*)&nds_data->adverts[gameID].icon, (void*)&item->icon, 512);
                 memcpy((void*)&nds_data->adverts[gameID].icon_pallete, (void*)&item->palette, sizeof(unsigned short) * 16);
-                memcpy((void*)&nds_data->adverts[gameID].game_name, (void*)&item->title, 48);
-                memcpy((void*)&nds_data->adverts[gameID].game_description, (void*)&item->subtitle, 96);
                 
-                sprintf(str, "advert%d.bin", gameID);
-                fdump = fopen(str, "wb");
-                fwrite((void*)&nds_data->adverts[gameID], 1, sizeof(ds_advert), fdump);
-                fclose(fdump);
+                for(int i=0; i<48; i++)
+                {
+                    if(item->title[i]==0)break;
+                    
+                    nds_data->adverts[gameID].game_name[i] = (unsigned short)item->title[i];
+                }
+                
+                for(int i=0; i<96; i++)
+                {
+                    if(item->subtitle[i]==0)break;
+
+                    nds_data->adverts[gameID].game_description[i] = (unsigned short)item->subtitle[i];
+                }
                 
                 nds_data->foundIDs[gameID] = 1;
                 
@@ -829,7 +891,6 @@ bool LookupClientsGameID(unsigned short clientID, unsigned char gameID)
         }
         else
         {
-            fprintf(*Log, "COMBINED ID CHECK\n");
             
                 if(DLClients[((2 * i))].gameID == gameID)
                 {
@@ -972,10 +1033,6 @@ int HandleDL_Data(unsigned char *data, int length)
             buffer = (unsigned char*)nds_data->saved_data;
             data_size = end_temp;
             
-            FILE *fdump = fopen("compressed_data.bin","wb");
-            fwrite(buffer, 1, data_size, fdump);
-            fclose(fdump);
-            
             fprintf(*Log, "FOUND ALL DATA PACKETS!\n");
             fprintf(*Log, "DECOMPRESSING DATA DECOM SIZE %d!\n", data_size);
             
@@ -986,34 +1043,16 @@ int HandleDL_Data(unsigned char *data, int length)
             lzo_ret = lzo1x_decompress((unsigned char*)buffer + 0x10, data_size - 0x10, (unsigned char*)nds_data->saved_data, &out_len, NULL);
             if(lzo_ret!=LZO_E_OK)printf("Menu decompression failed: error %d\n",lzo_ret);
             
-            fdump = fopen("data.bin","wb");
-            fwrite((void*)nds_data->saved_data, 1, out_len, fdump);
-            fclose(fdump);
-            
             free(buffer);
             
             data_size = out_len;
             
-            //Extract the header and rsa signature from the saved data buffer
+            //Extract the header and rsa signature from the saved data buffer, then clear the memory that they were stored in, in the saved data buffer.
             memcpy((void*)&nds_data->header, (void*)nds_data->saved_data, sizeof(TNDSHeader));
-            memcpy((void*)&nds_data->rsa.signature, (void*)&nds_data->saved_data[(data_size - sizeof(TNDSHeader) - 136)], 136);
-            memset((void*)nds_data->saved_data, 0, sizeof(TNDSHeader));
-            memset((void*)&nds_data->saved_data[(data_size - sizeof(TNDSHeader) - 136)], 0, 136);
-            
-            buffer = (unsigned char*)malloc(data_size - sizeof(TNDSHeader));
-            memset(buffer, 0, data_size - sizeof(TNDSHeader));
-            
-            //Copy the saved data contents after the point where the header was, into the buffer. Then copy the contents of the buffer back into the beginning of the saved data buffer, so it's like the header and rsa signature was never there.
-            memcpy(buffer, (void*)((int)nds_data->saved_data + (int)sizeof(TNDSHeader)), data_size - sizeof(TNDSHeader) - 136);
-            memcpy((void*)nds_data->saved_data, buffer, data_size - sizeof(TNDSHeader) - 136);
-            
-            nds_data->total_binaries_size = (volatile int)data_size - sizeof(TNDSHeader) - 136;
-            nds_data->arm7s = (nds_data->header.arm9binarySize - nds_data->header.arm9romSource) + 1;
-            nds_data->arm7e = nds_data->arm7s + nds_data->header.arm7binarySize;
-            
-            free(buffer);
+            memcpy((void*)&nds_data->rsa.signature, (void*)&nds_data->saved_data[(data_size - 136)], 136);
             
             nds_data->trigger_assembly = 1;
+            nds_data->build_raw = data_size;
         }
         
         return 1;

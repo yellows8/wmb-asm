@@ -515,6 +515,7 @@ struct Nds_data
        volatile ds_advert adverts[15];
        volatile nds_rsaframe rsa;
        volatile TNDSHeader header;
+       volatile TNDSBanner *banner;//When null, the Wmb Asm Module will take care of the banner, but when not null, the packet module plugins can put data in here, and the Wmb Asm Module will just take care of writing it to the .nds.
        volatile bool data_init;
        volatile int arm7s, arm7e;
        volatile int arm7s_seq, arm7e_seq;
@@ -542,6 +543,7 @@ struct Nds_data
        volatile bool trigger_assembly;//Set by 1 by the packet module plugins when it's time to assembly and write
        //the .nds. This is reset when assembly is done.
        volatile bool use_advert;//This is only used when multipleIDs is true. When this variable is 0, advert will be used directly for assembly, with beacon_data being copyed into it first, however when 1, the adverts array will be used during assembly, instead of copying in data from the beacon_data array.
+       int build_raw;//When doing assembly, when this is <=0, continue as normal. However, when this is larger than one, the Wmb Asm Module will just calculate the filename of the .nds, and directly write the contents of the saved_data buffer. The size of the .nds to write, from the buffer, is the value of this build_raw variable.
 };
 #ifdef ASM_SDK_MODULE
     #ifdef DLLMAIN
@@ -665,6 +667,7 @@ struct Nds_data
             
         #endif
         
+        #ifndef BUILDING_SDK
         #ifdef ASM_SDK_PLUGIN
             
             #define ASMPLUG_PRI_LOW -1//Plugin priorities. The plugins with the highest priority are dealt with first, then the ones with the lower priority, and so on. The plugins with the highest pritority with have the Handle802_11 function called first, then that function will be called after the current/highest, for the lower priority, and so on.
@@ -702,8 +705,29 @@ struct Nds_data
                 free((void*)*dat);
             }
             
+            //Copys the advert data from the beacon data array into the advert struct. If this array is used in your plugin, this needs called when triggering the assembly.
+            #ifdef DLLMAIN
+                void UpdateAvert()
+                {
+                    int pos, dsize;
+                    for(int i=0; i<9; i++)
+                    {
+                        pos=i*98;
+                        if(i!=8)dsize=98;
+                        if(i==8)dsize=72;
+                        memcpy((void*) &((unsigned char*)&nds_data->advert)[pos], (void*)&nds_data->beacon_data[(980*(int)nds_data->gameID)+pos],dsize);
+                    }
+                }
+                
+            #endif
+            
+            #ifndef DLLMAIN
+                void UpdateAvert();
+            #endif
+            
         #endif
-
+        #endif
+        
             #ifdef NDS
                 #undef BUILDING_DLL
             #endif

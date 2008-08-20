@@ -219,6 +219,7 @@ void WMBBeaconGrab(unsigned char *data)
                         }
                         
                         memcpy((void*)&nds_data->beacon_data[(980*(int)ds->gameID)+pos],ds->data,(size_t)ds->data_size);
+                        //memcpy((void*)((int)&nds_data->advert + pos), ds->data, (size_t)ds->data_size);
      }
 
     //Block end
@@ -747,7 +748,10 @@ int WMBProcessData(unsigned char *data, int length)
 			fprintfdebug(*Log,"ENTERING ASSEMBLE STAGE\n");
 			fflushdebug(*Log);
         }
-		
+	 	
+	 //if(nds_data->multipleIDs)
+        UpdateAvert();
+     
      nds_data->trigger_assembly = 1;
      
      }
