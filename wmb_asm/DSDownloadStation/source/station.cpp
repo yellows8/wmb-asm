@@ -983,24 +983,37 @@ int HandleDL_Data(unsigned char *data, int length)
             if(nds_data->saved_data==NULL)return 3;
             memset((void*)nds_data->saved_data, 0, de_data_size);
             
-            fprintf(*Log, "A\n");
-            
             lzo_ret = lzo1x_decompress((unsigned char*)buffer + 0x10, data_size - 0x10, (unsigned char*)nds_data->saved_data, &out_len, NULL);
             if(lzo_ret!=LZO_E_OK)printf("Menu decompression failed: error %d\n",lzo_ret);
-            
-            fprintf(*Log, "B\n");
             
             fdump = fopen("data.bin","wb");
             fwrite((void*)nds_data->saved_data, 1, out_len, fdump);
             fclose(fdump);
             
-            fprintf(*Log, "C\n");
+            free(buffer);
+            
+            data_size = out_len;
+            
+            //Extract the header and rsa signature from the saved data buffer
+            memcpy((void*)&nds_data->header, (void*)nds_data->saved_data, sizeof(TNDSHeader));
+            memcpy((void*)&nds_data->rsa.signature, (void*)&nds_data->saved_data[(data_size - sizeof(TNDSHeader) - 136)], 136);
+            memset((void*)nds_data->saved_data, 0, sizeof(TNDSHeader));
+            memset((void*)&nds_data->saved_data[(data_size - sizeof(TNDSHeader) - 136)], 0, 136);
+            
+            buffer = (unsigned char*)malloc(data_size - sizeof(TNDSHeader));
+            memset(buffer, 0, data_size - sizeof(TNDSHeader));
+            
+            //Copy the saved data contents after the point where the header was, into the buffer. Then copy the contents of the buffer back into the beginning of the saved data buffer, so it's like the header and rsa signature was never there.
+            memcpy(buffer, (void*)((int)nds_data->saved_data + (int)sizeof(TNDSHeader)), data_size - sizeof(TNDSHeader) - 136);
+            memcpy((void*)nds_data->saved_data, buffer, data_size - sizeof(TNDSHeader) - 136);
+            
+            nds_data->total_binaries_size = (volatile int)data_size - sizeof(TNDSHeader) - 136;
+            nds_data->arm7s = (nds_data->header.arm9binarySize - nds_data->header.arm9romSource) + 1;
+            nds_data->arm7e = nds_data->arm7s + nds_data->header.arm7binarySize;
             
             free(buffer);
             
-            fprintf(*Log, "D\n");
-            
-            //nds_data->trigger_assembly = 1;
+            nds_data->trigger_assembly = 1;
         }
         
         return 1;
