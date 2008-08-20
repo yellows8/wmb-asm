@@ -871,19 +871,20 @@ int HandleDL_Header(unsigned char *data, int length)
         fprintf(*Log, "LZO   COMPRESSED DATA SIZE %d\n", (int)data_size);
         fprintf(*Log, "LZO DECOMPRESSED DATA SIZE %d\n", (int)de_data_size);
         
-        nds_data->saved_data = (unsigned char*)malloc(data_size * 2);
+        nds_data->saved_data = (unsigned char*)malloc(data_size);
         nds_data->data_sizes = (int*)malloc(sizeof(int) * 32440);
         if(nds_data->saved_data==NULL || nds_data->data_sizes==NULL)
         {
             printf("ERROR: Failed to allocate memory.\n");
             return 5;//Fatal error. However, the Wmb Asm Module doesn't handle fatal errors from plugins returning this error code, yet.
         }
-        memset((void*)nds_data->saved_data, 0, data_size * 2);
+        memset((void*)nds_data->saved_data, 0, data_size);
         memset((void*)nds_data->data_sizes, 0, sizeof(int) * 32440);
         
         dat-=8;
         
-        memcpy((void*)nds_data->saved_data, dat, length);
+        length-=50;
+        memcpy((void*)&nds_data->saved_data[0], dat, (size_t)length);
         nds_data->data_sizes[0] = length;
         nds_data->pkt_size = length;
         high_pos = length;
@@ -934,8 +935,10 @@ int HandleDL_Data(unsigned char *data, int length)
             
             if(!nds_data->data_sizes[seq])
             {
+                length-=50;
+                
                 fprintf(*Log, "FOUND DATA PKT SEQ %d SZ %d CID %d TEMP %d ENDTEMP %d NUM %d\n",(int)seq, size, (int)clientID, temp, end_temp, GetPacketNum());
-                memcpy((void*)&nds_data->saved_data[temp], dat, length);
+                memcpy((void*)&nds_data->saved_data[temp], dat, (size_t)length);
                 nds_data->data_sizes[(int)seq] = length;
                 temp+=nds_data->data_sizes[(int)seq];
             }
@@ -948,7 +951,7 @@ int HandleDL_Data(unsigned char *data, int length)
             end_temp = high_pos;
         }
         
-        if(end_temp>=data_size + 0x10)
+        if(end_temp>=data_size)
         {
             buffer = (unsigned char*)nds_data->saved_data;
             data_size = end_temp;
