@@ -110,6 +110,8 @@ int *found_menu = NULL;
 int *menu_sizes = NULL;
 bool assembled_menu = 0;//Set to true when the menu has been assembled.
 int high_pos = 0;
+int high_seq = 0;//Highest data packet seq we have seen
+int highest_contigous_seq = 0;//Highest contigous, the last seq we have seen without any missed packets before it.
 
 unsigned int data_size = 0;//Size of the LZO compressed data, excluding the LZO header.
 unsigned int de_data_size = 0;//Size of the decompressed data.
@@ -906,7 +908,7 @@ int HandleDL_Data(unsigned char *data, int length)
     unsigned char *buffer = NULL;
     int cur_pos = 0;
     int temp = nds_data->data_sizes[0];
-    int end_temp = nds_data->data_sizes[0];
+    int end_temp = 0;
     int lzo_ret = 0;
     lzo_uint out_len = 0;
     
@@ -924,7 +926,7 @@ int HandleDL_Data(unsigned char *data, int length)
         if(seq!=0xFFFF)
         {
             
-            for(int i=0; i<(int)seq; i++)
+            for(int i=1; i<(int)seq; i++)
             {
                 
                 temp+=nds_data->data_sizes[i+1];
@@ -940,18 +942,32 @@ int HandleDL_Data(unsigned char *data, int length)
                 fprintf(*Log, "FOUND DATA PKT SEQ %d SZ %d CID %d TEMP %d ENDTEMP %d NUM %d\n",(int)seq, size, (int)clientID, temp, end_temp, GetPacketNum());
                 memcpy((void*)&nds_data->saved_data[temp], dat, (size_t)length);
                 nds_data->data_sizes[(int)seq] = length;
-                temp+=nds_data->data_sizes[(int)seq];
             }
             
+            temp+=nds_data->data_sizes[(int)seq];
+            
             if(temp>high_pos)high_pos = temp;
+            if((int)seq>high_seq)high_seq = (int)seq;
+            if((int)seq>highest_contigous_seq)
+            {
+                bool found = 0;
+                
+                for(int i=1; i<(int)seq; i++)
+                {
+                    if(!nds_data->data_sizes[i])found = 1;
+                }
+                
+                if(!found)highest_contigous_seq = (int)seq;
+            }
             
         }
         else
         {
+            if(high_seq==highest_contigous_seq)
             end_temp = high_pos;
         }
         
-        if(end_temp>=data_size)
+        if(end_temp > 0)
         {
             buffer = (unsigned char*)nds_data->saved_data;
             data_size = end_temp;
