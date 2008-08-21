@@ -595,7 +595,7 @@ IPHeader *CheckGetIP(unsigned char *data, int length)
     
     if(version!=4)return NULL;
     if(ip_len!=20)return NULL;
-    if(header->protocol!=0x06)return NULL;
+    if(header->protocol!=0x06)return NULL;//Ignore IP packets that aren't using TCP for the protocol
     
     ConvertEndian(&header->header_checksum,&header->header_checksum,sizeof(unsigned short));
     
@@ -635,6 +635,97 @@ unsigned char *GetIP(unsigned char *data, int length)
     if(CheckGetIP(data, length)==NULL)return NULL;
     
     return data + sizeof(IPHeader);
+}
+
+TCPHeader *GetTCP(IPHeader *iphdr, unsigned char *data, int length, unsigned char **payload)
+{
+    TCPHeader *header = (TCPHeader*)data;
+    TCPseudoHeader phdr;
+    memset(&phdr, 0, sizeof(TCPseudoHeader));
+    
+    if(payload)*payload = (unsigned char*)(((int)data) + ((int)header->header_length * 4));
+    
+    ConvertEndian(&header->checksum,&header->checksum,sizeof(unsigned short));
+    
+    phdr.src = iphdr->src;
+    phdr.dst = iphdr->dst;
+    phdr.protocol = 6;
+    phdr.tcp_length = (unsigned short)length;
+    
+    unsigned short pkt_checksum = header->checksum;
+    header->checksum = 0;
+    unsigned int checksum = 0;
+
+    unsigned short *dat_chk = NULL;
+    int len = 0;
+    if((header->header_length*4)%2==0)
+    {
+        len = length/2;
+    }
+    else
+    {
+        len = (length-1)/2;
+    }
+    
+    dat_chk = (unsigned short*)&phdr;
+    
+    for(int i=0; i<6; i++)
+    {
+        if(i!=5)
+        ConvertEndian(dat_chk,dat_chk,sizeof(unsigned short));
+
+        checksum += ((unsigned int)*dat_chk);
+        printf("PS INDEX %d VAL %x\n", i, (int)*dat_chk);
+
+        if(i!=5)
+        ConvertEndian(dat_chk,dat_chk,sizeof(unsigned short));
+        
+        dat_chk++;
+    }
+    
+    dat_chk = (unsigned short*)data;
+    
+    for(int i=0; i<len; i++)
+    {
+        ConvertEndian(dat_chk,dat_chk,sizeof(unsigned short));
+
+        checksum += ((unsigned int)*dat_chk);
+        printf("DAT INDEX %d VAL %x\n", i, (int)*dat_chk);
+
+        ConvertEndian(dat_chk,dat_chk,sizeof(unsigned short));
+
+        dat_chk++;
+    }
+    
+    if(length%2!=0)
+    {
+        checksum += (unsigned int)*dat_chk;
+    }
+    
+    printf("CHK %x\n", (int)checksum);
+    
+    while (checksum>>16)
+	  checksum = (checksum & 0xFFFF)+(checksum >> 16);
+
+    printf("CRRY %x\n", (int)checksum);
+
+    checksum = ~checksum;
+    
+    
+    
+    header->checksum = pkt_checksum;
+    printf("BEFORE SHIFT %x\n", (int)checksum);
+    //checksum = checksum << 16;
+    printf("AFTER SHIFT %x\n", (int)checksum);
+    checksum += (unsigned int)header->checksum;
+    printf("PKT SUM %x\n", (int)header->checksum);
+    
+    printf("CHK THE SUM %x\n", (int)checksum);
+    
+    if(checksum!=0x0000FFFF)
+        return NULL;//Checksum check failed
+    
+    return header;
 }
 
 int GetFileLength(FILE* _pfile)
