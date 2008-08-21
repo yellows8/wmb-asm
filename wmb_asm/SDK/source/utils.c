@@ -649,7 +649,7 @@ TCPHeader *GetTCP(IPHeader *iphdr, unsigned char *data, int length, unsigned cha
     
     phdr.src = iphdr->src;
     phdr.dst = iphdr->dst;
-    phdr.protocol = 6;
+    phdr.protocol = (unsigned char)iphdr->protocol;
     phdr.tcp_length = (unsigned short)length;
     
     unsigned short pkt_checksum = header->checksum;
@@ -675,7 +675,6 @@ TCPHeader *GetTCP(IPHeader *iphdr, unsigned char *data, int length, unsigned cha
         ConvertEndian(dat_chk,dat_chk,sizeof(unsigned short));
 
         checksum += ((unsigned int)*dat_chk);
-        printf("PS INDEX %d VAL %x\n", i, (int)*dat_chk);
 
         if(i!=5)
         ConvertEndian(dat_chk,dat_chk,sizeof(unsigned short));
@@ -688,39 +687,24 @@ TCPHeader *GetTCP(IPHeader *iphdr, unsigned char *data, int length, unsigned cha
     for(int i=0; i<len; i++)
     {
         ConvertEndian(dat_chk,dat_chk,sizeof(unsigned short));
-
+        
         checksum += ((unsigned int)*dat_chk);
-        printf("DAT INDEX %d VAL %x\n", i, (int)*dat_chk);
-
+        
         ConvertEndian(dat_chk,dat_chk,sizeof(unsigned short));
-
+        
         dat_chk++;
     }
     
     if(length%2!=0)
     {
-        checksum += (unsigned int)*dat_chk;
+        checksum += (0xFF & *dat_chk)<<8;
     }
-    
-    printf("CHK %x\n", (int)checksum);
     
     while (checksum>>16)
 	  checksum = (checksum & 0xFFFF)+(checksum >> 16);
-
-    printf("CRRY %x\n", (int)checksum);
-
-    checksum = ~checksum;
-    
-    
     
     header->checksum = pkt_checksum;
-    printf("BEFORE SHIFT %x\n", (int)checksum);
-    //checksum = checksum << 16;
-    printf("AFTER SHIFT %x\n", (int)checksum);
     checksum += (unsigned int)header->checksum;
-    printf("PKT SUM %x\n", (int)header->checksum);
-    
-    printf("CHK THE SUM %x\n", (int)checksum);
     
     if(checksum!=0x0000FFFF)
         return NULL;//Checksum check failed
