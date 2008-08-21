@@ -22,10 +22,35 @@ struct IPHeader
     unsigned int dst;
 } __attribute__ ((__packed__));
 
+struct TCPHeader
+{
+    unsigned short src_port;
+    unsigned short dest_port;
+    unsigned int sequence_number;
+    unsigned int ack_number;
+    unsigned char reserved:4, header_length:4;
+    unsigned char CWR:1, ECE:1, URG:1, ACK:1, PSH:1, RST:1, SYN:1, FIN:1;
+    unsigned short window_size;
+    unsigned short checksum;
+    unsigned short urgent_pointer;
+    unsigned int options;
+} __attribute__ ((__packed__));
+
+struct TCPseudoHeader//Pseudo header that is pre-appended to the the TCP header data in a seperate buffer, when doing checksum calculation.
+{
+    unsigned int src;//Src/dst are the same as the fields from the IP Header.
+    unsigned int dst;
+    unsigned char reserved;//Always zero.
+    unsigned char protocol;//The protocol specified in the IP Header, always 6 since we're using only TCP.
+    unsigned short tcp_length;//Length of the tcp header and data.
+} __attribute__ ((__packed__));
+
 EthernetHeader *CheckGetEthernet(unsigned char *data, int length, unsigned short type = 0);
 unsigned char *GetEthernet(unsigned char *data, int length, unsigned short type = 0);
 
 IPHeader *CheckGetIP(unsigned char *data, int length);
 unsigned char *GetIP(unsigned char *data, int length);
+
+TCPHeader *GetTCP(IPHeader *iphdr, unsigned char *data, int length, unsigned char **payload = NULL);
 
 #endif
