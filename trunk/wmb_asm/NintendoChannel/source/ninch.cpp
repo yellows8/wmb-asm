@@ -40,6 +40,8 @@ FILE **Log = NULL;
 
 bool DidInit = 0;
 
+unsigned int client, host;
+
 #ifdef __cplusplus
   extern "C" {
 #endif
@@ -115,6 +117,10 @@ DLLIMPORT volatile Nds_data *AsmPlug_GetNdsData()
 DLLIMPORT void AsmPlug_Reset()
 {   
     stage=STAGE_CLIENTHELLO;
+    
+    client = 0;
+    host = 0;
+    
     /*last_seq=0;
 
     memset(host_mac,0,6);
@@ -140,14 +146,23 @@ int Handle_ClientHello(unsigned char *data, int length)
     Dat = GetIP(dat,length);
     if(Dat==NULL)return 0;
     length-=sizeof(IPHeader);
-    IPHeader *hdr = (IPHeader*)dat;
+    IPHeader *iphdr = (IPHeader*)dat;
+    //Dat+=sizeof(IPHeader);
     
-    version = hdr->version;
-    ip_length = hdr->length * 4;
+    unsigned char *payload;
+    TCPHeader *tcpheader = GetTCP(iphdr, Dat, length, &payload);
+    if(tcpheader==NULL)return 0;
+    length-=sizeof(TCPHeader);
+    Dat+=sizeof(TCPHeader);
+    
+    version = iphdr->version;
+    ip_length = iphdr->length * 4;
+    client = iphdr->src;
+    host = iphdr->dst;
     
     stage = STAGE_SERVERHELLO;
     
-    printf("FOUND AN TCP PACKET!\n");
+    printf("FOUND CLIENT HELLO!\n");
     
     return 1;
 }
