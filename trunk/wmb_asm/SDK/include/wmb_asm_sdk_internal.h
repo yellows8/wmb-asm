@@ -4,17 +4,17 @@
     #define WMB_ASM_SDK_INTERNAL
         
         #ifdef SDK_MAIN
-            volatile Nds_data **sdk_nds_data = NULL;
+            volatile struct Nds_data **sdk_nds_data = NULL;
             bool *SDK_DEBUG = NULL;
             FILE **SDK_Log = NULL;
-            sAsmSDK_Config *SDK_CONFIG = NULL;
+            struct sAsmSDK_Config *SDK_CONFIG = NULL;
         #endif
         
         #ifndef SDK_MAIN
-            extern volatile Nds_data **sdk_nds_data;
+            extern volatile struct Nds_data **sdk_nds_data;
             extern bool *SDK_DEBUG;
             extern FILE **SDK_Log;
-            extern sAsmSDK_Config *SDK_CONFIG;
+            extern struct sAsmSDK_Config *SDK_CONFIG;
         #endif
         
     #endif

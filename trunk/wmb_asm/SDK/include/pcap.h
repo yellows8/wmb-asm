@@ -49,23 +49,23 @@ DEALINGS IN THE SOFTWARE.
 	   unsigned int len;	/* length this packet (off wire) */
     } __attribute__ ((__packed__)) pcap_pkthdr;
     
-    typedef struct spcap_t
+    struct pcap_t
 	{
 		FILE *file;
 		bool swap;
 		pcap_pkthdr header;
 		unsigned char *pktdata;
 		char *error_buffer;
-	} __attribute__ ((__packed__)) pcap_t;
+	} __attribute__ ((__packed__));
 	
 	#ifdef __cplusplus
     extern "C" {
     #endif
 	
-        pcap_t  *pcap_open_offline(const char *filename, char *errbuf);
-        int     pcap_next_ex(pcap_t *file, pcap_pkthdr **hdr, const u_char **pktdata);
-        void    pcap_close(pcap_t *file);
-        char    *pcap_geterr(pcap_t *file);
+        struct pcap_t  *pcap_open_offline(const char *filename, char *errbuf);
+        int     pcap_next_ex(struct pcap_t *file, pcap_pkthdr **hdr, const u_char **pktdata);
+        void    pcap_close(struct pcap_t *file);
+        char    *pcap_geterr(struct pcap_t *file);
         
         #ifdef ASM_SDK_CLIENT
             int GetPacketNumber();

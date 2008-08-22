@@ -45,12 +45,12 @@ struct TCPseudoHeader//Pseudo header that is pre-appended to the the TCP header 
     unsigned short tcp_length;//Length of the tcp header and data.
 } __attribute__ ((__packed__));
 
-EthernetHeader *CheckGetEthernet(unsigned char *data, int length, unsigned short type = 0);
-unsigned char *GetEthernet(unsigned char *data, int length, unsigned short type = 0);
+struct EthernetHeader *CheckGetEthernet(unsigned char *data, int length, unsigned short type);
+unsigned char *GetEthernet(unsigned char *data, int length, unsigned short type);
 
-IPHeader *CheckGetIP(unsigned char *data, int length);
+struct IPHeader *CheckGetIP(unsigned char *data, int length);
 unsigned char *GetIP(unsigned char *data, int length);
 
-TCPHeader *GetTCP(IPHeader *iphdr, unsigned char *data, int length, unsigned char **payload = NULL);
+struct TCPHeader *GetTCP(struct IPHeader *iphdr, unsigned char *data, int length, unsigned char **payload);
 
 #endif

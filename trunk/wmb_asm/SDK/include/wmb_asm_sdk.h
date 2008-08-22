@@ -231,7 +231,7 @@ struct sAsmSDK_Params
     u_char *pkt_data;
     int length;
     char **argv;
-    pcap_t *fp;
+    struct pcap_t *fp;
     bool checkrsa;
     char *outdir;
     bool run;
@@ -352,14 +352,14 @@ struct ds_advert {
 	volatile unsigned short game_description[96];
 } __attribute__ ((__packed__));
 
-typedef struct SNDSBanner {
+struct TNDSBanner {
   unsigned short version;
   unsigned short crc;
   unsigned char reserved[28];
   unsigned char icon[512];
   unsigned short palette[16];
   unsigned short titles[6][128];
-} __attribute__ ((__packed__)) TNDSBanner;
+} __attribute__ ((__packed__));
 
 struct beacon {
 	unsigned char unk0[4];
@@ -449,7 +449,7 @@ struct AVS_header//AVS WLAN Capture header
 
 } __attribute__((__packed__));
 
-typedef struct SNDSHeader {
+struct TNDSHeader {
   char gameTitle[12];
   char gameCode[4];
   char makercode[2];
@@ -502,7 +502,7 @@ typedef struct SNDSHeader {
   unsigned short headerCRC16;
 
   unsigned char zero[160];
-} __attribute__ ((__packed__)) TNDSHeader;
+} __attribute__ ((__packed__));
 
 //Beacon code is based on masscat's WMB client code for beacons.
 struct Nds_data
@@ -510,12 +510,12 @@ struct Nds_data
        volatile int found_beacon[10*15];//At least one if we have seen a beacon. Access it like so: nds_data.found_beacon((gameID*10)+advert_sequence_number)
        volatile unsigned char beacon_data[980*15];
        volatile unsigned short beacon_checksum[10];
-       volatile ds_advert advert;
-       volatile ds_advert oldadvert;
-       volatile ds_advert adverts[15];
-       volatile nds_rsaframe rsa;
-       volatile TNDSHeader header;
-       volatile TNDSBanner *banner;//When null, the Wmb Asm Module will take care of the banner, but when not null, the packet module plugins can put data in here, and the Wmb Asm Module will just take care of writing it to the .nds.
+       volatile struct ds_advert advert;
+       volatile struct ds_advert oldadvert;
+       volatile struct ds_advert adverts[15];
+       volatile struct nds_rsaframe rsa;
+       volatile struct TNDSHeader header;
+       volatile struct TNDSBanner *banner;//When null, the Wmb Asm Module will take care of the banner, but when not null, the packet module plugins can put data in here, and the Wmb Asm Module will just take care of writing it to the .nds.
        volatile bool data_init;
        volatile int arm7s, arm7e;
        volatile int arm7s_seq, arm7e_seq;
@@ -592,7 +592,7 @@ struct Nds_data
     
         struct sAsmSDK_Config
         {
-            volatile Nds_data **nds_data;
+            volatile struct Nds_data **nds_data;
             bool *DEBUG;
             FILE **Log;
             

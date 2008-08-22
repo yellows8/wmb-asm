@@ -23,20 +23,20 @@ DEALINGS IN THE SOFTWARE.
 
 #include "..\include\wmb_asm_sdk.h"
 
-inline void AllocDir(FILE_LIST *files)
+inline void AllocDir(struct FILE_LIST *files)
 {
 
         files->filename = (char*)malloc(256);
         strcpy(files->filename,"");
-        files->next = (FILE_LIST*)malloc(sizeof(FILE_LIST));
-        memset(files->next,0,sizeof(FILE_LIST));
+        files->next = (struct FILE_LIST*)malloc(sizeof(struct FILE_LIST));
+        memset(files->next,0,sizeof(struct FILE_LIST));
 }
 
-DLLIMPORT void FreeDirectory(FILE_LIST *filelist)
+DLLIMPORT void FreeDirectory(struct FILE_LIST *filelist)
 {
 
-    FILE_LIST *files = filelist;
-    FILE_LIST *next_file = files;
+    struct FILE_LIST *files = filelist;
+    struct FILE_LIST *next_file = files;
     files=next_file;
     while(files!=NULL)
     {
@@ -47,13 +47,13 @@ DLLIMPORT void FreeDirectory(FILE_LIST *filelist)
     }
 }
 
-DLLIMPORT FILE_LIST *ScanDirectory(FILE_LIST *filelist, char *dirname, char *ext = NULL)
+DLLIMPORT struct FILE_LIST *ScanDirectory(struct FILE_LIST *filelist, char *dirname, char *ext)
 {
     
-    FILE_LIST *files=NULL;
-    FILE_LIST *cur_files=NULL;
-    DIR *dir = NULL;
-    dirent *ent = NULL;
+    struct FILE_LIST *files=NULL;
+    struct FILE_LIST *cur_files=NULL;
+    struct DIR *dir = NULL;
+    struct dirent *ent = NULL;
     char *DirName = (char*)malloc(256);
     strcpy(DirName,dirname);
     if(filelist!=NULL)
@@ -84,8 +84,8 @@ DLLIMPORT FILE_LIST *ScanDirectory(FILE_LIST *filelist, char *dirname, char *ext
         
         if(cur_files==NULL)
         {
-            cur_files = (FILE_LIST*)malloc(sizeof(FILE_LIST));
-            memset(cur_files,0,sizeof(FILE_LIST));
+            cur_files = (struct FILE_LIST*)malloc(sizeof(struct FILE_LIST));
+            memset(cur_files,0,sizeof(struct FILE_LIST));
         }
         
         if(cur_files->filename==NULL)
@@ -118,15 +118,15 @@ DLLIMPORT FILE_LIST *ScanDirectory(FILE_LIST *filelist, char *dirname, char *ext
     {
         if(files==NULL)
         {
-            files = (FILE_LIST*)malloc(sizeof(FILE_LIST));
-            memset(files,0,sizeof(FILE_LIST));
+            files = (struct FILE_LIST*)malloc(sizeof(struct FILE_LIST));
+            memset(files,0,sizeof(struct FILE_LIST));
         }
         
         AllocDir(files);
         cur_files = files;
     }
     
-    ent=(dirent*)1;
+    ent=(struct dirent*)1;
     while(ent!=NULL)
     {
         ent = readdir(dir);
