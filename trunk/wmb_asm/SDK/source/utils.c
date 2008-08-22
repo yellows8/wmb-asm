@@ -480,9 +480,11 @@ unsigned short CalcCRC16(unsigned char *data, unsigned int length)
 }
 
 //************************************CRC32*************************************
-typedef unsigned char u8;
-typedef unsigned short int u16;
-typedef unsigned int u32;
+#ifndef NDS
+	typedef unsigned char u8;
+	typedef unsigned short int u16;
+	typedef unsigned int u32;
+#endif
 
 #define UPDC32(ch, crc) crc = (( crc >> 8 ) ^ crc_32_tab[(( crc ^ ch ) & 0xFF )]);
 u32 crc32buf(char *buf, size_t len);
