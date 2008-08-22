@@ -35,7 +35,7 @@ DEALINGS IN THE SOFTWARE.
 #define ASM_MODULE_VERSION_STR "2.0b r2"
 
 #ifndef __cplusplus
-    enum bool {false = 0, true = 1};
+    typedef enum {false = 0, true = 1} bool;
 #endif
 
 #ifdef BUILDING_SDK
@@ -227,7 +227,7 @@ void CheckEndianA(void* input, int input_length);
 
 struct sAsmSDK_Params
 {
-    pcap_pkthdr *header;
+    struct pcap_pkthdr *header;
     u_char *pkt_data;
     int length;
     char **argv;

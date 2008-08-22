@@ -32,7 +32,7 @@ DEALINGS IN THE SOFTWARE.
     typedef unsigned char u_char;
     typedef unsigned int u_int;
     
-    typedef struct spcap_file_header {
+    struct pcap_file_header {
 	   unsigned int magic;
 	   unsigned short majorVersion;
 	   unsigned short minorVersion;
@@ -40,7 +40,7 @@ DEALINGS IN THE SOFTWARE.
 	   unsigned int timeStampAccuracy;
 	   unsigned int snapshotLength;
 	   unsigned int linkLayerType;
-    } __attribute__ ((__packed__)) pcap_file_header;
+    } __attribute__ ((__packed__));
 
     typedef struct spcap_pkthdr {
 	   long tv_sec;

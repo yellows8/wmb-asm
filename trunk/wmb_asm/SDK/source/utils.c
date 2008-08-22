@@ -27,7 +27,7 @@ DEALINGS IN THE SOFTWARE.
 
 unsigned char normal_mac[5] = {0x03,0x09,0xBF,0x00,0x00};
 
-DLLIMPORT void ConvertAVSEndian(AVS_header *avs);
+DLLIMPORT void ConvertAVSEndian(struct AVS_header *avs);
 
 //**********ENDIANS*******************************
 
@@ -116,8 +116,9 @@ void ChangeFilename(char *in, char *out, char *filename)
 int ReadSeq(unsigned short *seq)
 {
     int Seq=0;
+	int i;
 
-    for(int i=0; i<12; i++)
+    for(i=0; i<12; i++)
     {
             if(*seq & BIT(i))
             Seq |= BIT(i);
@@ -135,7 +136,7 @@ bool CompareMAC(unsigned char *a, unsigned char *b)
 }
 
 //******************CHECK FRAME CONTROL***************************************************************
-bool CheckFrameControl(iee80211_framehead2 *framehead, int type, int subtype)
+bool CheckFrameControl(struct iee80211_framehead2 *framehead, int type, int subtype)
 {
     /*if(*SDK_DEBUG && SDK_CONFIG!=NULL)
     {
@@ -173,7 +174,7 @@ unsigned char host_client_mgc[4] = {0x06,0x01,0x02,0x00};
 //******************CHECK FRAME*********************************************************
 bool CheckFrame(unsigned char *data, unsigned char *host_mac, unsigned char command, unsigned short *size, unsigned char *pos)
 {
-     iee80211_framehead *fh = (iee80211_framehead*)data;
+     struct iee80211_framehead *fh = (struct iee80211_framehead*)data;
      unsigned char *dat = &data[24];
      unsigned char rsize=0;
      unsigned short Size=0;
@@ -259,14 +260,14 @@ unsigned char *nintendoWMBBeacon( unsigned char *frame, int frame_size) {
 //*********************AVS*******************************************************
 unsigned char *IsValidAVS(u_char *pkt_data)
 {
-     AVS_header *avs = NULL;
+     struct AVS_header *avs = NULL;
      
      if(!PCAP_CheckAVS)
      {
      return pkt_data;
      }
 
-     avs = (AVS_header*)pkt_data;
+     avs = (struct AVS_header*)pkt_data;
 
      if((avs->magic_revision & AVS_magic) && (((unsigned char*)&avs->magic_revision)[3] & AVS_revision))
      {
@@ -279,7 +280,7 @@ unsigned char *IsValidAVS(u_char *pkt_data)
 
                         if(avs->preamble==AVS_PREAMBLE && avs->encoding_type==AVS_ENCODING)
                         {
-                        return pkt_data + ((int)sizeof(AVS_header));
+                        return pkt_data + ((int)sizeof(struct AVS_header));
                         }
                         else
                         {
@@ -318,7 +319,7 @@ unsigned char *IsValidAVS(u_char *pkt_data)
 }
 
 //**********************AVS ENDIAN*******************************************************
-DLLIMPORT void ConvertAVSEndian(AVS_header *avs)
+DLLIMPORT void ConvertAVSEndian(struct AVS_header *avs)
 {
      CheckEndianA(&avs->header_length,4);
      
@@ -375,7 +376,7 @@ bool CheckDataPackets(int seq)
 
 unsigned char GetGameID(unsigned char *data)
 {
-    iee80211_framehead2 *framehead = (iee80211_framehead2*)data;
+    struct iee80211_framehead2 *framehead = (struct iee80211_framehead2*)data;
     unsigned Byte1, Byte2, gameID;
     unsigned char *bytes;
     Byte1=0;Byte2=0;gameID=0;
@@ -528,10 +529,10 @@ unsigned short computeBeaconChecksum(unsigned short *data, int length) {
 
 //int did_dump=0;
 
-EthernetHeader *CheckGetEthernet(unsigned char *data, int length, unsigned short type)
+struct EthernetHeader *CheckGetEthernet(unsigned char *data, int length, unsigned short type)
 {
-    if(length < (int)sizeof(EthernetHeader))return NULL;
-    EthernetHeader *header = (EthernetHeader*)data;
+    if(length < (int)sizeof(struct EthernetHeader))return NULL;
+    struct EthernetHeader *header = (struct EthernetHeader*)data;
     if(type!=0)
     {
         if(header->type!=type)
@@ -547,7 +548,7 @@ unsigned char *GetEthernet(unsigned char *data, int length, unsigned short type)
 {
     if(CheckGetEthernet(data, length, type)==NULL)return NULL;
     
-    return data + sizeof(EthernetHeader);
+    return data + sizeof(struct EthernetHeader);
 }
 
 /*
@@ -582,13 +583,13 @@ u16 i;
 return ((u16) sum);
 }
 
-IPHeader *CheckGetIP(unsigned char *data, int length)
+struct IPHeader *CheckGetIP(unsigned char *data, int length)
 {
-    IPHeader *header = NULL;
+    struct IPHeader *header = NULL;
     unsigned int version, ip_len;
-    if(length < sizeof(IPHeader) || data==NULL)return NULL;
+    if(length < sizeof(struct IPHeader) || data==NULL)return NULL;
     
-    header = (IPHeader*)data;
+    header = (struct IPHeader*)data;
     
     version = header->version;
     ip_len = header->length * 4;
@@ -604,8 +605,9 @@ IPHeader *CheckGetIP(unsigned char *data, int length)
     unsigned int checksum = 0;
     
     unsigned short *dat_chk = (unsigned short*)data;
-    
-    for(int i=0; i<ip_len/2; i++)
+    int i;
+	
+    for(i=0; i<ip_len/2; i++)
     {
         ConvertEndian(dat_chk,dat_chk,sizeof(unsigned short));
         
@@ -634,14 +636,14 @@ unsigned char *GetIP(unsigned char *data, int length)
     
     if(CheckGetIP(data, length)==NULL)return NULL;
     
-    return data + sizeof(IPHeader);
+    return data + sizeof(struct IPHeader);
 }
 
-TCPHeader *GetTCP(IPHeader *iphdr, unsigned char *data, int length, unsigned char **payload)
+struct TCPHeader *GetTCP(struct IPHeader *iphdr, unsigned char *data, int length, unsigned char **payload)
 {
-    TCPHeader *header = (TCPHeader*)data;
-    TCPseudoHeader phdr;
-    memset(&phdr, 0, sizeof(TCPseudoHeader));
+    struct TCPHeader *header = (struct TCPHeader*)data;
+    struct TCPseudoHeader phdr;
+    memset(&phdr, 0, sizeof(struct TCPseudoHeader));
     
     if(payload)*payload = (unsigned char*)(((int)data) + ((int)header->header_length * 4));
     
@@ -655,6 +657,7 @@ TCPHeader *GetTCP(IPHeader *iphdr, unsigned char *data, int length, unsigned cha
     unsigned short pkt_checksum = header->checksum;
     header->checksum = 0;
     unsigned int checksum = 0;
+	int i;
 
     unsigned short *dat_chk = NULL;
     int len = 0;
@@ -669,7 +672,7 @@ TCPHeader *GetTCP(IPHeader *iphdr, unsigned char *data, int length, unsigned cha
     
     dat_chk = (unsigned short*)&phdr;
     
-    for(int i=0; i<6; i++)
+    for(i=0; i<6; i++)
     {
         if(i!=5)
         ConvertEndian(dat_chk,dat_chk,sizeof(unsigned short));
@@ -684,7 +687,7 @@ TCPHeader *GetTCP(IPHeader *iphdr, unsigned char *data, int length, unsigned cha
     
     dat_chk = (unsigned short*)data;
     
-    for(int i=0; i<len; i++)
+    for(i=0; i<len; i++)
     {
         ConvertEndian(dat_chk,dat_chk,sizeof(unsigned short));
         

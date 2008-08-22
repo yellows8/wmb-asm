@@ -28,19 +28,19 @@ DEALINGS IN THE SOFTWARE.
 char PCAP_ERROR_BUFFER[PCAP_ERRBUF_SIZE];
 
 int PacketNumber=1;
-spcap_pkthdr pktheader;
-pcap_file_header capheader;
+struct spcap_pkthdr pktheader;
+struct pcap_file_header capheader;
 
-pcap_t *cap = NULL;
+struct pcap_t *cap = NULL;
 
 bool PCAP_CheckAVS = 1;
 
-DLLIMPORT pcap_t *pcap_open_offline(const char *filename, char *errbuf)
+DLLIMPORT struct pcap_t *pcap_open_offline(const char *filename, char *errbuf)
 {
-    cap = (pcap_t*)malloc(sizeof(pcap_t));
+    cap = (struct pcap_t*)malloc(sizeof(struct pcap_t));
     unsigned int magic = 0xa1b2c3d4;
     if(cap==NULL)return NULL;
-    memset(&capheader,0,sizeof(pcap_file_header));
+    memset(&capheader,0,sizeof(struct pcap_file_header));
     PacketNumber=1;
     
     cap->file = fopen(filename,"rb");
@@ -50,7 +50,7 @@ DLLIMPORT pcap_t *pcap_open_offline(const char *filename, char *errbuf)
         return NULL;
     }
     
-    if(fread(&capheader,1,sizeof(pcap_file_header),cap->file)!=sizeof(pcap_file_header))
+    if(fread(&capheader,1,sizeof(struct pcap_file_header),cap->file)!=sizeof(struct pcap_file_header))
     {
         return NULL;
     }
@@ -88,7 +88,7 @@ DLLIMPORT pcap_t *pcap_open_offline(const char *filename, char *errbuf)
     if(capheader.linkLayerType==163)PCAP_CheckAVS = 1;
     if(capheader.linkLayerType==1)PCAP_CheckAVS = 0;
     
-    memset(&cap->header,0,sizeof(pcap_file_header));
+    memset(&cap->header,0,sizeof(struct pcap_file_header));
     cap->pktdata = (unsigned char*)malloc(capheader.snapshotLength);
     if(cap->pktdata==NULL)return NULL;
     memset(cap->pktdata,0,capheader.snapshotLength);
@@ -98,7 +98,7 @@ DLLIMPORT pcap_t *pcap_open_offline(const char *filename, char *errbuf)
     return cap;
 }
 
-DLLIMPORT int pcap_next_ex(pcap_t *fcap, pcap_pkthdr **hdr, const u_char **pktdata)
+DLLIMPORT int pcap_next_ex(struct pcap_t *fcap, pcap_pkthdr **hdr, const u_char **pktdata)
 {
     if(fcap==NULL){strcpy(PCAP_ERROR_BUFFER,"FILE POINTER NULL");return -1;}
     if(fcap->file==NULL){strcpy(PCAP_ERROR_BUFFER,"CAPTURE FILE NOT OPENED");return -1;}
@@ -136,7 +136,7 @@ DLLIMPORT int pcap_next_ex(pcap_t *fcap, pcap_pkthdr **hdr, const u_char **pktda
     return 0;
 }
 
-DLLIMPORT void pcap_close(pcap_t *fcap)
+DLLIMPORT void pcap_close(struct pcap_t *fcap)
 {
     if(fcap==NULL)return;
     if(fcap->file==NULL)return;
@@ -146,7 +146,7 @@ DLLIMPORT void pcap_close(pcap_t *fcap)
     //free(cap);//<-------- Hangs when debugging with gdb and wxDev-Cpp, no clue why
 }
 
-DLLIMPORT char *pcap_geterr(pcap_t *file)
+DLLIMPORT char *pcap_geterr(struct pcap_t *file)
 {
     return PCAP_ERROR_BUFFER;//file->error_buffer
 }
