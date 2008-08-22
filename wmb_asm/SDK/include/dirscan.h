@@ -26,14 +26,14 @@ DEALINGS IN THE SOFTWARE.
   extern "C" {
 #endif
 
-typedef struct TFILE_LIST
+struct FILE_LIST
 {
     char *filename;
-    TFILE_LIST *next;
-} __attribute__ ((__packed__)) FILE_LIST;
+    struct FILE_LIST *next;
+} ;
 
-    FILE_LIST *ScanDirectory(FILE_LIST *filelist, char *dirname, char *ext);
-    void FreeDirectory(FILE_LIST *filelist);
+    struct FILE_LIST *ScanDirectory(struct FILE_LIST *filelist, char *dirname, char *ext);
+    void FreeDirectory(struct FILE_LIST *filelist);
 
 #ifdef __cplusplus
   }

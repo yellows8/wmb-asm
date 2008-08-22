@@ -709,6 +709,15 @@ TCPHeader *GetTCP(IPHeader *iphdr, unsigned char *data, int length, unsigned cha
     if(checksum!=0x0000FFFF)
         return NULL;//Checksum check failed
     
+    ConvertEndian(&header->src_port, &header->src_port, sizeof(unsigned short));
+    ConvertEndian(&header->dest_port, &header->dest_port, sizeof(unsigned short));
+    ConvertEndian(&header->sequence_number, &header->sequence_number, sizeof(unsigned int));
+    ConvertEndian(&header->ack_number, &header->ack_number, sizeof(unsigned int));
+    ConvertEndian(&header->window_size, &header->window_size, sizeof(unsigned int));
+    ConvertEndian(&header->urgent_pointer, &header->urgent_pointer, sizeof(unsigned short));
+    if((header->header_length*4)>=24)
+    ConvertEndian(&header->options, &header->options, sizeof(unsigned int));
+    
     return header;
 }
 
