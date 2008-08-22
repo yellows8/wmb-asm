@@ -34,8 +34,10 @@ DEALINGS IN THE SOFTWARE.
 #define ASM_MODULE_VERSION_BUILD 0
 #define ASM_MODULE_VERSION_STR "2.0b r2"
 
-#ifndef __cplusplus
-    typedef enum {false = 0, true = 1} bool;
+#ifndef ARM9
+	#ifndef __cplusplus
+		typedef enum {false = 0, true = 1} bool;
+	#endif
 #endif
 
 #ifdef BUILDING_SDK
@@ -56,8 +58,6 @@ DEALINGS IN THE SOFTWARE.
             #define USING_DLL
         #endif
     #endif
-    
-    extern bool PCAP_CheckAVS;
     
 #endif
 
@@ -92,10 +92,7 @@ DEALINGS IN THE SOFTWARE.
 #endif
 
     #ifdef ARM9//We are compiling for Nintendo DS
-		//#include <nds.h>
-			#ifndef NDS
-				#define NDS
-			#endif
+		#include <nds.h>
     #endif
 
         #ifdef NDS
@@ -160,6 +157,10 @@ DEALINGS IN THE SOFTWARE.
                     using namespace std;
                 #endif
             #endif
+
+#ifdef BUILDING_SDK
+	extern bool PCAP_CheckAVS;
+#endif
 
 //*****************DEBUG*******************************
 
