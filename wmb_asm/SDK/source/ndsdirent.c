@@ -35,7 +35,7 @@ struct DIR
 {
     DIR_ITER                *handle; /* -1 for failed opening */
     //struct _finddata_t  info;
-    dirent       result; /* d_name null iff first time */
+    struct dirent       result; /* d_name null iff first time */
     char                *name;  /* null-terminated char string */
 };
 
@@ -63,7 +63,7 @@ int closedir(DIR *dir)
 	return 0;
 }
 
-dirent *readdir(DIR *dir)
+struct dirent *readdir(DIR *dir)
 {
 	 struct stat st;
 	 memset(&st,0,sizeof(struct stat));
