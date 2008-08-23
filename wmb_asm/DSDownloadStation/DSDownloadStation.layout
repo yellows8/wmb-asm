@@ -14,10 +14,10 @@ Open=0
 Top=0
 [Editors]
 Focused=-1
-Order=-1
+Order=
 [Editor_2]
-Open=1
-Top=1
+Open=0
+Top=0
 CursorCol=61
 CursorRow=658
 TopLine=524

@@ -25,9 +25,18 @@ DEALINGS IN THE SOFTWARE.
 
 #include "..\include\wmb_asm_sdk.h"
 
+#ifndef NDS
+extern "C" {
+#endif
+
 unsigned char normal_mac[5] = {0x03,0x09,0xBF,0x00,0x00};
 
-DLLIMPORT void ConvertAVSEndian(struct AVS_header *avs);
+void ConvertAVSEndian(struct AVS_header *avs);
+
+#ifdef DLLIMPORT
+    #undef DLLIMPORT
+    #define DLLIMPORT
+#endif
 
 //**********ENDIANS*******************************
 
@@ -35,7 +44,7 @@ DLLIMPORT void ConvertAVSEndian(struct AVS_header *avs);
 #define ENDIAN_BIG 1
 bool machine_endian=ENDIAN_LITTE;
 
-DLLIMPORT void CheckEndianA(void* input, int input_length)
+void CheckEndianA(void* input, int input_length)
 {
      if(input_length!=4)return;
 
@@ -46,7 +55,7 @@ DLLIMPORT void CheckEndianA(void* input, int input_length)
      if(wanted_value!=*int_input)machine_endian=ENDIAN_LITTE;
 }
 
-DLLIMPORT void ConvertEndian(void* input, void* output, int input_length)
+void ConvertEndian(void* input, void* output, int input_length)
 {
      if(machine_endian==ENDIAN_BIG)return;
 
@@ -257,6 +266,19 @@ unsigned char *nintendoWMBBeacon( unsigned char *frame, int frame_size) {
   return nin_ie;
 }
 
+void UpdateAvert(volatile struct Nds_data *dat)
+{
+    int pos, dsize;
+    int i;
+	for(i=0; i<9; i++)
+    {
+        pos=i*98;
+        if(i!=8)dsize=98;
+        if(i==8)dsize=72;
+        memcpy((void*) &((unsigned char*)&dat->advert)[pos], (void*)&dat->beacon_data[(980*(int)dat->gameID)+pos],dsize);
+    }
+}
+
 //*********************AVS*******************************************************
 unsigned char *IsValidAVS(u_char *pkt_data)
 {
@@ -319,7 +341,7 @@ unsigned char *IsValidAVS(u_char *pkt_data)
 }
 
 //**********************AVS ENDIAN*******************************************************
-DLLIMPORT void ConvertAVSEndian(struct AVS_header *avs)
+void ConvertAVSEndian(struct AVS_header *avs)
 {
      CheckEndianA(&avs->header_length,4);
      
@@ -785,4 +807,8 @@ void ExecuteApp(char *appname, char *cmdline)
      CloseHandle(pi.hThread);
 }
 
+#endif
+
+#ifndef NDS
+}
 #endif

@@ -22,6 +22,9 @@ DEALINGS IN THE SOFTWARE.
 #ifndef BUILDING_DLL
 #define BUILDING_DLL
 #endif
+
+#define DLLMAIN
+
 #include "..\..\SDK\include\wmb_asm_sdk_module.h"
 
 #define MAX_PKT_MODULES 255
@@ -65,12 +68,12 @@ DLLIMPORT bool HandlePacket(sAsmSDK_Params *params);
 DLLIMPORT char *GetStatusAsm(int *error_code);
 void GetStatusAsmA(lpAsmGetStatusCallback callback, int index);
 
-#ifdef __cplusplus
-  }
-#endif
-
 #ifdef WIN32
 void ExecuteApp(char *appname, char *cmdline);
+#endif
+
+#ifdef __cplusplus
+  }
 #endif
 
 bool debug=0;
@@ -91,6 +94,8 @@ FILE **Log = NULL;
 bool *DEBUG = NULL;
 
 sAsmSDK_Config *CONFIG = NULL;
+
+volatile Nds_data *module_nds_data;
 
 typedef bool (*lpInit)(sAsmSDK_Config *config);
 typedef bool (*lpDeInit)();
@@ -740,7 +745,7 @@ DLLIMPORT bool InitAsm(SuccessCallback callback, bool debug, sAsmSDK_Config *con
     
     DEBUG = config->DEBUG;
     Log = config->Log;
-    nds_data = *config->nds_data;
+    module_nds_data = *config->nds_data;
     //*config = *config;
     *config->Log = *config->Log;
     if(config->DEBUG==NULL)printf("ACK!\n");
@@ -754,7 +759,7 @@ DLLIMPORT bool InitAsm(SuccessCallback callback, bool debug, sAsmSDK_Config *con
 			*Log = fopendebug("log.txt","w");
         }
     
-	memset((void*)nds_data,0,sizeof(Nds_data));
+	memset((void*)module_nds_data,0,sizeof(Nds_data));
 	save_unused_packets=1;
 	funusedpkt=NULL;
 
@@ -767,15 +772,12 @@ DLLIMPORT bool InitAsm(SuccessCallback callback, bool debug, sAsmSDK_Config *con
 
 DLLIMPORT void ResetAsm(volatile Nds_data *dat)
 {
-                        if(dat!=NULL)nds_data = dat;
+                        if(dat!=NULL)module_nds_data = dat;
                         if(dat==NULL)
                         {
-                            #ifndef NDS
 							volatile Nds_data *data = NULL;
 		                      for(int i=0; i<totalPacketModules; i++)
 		                      {
-			                         if(packetModules[i].lpdll==NULL)break;
-                                     
 			                         if(packetModules[i].GetNdsData!=NULL)
 			                         {
 				                        data = packetModules[i].GetNdsData();
@@ -784,55 +786,54 @@ DLLIMPORT void ResetAsm(volatile Nds_data *dat)
 				                        ResetAsm(data);
                                      }
 		                      }
-	                        #endif
                             
                             return;
                         }
     
-                        if(nds_data->saved_data!=NULL)free((void*)nds_data->saved_data);
-                        if(nds_data->data_sizes!=NULL)free((void*)nds_data->data_sizes);
-                        nds_data->saved_data=NULL;
-                        nds_data->data_sizes=NULL;
+                        if(module_nds_data->saved_data!=NULL)free((void*)module_nds_data->saved_data);
+                        if(module_nds_data->data_sizes!=NULL)free((void*)module_nds_data->data_sizes);
+                        module_nds_data->saved_data=NULL;
+                        module_nds_data->data_sizes=NULL;
 
                                 if(*DEBUG)
                                     fflushdebug(*Log);
                                 
 	                           TNDSHeader temp_header;
 	                           nds_rsaframe temp_rsa;
-	                           bool first=nds_data->finished_first_assembly;
+	                           bool first=module_nds_data->finished_first_assembly;
                                unsigned short temp_checksums[10];
                                ds_advert temp_advert1;
                                //bool beacon_thing=nds_data.beacon_thing;
-                               bool multipleIDs = nds_data->multipleIDs;
+                               bool multipleIDs = module_nds_data->multipleIDs;
                                bool handledIDs[256];
                                bool FoundGameIDs = 0;
 
-	                           if(nds_data->finished_first_assembly)
+	                           if(module_nds_data->finished_first_assembly)
 	                           {
-                                    memcpy((void*)&temp_header, (void*)&nds_data->header,sizeof(TNDSHeader));
-									memcpy((void*)&temp_rsa, (void*)&nds_data->rsa,sizeof(nds_rsaframe));
-									memcpy((void*)temp_checksums, (void*)nds_data->beacon_checksum,20);
-									memcpy((void*)&temp_advert1, (void*)&nds_data->oldadvert,sizeof(ds_advert));
-									//memcpy(&temp_advert2,&nds_data->advert,sizeof(ds_advert));
-									//nds_data->beacon_thing=beacon_thing;
-									nds_data->multipleIDs = multipleIDs;
-									memcpy((void*)handledIDs,(void*)nds_data->handledIDs,256);
-									FoundGameIDs = nds_data->FoundGameIDs;
+                                    memcpy((void*)&temp_header, (void*)&module_nds_data->header,sizeof(TNDSHeader));
+									memcpy((void*)&temp_rsa, (void*)&module_nds_data->rsa,sizeof(nds_rsaframe));
+									memcpy((void*)temp_checksums, (void*)module_nds_data->beacon_checksum,20);
+									memcpy((void*)&temp_advert1, (void*)&module_nds_data->oldadvert,sizeof(ds_advert));
+									//memcpy(&temp_advert2,&module_nds_data->advert,sizeof(ds_advert));
+									//module_nds_data->beacon_thing=beacon_thing;
+									module_nds_data->multipleIDs = multipleIDs;
+									memcpy((void*)handledIDs,(void*)module_nds_data->handledIDs,256);
+									FoundGameIDs = module_nds_data->FoundGameIDs;
                                }
 
-	                           memset((void*)nds_data,0,sizeof(Nds_data));
-	                           nds_data->finished_first_assembly=first;
-	                           if(nds_data->finished_first_assembly)
+	                           memset((void*)module_nds_data,0,sizeof(Nds_data));
+	                           module_nds_data->finished_first_assembly=first;
+	                           if(module_nds_data->finished_first_assembly)
 	                           {
-                                    memcpy((void*)&nds_data->header, (void*)&temp_header,sizeof(TNDSHeader));
-									memcpy((void*)&nds_data->rsa, (void*)&temp_rsa,sizeof(nds_rsaframe));
-									memcpy((void*)&nds_data->beacon_checksum, (void*)temp_checksums,20);
-									memcpy((void*)&nds_data->oldadvert, (void*)&temp_advert1,sizeof(ds_advert));
-									//memcpy(&nds_data->advert,&temp_advert2,sizeof(ds_advert));
-									//beacon_thing=nds_data->beacon_thing;
-									multipleIDs = nds_data->multipleIDs;
-									memcpy((void*)nds_data->handledIDs, (void*)handledIDs,256);
-									nds_data->FoundGameIDs = FoundGameIDs;
+                                    memcpy((void*)&module_nds_data->header, (void*)&temp_header,sizeof(TNDSHeader));
+									memcpy((void*)&module_nds_data->rsa, (void*)&temp_rsa,sizeof(nds_rsaframe));
+									memcpy((void*)&module_nds_data->beacon_checksum, (void*)temp_checksums,20);
+									memcpy((void*)&module_nds_data->oldadvert, (void*)&temp_advert1,sizeof(ds_advert));
+									//memcpy(&module_nds_data->advert,&temp_advert2,sizeof(ds_advert));
+									//beacon_thing=module_nds_data->beacon_thing;
+									multipleIDs = module_nds_data->multipleIDs;
+									memcpy((void*)module_nds_data->handledIDs, (void*)handledIDs,256);
+									module_nds_data->FoundGameIDs = FoundGameIDs;
                                }
                                
                                currentPacketModule = -1;
@@ -877,7 +878,7 @@ void CaptureBacktrack()
     total_assembled=0;
         for(int i=0; i<15; i++)
         {
-            if(nds_data->handledIDs[i])total_assembled++;
+            if(module_nds_data->handledIDs[i])total_assembled++;
         }
     prev_total=total_assembled;
     
@@ -935,7 +936,7 @@ void CaptureBacktrack()
         total_assembled=0;
         for(int i=0; i<15; i++)
         {
-            if(nds_data->handledIDs[i])total_assembled++;
+            if(module_nds_data->handledIDs[i])total_assembled++;
         }
 
 
@@ -952,9 +953,9 @@ int PKTINDX = 0;
 
 void CaptureAsmResetA(volatile Nds_data *dat, lpAsmGetStatusCallback callback)
 {
-    nds_data = dat;
+    module_nds_data = dat;
     
-    if(funusedpkt!=NULL && nds_data->multipleIDs)
+    if(funusedpkt!=NULL && module_nds_data->multipleIDs)
     {
         fclose(funusedpkt);
         funusedpkt=NULL;
@@ -964,16 +965,16 @@ void CaptureAsmResetA(volatile Nds_data *dat, lpAsmGetStatusCallback callback)
         total_assembled=0;
         for(int i=0; i<15; i++)
         {
-            if(nds_data->handledIDs[i])total_assembled++;
+            if(module_nds_data->handledIDs[i])total_assembled++;
         }
 
         bool got_all=1;
         int total_asm=0, total=0;
         for(int i=0; i<15; i++)
         {
-            if(!nds_data->handledIDs[i] && nds_data->foundIDs[i])got_all=0;
-            if(nds_data->foundIDs[i])total++;
-            if(nds_data->handledIDs[i])total_asm++;
+            if(!module_nds_data->handledIDs[i] && module_nds_data->foundIDs[i])got_all=0;
+            if(module_nds_data->foundIDs[i])total++;
+            if(module_nds_data->handledIDs[i])total_asm++;
         }
 
         if(got_all)
@@ -1005,13 +1006,13 @@ void CaptureAsmResetA(volatile Nds_data *dat, lpAsmGetStatusCallback callback)
 			#endif
     }
 
-    memset((void*)nds_data->handledIDs,0,256);
-    memset((void*)nds_data->found_beacon,0,(10*15) * sizeof(int));
-    nds_data->FoundGameIDs=0;
+    memset((void*)module_nds_data->handledIDs,0,256);
+    memset((void*)module_nds_data->found_beacon,0,(10*15) * sizeof(int));
+    module_nds_data->FoundGameIDs=0;
     
     GetStatusAsmA(callback, PKTINDX);
 
-    ResetAsm((Nds_data*)nds_data);
+    ResetAsm((Nds_data*)module_nds_data);
 }
 
 DLLIMPORT void CaptureAsmReset(lpAsmGetStatusCallback callback)//Needs to be called after reading the whole capture.
@@ -1068,7 +1069,7 @@ void GetStatusAsmA(lpAsmGetStatusCallback callback, int index)
 DLLIMPORT bool QueryAssembleStatus(int *error_code)
 {
     GetStatusAsm(error_code);
-    return nds_data->finished_first_assembly;
+    return module_nds_data->finished_first_assembly;
 }
 
 DLLIMPORT unsigned char GetPrecentageCompleteAsm()
@@ -1085,18 +1086,18 @@ DLLIMPORT unsigned char GetPrecentageCompleteAsm()
         if(packetModules[currentPacketModule].query_failure() == 2)
         {
 
-                for(int I=0; I<(int)nds_data->total_binaries_size; I+=size)
+                for(int I=0; I<(int)module_nds_data->total_binaries_size; I+=size)
                 {
-                    temp+=nds_data->data_sizes[i];
-                    size=nds_data->data_sizes[i];
+                    temp+=module_nds_data->data_sizes[i];
+                    size=module_nds_data->data_sizes[i];
 
-                    if(size==0)size=nds_data->pkt_size;
+                    if(size==0)size=module_nds_data->pkt_size;
                     i++;
                 }
 
             if(temp == 0)return 0;
 
-            devisor = nds_data->total_binaries_size/100;
+            devisor = module_nds_data->total_binaries_size/100;
             temp2 = temp / devisor;
             percent = (unsigned char)ceil((double)temp2);
         }
@@ -1131,7 +1132,7 @@ DLLIMPORT bool HandlePacket(sAsmSDK_Params *params)
              Handle802_11(data,params->length);
 
                     #ifndef NDS
-					if(save_unused_packets && nds_data->multipleIDs)
+					if(save_unused_packets && module_nds_data->multipleIDs)
                     {
                         if(funusedpkt==NULL)
                         {
@@ -1158,11 +1159,11 @@ DLLIMPORT bool HandlePacket(sAsmSDK_Params *params)
 	   if(packetModules[ii].GetNdsData!=NULL)
 	   {
             dat = packetModules[ii].GetNdsData();
-            nds_data = dat;
+            module_nds_data = dat;
 
             //printf("DAT %p\n",dat);
 
-     if(nds_data->trigger_assembly)
+     if(module_nds_data->trigger_assembly)
      {
         
 
@@ -1173,7 +1174,7 @@ DLLIMPORT bool HandlePacket(sAsmSDK_Params *params)
                             bool found=0;
 	                        memset(out,0,256);
 	                        memset(output,0,256);
-                            strncpy(out,(char*)nds_data->header.gameTitle,12);
+                            strncpy(out,(char*)module_nds_data->header.gameTitle,12);
                             for(int i=0; i<12; i++)
                             {
                                 if(out[I+i]=='\\' || out[I+i]=='/' || out[I+i]==':' || out[I+i]=='*' || out[I+i]=='?' || out[I+i]=='"' || out[I+i]=='<' || out[I+i]=='>' || out[I+i]=='|')
@@ -1191,7 +1192,7 @@ DLLIMPORT bool HandlePacket(sAsmSDK_Params *params)
 
                             found=0;
                             I=pos;
-                            strncpy((char*)&out[pos],(char*)nds_data->header.gameCode,4);
+                            strncpy((char*)&out[pos],(char*)module_nds_data->header.gameCode,4);
                             for(int i=0; i<4; i++)
                             {
                                 if(out[I+i]=='\\' || out[I+i]=='/' || out[I+i]==':' || out[I+i]=='*' || out[I+i]=='?' || out[I+i]=='"' || out[I+i]=='<' || out[I+i]=='>' || out[I+i]=='|')
@@ -1206,7 +1207,7 @@ DLLIMPORT bool HandlePacket(sAsmSDK_Params *params)
                             I=pos;
                             found=0;
 
-                            strncpy((char*)&out[pos],(char*)nds_data->header.makercode,2);
+                            strncpy((char*)&out[pos],(char*)module_nds_data->header.makercode,2);
                             for(int i=0; i<2; i++)
                             {
                                 if(out[I+i]=='\\' || out[I+i]=='/' || out[I+i]==':' || out[I+i]=='*' || out[I+i]=='?' || out[I+i]=='"' || out[I+i]=='<' || out[I+i]=='>' || out[I+i]=='|')
@@ -1243,18 +1244,18 @@ DLLIMPORT bool HandlePacket(sAsmSDK_Params *params)
                                 }
 
                              printf("Failure.\n");
-                             nds_data->trigger_assembly = 0;
+                             module_nds_data->trigger_assembly = 0;
 	                         return 0;
                              }
 
                             if(AssemblySuccessCallback!=NULL)
 	                           AssemblySuccessCallback();
 
-                             nds_data->finished_first_assembly=1;
-                             memcpy((void*)&nds_data->oldadvert, (void*)&nds_data->advert,sizeof(ds_advert));
+                             module_nds_data->finished_first_assembly=1;
+                             memcpy((void*)&module_nds_data->oldadvert, (void*)&module_nds_data->advert,sizeof(ds_advert));
                              //memset(&nds_data->advert,0,sizeof(ds_advert));
-                             memcpy((void*)&nds_data->oldadvert, (void*)&nds_data->advert,sizeof(ds_advert));
-                             ResetAsm((Nds_data*)nds_data);
+                             memcpy((void*)&module_nds_data->oldadvert, (void*)&module_nds_data->advert,sizeof(ds_advert));
+                             ResetAsm((Nds_data*)module_nds_data);
 
 
 
@@ -1329,7 +1330,7 @@ DLLIMPORT bool HandlePacket(sAsmSDK_Params *params)
 
 	                           delete []Str;
 
-                               nds_data->trigger_assembly = 0;
+                               module_nds_data->trigger_assembly = 0;
 
         
 	}
@@ -1360,7 +1361,7 @@ bool FoundIT=0;
 bool AssembleNds(char *output)
 {
      int temp=0;
-     ds_advert *ad = (ds_advert*)&nds_data->advert;
+     ds_advert *ad = (ds_advert*)&module_nds_data->advert;
      //unsigned char *Ad = (unsigned char*)ad;
      TNDSHeader ndshdr;
      TNDSBanner banner;
@@ -1381,21 +1382,21 @@ bool AssembleNds(char *output)
 
      memset(&ndshdr,0,sizeof(TNDSHeader));
      memset(&banner,0,sizeof(TNDSBanner));
-     memcpy((void*)&ndshdr,(void*)&nds_data->header,sizeof(TNDSHeader));
+     memcpy((void*)&ndshdr,(void*)&module_nds_data->header,sizeof(TNDSHeader));
      
      unsigned char *ptr;
-     ptr = (unsigned char*)&nds_data->advert;
+     ptr = (unsigned char*)&module_nds_data->advert;
      
-     if(nds_data->use_advert)
+     if(module_nds_data->use_advert)
      {
-            memcpy((void*)&nds_data->advert, (void*)&nds_data->adverts[(int)nds_data->gameID], sizeof(ds_advert));
+            memcpy((void*)&module_nds_data->advert, (void*)&module_nds_data->adverts[(int)module_nds_data->gameID], sizeof(ds_advert));
      }
 
      FILE *fdump = fopen("advertM.bin","wb");
-     fwrite((void*)&nds_data->advert, 1, sizeof(ds_advert), fdump);
+     fwrite((void*)&module_nds_data->advert, 1, sizeof(ds_advert), fdump);
      fclose(fdump);
      
-     if(nds_data->banner==NULL)
+     if(module_nds_data->banner==NULL)
      {
         
         memcpy((void*)banner.palette, (void*)ad->icon_pallete,32);
@@ -1405,7 +1406,7 @@ bool AssembleNds(char *output)
         int tempi=0;
         for(int i=0; i<48; i++)
         {
-            if(nds_data->advert.game_name[i]==0)
+            if(module_nds_data->advert.game_name[i]==0)
             {
             break;
             }
@@ -1413,16 +1414,16 @@ bool AssembleNds(char *output)
             tempi+=2;
         }
      
-        memcpy((void*)&gdtemp[0], (void*)&nds_data->advert.game_name[0],(size_t)tempi);//Copy the game name into the banner discription, add a newline character after that, then copy in the actual discription.
+        memcpy((void*)&gdtemp[0], (void*)&module_nds_data->advert.game_name[0],(size_t)tempi);//Copy the game name into the banner discription, add a newline character after that, then copy in the actual discription.
         gdtemp[tempi] = '\n';
         tempi+=2;
         
         
-        memcpy((void*)&gdtemp[tempi], (void*)&nds_data->advert.game_description[0],96*2);
+        memcpy((void*)&gdtemp[tempi], (void*)&module_nds_data->advert.game_description[0],96*2);
         
         for(int i=0; i<96; i++)
         {
-            if(nds_data->advert.game_description[i]==0)
+            if(module_nds_data->advert.game_description[i]==0)
             {
             break;
             }
@@ -1446,7 +1447,7 @@ bool AssembleNds(char *output)
      }
      else
      {
-        memcpy(&banner, (void*)&nds_data->banner, sizeof(TNDSBanner));
+        memcpy(&banner, (void*)&module_nds_data->banner, sizeof(TNDSBanner));
      }
         
      nds=fopen(output,"w+b");
@@ -1456,14 +1457,14 @@ bool AssembleNds(char *output)
             return 0;
      }
 
-     if(nds_data->build_raw>0)
+     if(module_nds_data->build_raw>0)
      {
-        fwrite((void*)nds_data->saved_data, 1, (size_t)nds_data->build_raw, nds);
+        fwrite((void*)module_nds_data->saved_data, 1, (size_t)module_nds_data->build_raw, nds);
         fclose(nds);
         
-        nds_data->beacon_thing=0;
-        nds_data->multipleIDs=0;
-        nds_data->handledIDs[(int)nds_data->gameID] = 1;
+        module_nds_data->beacon_thing=0;
+        module_nds_data->multipleIDs=0;
+        module_nds_data->handledIDs[(int)module_nds_data->gameID] = 1;
         prev_total=0;
         
         return 1;
@@ -1471,21 +1472,21 @@ bool AssembleNds(char *output)
 
      unsigned int temp1, temp2;
      unsigned short temp3, temp4;
-     temp1 = nds_data->header.bannerOffset;
-     temp2 = nds_data->header.romSize;
-     temp3 = nds_data->header.logoCRC16;
-     temp4 = nds_data->header.headerCRC16;
+     temp1 = module_nds_data->header.bannerOffset;
+     temp2 = module_nds_data->header.romSize;
+     temp3 = module_nds_data->header.logoCRC16;
+     temp4 = module_nds_data->header.headerCRC16;
 
-            if(nds_data->header.bannerOffset==0)//Some demos don't set this fields properly. Fix these for the first header, then use the original header for the second header, so RSA isn't invalidated.
+            if(module_nds_data->header.bannerOffset==0)//Some demos don't set this fields properly. Fix these for the first header, then use the original header for the second header, so RSA isn't invalidated.
             {
-                nds_data->header.bannerOffset = (unsigned int)((int)(((int)nds_data->header.arm7romSource) + ((int)nds_data->header.arm7binarySize)) + 660);
+                module_nds_data->header.bannerOffset = (unsigned int)((int)(((int)module_nds_data->header.arm7romSource) + ((int)module_nds_data->header.arm7binarySize)) + 660);
             }
-            if(nds_data->header.romSize!=nds_data->header.bannerOffset+2112)
+            if(module_nds_data->header.romSize!=module_nds_data->header.bannerOffset+2112)
             {
-                nds_data->header.romSize=(unsigned int)((int)nds_data->header.bannerOffset+2112);
+                module_nds_data->header.romSize=(unsigned int)((int)module_nds_data->header.bannerOffset+2112);
             }
 
-            memcpy((void*)&ndshdr, (void*)&nds_data->header,sizeof(TNDSHeader));
+            memcpy((void*)&ndshdr, (void*)&module_nds_data->header,sizeof(TNDSHeader));
 
      int rpos = 0;
      memset(reserved,0,160);
@@ -1493,8 +1494,8 @@ bool AssembleNds(char *output)
      reserved[i] = 0x2D;
      rpos+=16;
 
-     memcpy((void*)&reserved[rpos], (void*)nds_data->advert.hostname,(size_t)(nds_data->advert.hostname_len*2));
-     rpos+=((int)nds_data->advert.hostname_len*2);
+     memcpy((void*)&reserved[rpos], (void*)module_nds_data->advert.hostname,(size_t)(module_nds_data->advert.hostname_len*2));
+     rpos+=((int)module_nds_data->advert.hostname_len*2);
      for(int i=0; i<32-(rpos-16); i++)
      reserved[rpos + i] = 0x00;
      rpos+= 32-(rpos-16);
@@ -1517,7 +1518,7 @@ bool AssembleNds(char *output)
      fflush(nds);
      free(download_play);
 
-     sz=((((int)nds_data->header.arm9romSource)-((int)ftell(nds))));//72
+     sz=((((int)module_nds_data->header.arm9romSource)-((int)ftell(nds))));
      Temp = new unsigned char[sz];
      memset(Temp,0,sz);
      fwrite(Temp,1,sz,nds);
@@ -1526,27 +1527,27 @@ bool AssembleNds(char *output)
      temp=0;
      int writtenBytes=0;
 
-     fwrite((void*)&nds_data->saved_data[0],1,nds_data->arm7s,nds);
+     fwrite((void*)&module_nds_data->saved_data[0],1,module_nds_data->arm7s,nds);
 
-     sz=((int)nds_data->header.arm7romSource-(int)ftell(nds));
+     sz=((int)module_nds_data->header.arm7romSource-(int)ftell(nds));
      Temp = new unsigned char[sz];
      memset(Temp,0,sz);
      fwrite(Temp,1,sz,nds);
      delete[] Temp;
 
      writtenBytes=0;
-     if(nds_data->arm7e>nds_data->arm7s)
+     if(module_nds_data->arm7e > module_nds_data->arm7s)
      {
-        fwrite((void*)&nds_data->saved_data[nds_data->arm7s],1,nds_data->arm7e - nds_data->arm7s,nds);
+        fwrite((void*)&module_nds_data->saved_data[module_nds_data->arm7s],1,module_nds_data->arm7e - module_nds_data->arm7s,nds);
      }
 
-            if(nds_data->header.bannerOffset==0)
+            if(module_nds_data->header.bannerOffset==0)
             {
                 printf("ERROR! BANNER OFFSET WRONG!\n");
                 return 0;
             }
 
-     sz=((int)nds_data->header.bannerOffset-((int)ftell(nds)));//(int)(nds_data.header.arm7romSource+nds_data.header.arm7binarySize)
+     sz=((int)module_nds_data->header.bannerOffset-((int)ftell(nds)));
 
      if(sz>0)
      {
@@ -1556,9 +1557,9 @@ bool AssembleNds(char *output)
         memset(Temp,0,sz);
 
         //This following block is based on code from the sachen program.
-        if(nds_data->pkt_size!=250)
+        if(module_nds_data->pkt_size!=250)
         {
-            if (( ((nds_data->header.bannerOffset - 0x200) > (nds_data->header.arm7romSource + nds_data->header.arm7binarySize)) ))
+            if (( ((module_nds_data->header.bannerOffset - 0x200) > (module_nds_data->header.arm7romSource + module_nds_data->header.arm7binarySize)) ))
             {
                 //No clue what this is, but Firefly adds this, so...
                 unsigned char unknownData[] = { 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01 };
@@ -1573,24 +1574,22 @@ bool AssembleNds(char *output)
 
      fwrite(&banner,1,sizeof(TNDSBanner),nds);
 
-     if(nds_data->header.romSize!=nds_data->header.bannerOffset+2112)
+     if(module_nds_data->header.romSize!=module_nds_data->header.bannerOffset+2112)
             {
                 printf("ERROR! ROM SIZE WRONG!\n");
                 return 0;
             }
 
-     if((nds_data->header.bannerOffset+sizeof(TNDSBanner))<nds_data->header.romSize)
+     if((module_nds_data->header.bannerOffset+sizeof(TNDSBanner)) < module_nds_data->header.romSize)
      {
-     sz=((nds_data->header.romSize)-(nds_data->header.bannerOffset+sizeof(TNDSBanner)));
+     sz=((module_nds_data->header.romSize)-(module_nds_data->header.bannerOffset+sizeof(TNDSBanner)));
      Temp = new unsigned char[sz];
      memset(Temp,0,sz);
      fwrite(Temp,1,sz,nds);
      delete[] Temp;
-     //system("PAUSE");
-     //printf("SZ %d\n",sz);
      }
 
-     fwrite((void*)&nds_data->rsa.signature,1,136,nds);
+     fwrite((void*)&module_nds_data->rsa.signature,1,136,nds);
 
      fflush(nds);
 
@@ -1622,12 +1621,12 @@ bool AssembleNds(char *output)
      free(buffer);
      fclose(nds);
 
-     nds_data->beacon_thing=0;
-     nds_data->multipleIDs=0;
-     nds_data->handledIDs[(int)nds_data->gameID] = 1;
+     module_nds_data->beacon_thing=0;
+     module_nds_data->multipleIDs=0;
+     module_nds_data->handledIDs[(int)module_nds_data->gameID] = 1;
      prev_total=0;
 
-     if(funusedpkt!=NULL && nds_data->multipleIDs)
+     if(funusedpkt!=NULL && module_nds_data->multipleIDs)
      {
             fclose(funusedpkt);
             funusedpkt=NULL;

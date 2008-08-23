@@ -260,21 +260,18 @@ typedef int (*lpGetPacketNumber)();
 	#endif
     #endif
 
-	#ifdef ASM_SDK_PLUGIN
+    #ifdef NDS
+	   #ifdef ASM_SDK_PLUGIN
 		DLLIMPORT unsigned char GetPrecentageCompleteAsm();
-	#endif
-
-	#ifdef ASM_SDK_PLUGIN
-		
+	    
+		extern lpGetPacketNumber GetPacketNum;
+	   #endif
+	
+	   #ifdef ASM_SDK_CLIENT
 		#ifdef DLLMAIN
-			lpGetPacketNumber GetPacketNum=NULL;
+			lpGetPacketNumber GetPacketNum = NULL;
 		#endif
-		
-		#ifndef DLLMAIN
-			extern lpGetPacketNumber GetPacketNum;
-		#endif
-		
-		
+	   #endif
 	
 	#endif
 
@@ -283,7 +280,7 @@ typedef int (*lpGetPacketNumber)();
                     typedef bool (*lpHandlePacket)(sAsmSDK_Params *params);
                     typedef bool (*lpInitAsm)(SuccessCallback callback, bool debug, sAsmSDK_Config *config);
                     typedef void (*lpExitAsm)(void);
-                    typedef void (*lpCaptureAsmReset)(lpAsmGetStatusCallback callback);
+                    typedef void (*lpCaptureAsmReset)(int *code, lpAsmGetStatusCallback callback);
                     typedef char* (*lpGetStatusAsm)(int *error_code);
                     typedef char* (*lpQueryAssembleStatus)(int *error_code);
                     typedef unsigned char (*lpGetPrecentageCompleteAsm)(void);
@@ -307,6 +304,8 @@ typedef int (*lpGetPacketNumber)();
                                     lpGetModuleVersionStr GetModuleVersionStr=NULL;
                                     lpGetModuleVersionInt GetModuleVersionInt=NULL;
                                     
+                                    lpGetPacketNumber GetPacketNum = NULL;
+                                    
                                 #endif
                                 
                                 #ifndef DLLMAIN
@@ -320,6 +319,8 @@ typedef int (*lpGetPacketNumber)();
                                     
                                     extern lpGetModuleVersionStr GetModuleVersionStr;
                                     extern lpGetModuleVersionInt GetModuleVersionInt;
+                                    
+                                    extern lpGetPacketNumber GetPacketNum;
                                     
                                 #endif
                             
@@ -553,25 +554,6 @@ struct Nds_data
        volatile bool use_advert;//This is only used when multipleIDs is true. When this variable is 0, advert will be used directly for assembly, with beacon_data being copyed into it first, however when 1, the adverts array will be used during assembly, instead of copying in data from the beacon_data array.
        int build_raw;//When doing assembly, when this is <=0, continue as normal. However, when this is larger than one, the Wmb Asm Module will just calculate the filename of the .nds, and directly write the contents of the saved_data buffer. The size of the .nds to write, from the buffer, is the value of this build_raw variable.
 };
-#ifdef ASM_SDK_MODULE
-    #ifdef DLLMAIN
-        volatile Nds_data *nds_data;
-    #endif
-    
-    #ifndef DLLMAIN
-        extern volatile Nds_data *nds_data;
-    #endif
-#endif
-
-#ifdef ASM_SDK_PLUGIN
-    #ifdef DLLMAIN
-        volatile Nds_data *nds_data;
-    #endif
-    
-    #ifndef DLLMAIN
-        extern volatile Nds_data *nds_data;
-    #endif
-#endif
 
 	#ifdef ASM_SDK_PLUGIN
 	#ifdef NDS
@@ -628,9 +610,7 @@ struct Nds_data
 			
         };
     
-    #ifdef __cplusplus
-    }
-    #endif
+    
     
 
         #ifdef WIN32
@@ -648,6 +628,10 @@ struct Nds_data
             void* LoadFunctionDLL(LPDLL *lpdll, const char *func_name, const char *func_name2, char *error_buffer);
         #endif
 		#endif
+
+    #ifdef __cplusplus
+    }
+    #endif
 
         #ifdef ASM_SDK_CLIENT
 		
@@ -738,26 +722,8 @@ struct Nds_data
                 
                 free((void*)*dat);
             }
-            
-            //Copys the advert data from the beacon data array into the advert struct. If this array is used in your plugin, this needs called when triggering the assembly.
-            #ifdef DLLMAIN
-                void UpdateAvert()
-                {
-                    int pos, dsize;
-                    for(int i=0; i<9; i++)
-                    {
-                        pos=i*98;
-                        if(i!=8)dsize=98;
-                        if(i==8)dsize=72;
-                        memcpy((void*) &((unsigned char*)&nds_data->advert)[pos], (void*)&nds_data->beacon_data[(980*(int)nds_data->gameID)+pos],dsize);
-                    }
-                }
-                
-            #endif
-            
-            #ifndef DLLMAIN
-                void UpdateAvert();
-            #endif
+			
+            void UpdateAvert(volatile Nds_data *dat);
 			
 			#ifdef __cplusplus
 				}
@@ -771,7 +737,13 @@ struct Nds_data
             #endif
 
     #ifdef BUILDING_SDK
+	
         #include "wmb_asm_sdk_internal.h"
+        
+        #ifdef DLLIMPORT
+            #undef DLLIMPORT
+            #define DLLIMPORT
+        #endif
     #endif
 
 #endif
