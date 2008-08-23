@@ -56,7 +56,7 @@ DEALINGS IN THE SOFTWARE.
 #define STAGE_SERVER_CHANGECIPHERSPEC 4
 #define STAGE_APPLICATION_DATA 5
 
-int stage = STAGE_CLIENTHELLO;
+int ninch_stage = STAGE_CLIENTHELLO;
 
 sAsmSDK_Config *NINCHCONFIG = NULL;
 bool *NINCHDEBUG = NULL;
@@ -69,6 +69,8 @@ unsigned int client, host;
 unsigned char Random_Bytes[28];
 unsigned char *sessionID;
 unsigned char sessionIDLen;
+
+volatile Nds_data *ninch_nds_data;
 
 #ifdef __cplusplus
   extern "C" {
@@ -97,7 +99,7 @@ DLLIMPORT int AsmPlug_GetPriority()
 
 DLLIMPORT char *AsmPlug_GetStatus(int *error_code)
 {
-    if(stage==STAGE_CLIENTHELLO)
+    if(ninch_stage==STAGE_CLIENTHELLO)
     {
         *error_code = STAGE_CLIENTHELLO;
         return (char*)"02: Nintendo Channel: Failed to find the TLS Client Hello packet.\n";
@@ -109,26 +111,26 @@ DLLIMPORT char *AsmPlug_GetStatus(int *error_code)
 
 DLLIMPORT int AsmPlug_QueryFailure()
 {
-    if(stage==STAGE_CLIENTHELLO)return 3;
-    if(stage==STAGE_SERVERHELLO)return 1;
+    if(ninch_stage==STAGE_CLIENTHELLO)return 3;
+    if(ninch_stage==STAGE_SERVERHELLO)return 1;
     
     return 0;
 }
 
 DLLIMPORT int AsmPlug_Handle802_11(unsigned char *data, int length)
 {
-     if(stage==STAGE_CLIENTHELLO)return Handle_ClientHello(data, length);
-     if(stage==STAGE_SERVERHELLO)return Handle_ServerHello(data, length);
-     if(stage==STAGE_CLIENTKEY_EXCHANGE)return Handle_ClientKeyExchange(data, length);
-     if(stage==STAGE_SERVER_CHANGECIPHERSPEC)return Handle_ServerChangeCipherSpec(data, length);
-     if(stage==STAGE_APPLICATION_DATA)return Handle_ApplicationData(data, length);
+     if(ninch_stage==STAGE_CLIENTHELLO)return Handle_ClientHello(data, length);
+     if(ninch_stage==STAGE_SERVERHELLO)return Handle_ServerHello(data, length);
+     if(ninch_stage==STAGE_CLIENTKEY_EXCHANGE)return Handle_ClientKeyExchange(data, length);
+     if(ninch_stage==STAGE_SERVER_CHANGECIPHERSPEC)return Handle_ServerChangeCipherSpec(data, length);
+     if(ninch_stage==STAGE_APPLICATION_DATA)return Handle_ApplicationData(data, length);
      
      return 0;
 }
 
 DLLIMPORT bool AsmPlug_Init(sAsmSDK_Config *config)
 {
-    AsmPlugin_Init(config, &nds_data);
+    AsmPlugin_Init(config, &ninch_nds_data);
     
 	#ifndef NDS
     ResetAsm = config->ResetAsm;
@@ -144,19 +146,19 @@ DLLIMPORT bool AsmPlug_Init(sAsmSDK_Config *config)
 
 DLLIMPORT bool AsmPlug_DeInit()
 {
-    AsmPlugin_DeInit(&nds_data);
+    AsmPlugin_DeInit(&ninch_nds_data);
     
     return 1;
 }
 
 DLLIMPORT volatile Nds_data *AsmPlug_GetNdsData()
 {
-    return nds_data;
+    return ninch_nds_data;
 }
 
 DLLIMPORT void AsmPlug_Reset()
 {   
-    stage=STAGE_CLIENTHELLO;
+    ninch_stage=STAGE_CLIENTHELLO;
     
     client = 0;
     host = 0;
@@ -243,7 +245,7 @@ int Handle_ClientHello(unsigned char *data, int length)
     
     client = iphdr->src;
     
-    stage = STAGE_SERVERHELLO;
+    ninch_stage = STAGE_SERVERHELLO;
     
     printf("FOUND CLIENT HELLO!\n");
     
@@ -322,7 +324,7 @@ int Handle_ServerHello(unsigned char *data, int length)
     
     host = iphdr->src;
     
-    stage = STAGE_CLIENTKEY_EXCHANGE;
+    ninch_stage = STAGE_CLIENTKEY_EXCHANGE;
     
     printf("FOUND SERVER HELLO!\n");
     
@@ -431,7 +433,7 @@ int Handle_ClientKeyExchange(unsigned char *data, int length)
     
     free(buffer);
     
-    stage = STAGE_SERVER_CHANGECIPHERSPEC;
+    ninch_stage = STAGE_SERVER_CHANGECIPHERSPEC;
     
     printf("FOUND CLIENT KEY EXCHANGE!\n");
     
@@ -509,7 +511,7 @@ int Handle_ServerChangeCipherSpec(unsigned char *data, int length)
 
     free(buffer);
     
-    stage = STAGE_APPLICATION_DATA;
+    ninch_stage = STAGE_APPLICATION_DATA;
     
     printf("FOUND SERVER CHANGE CIPHER SPEC!\n");
     

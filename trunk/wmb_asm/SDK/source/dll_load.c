@@ -23,8 +23,12 @@ DEALINGS IN THE SOFTWARE.
 #include "..\include\wmb_asm_sdk.h"
 
     #ifndef NDS
+    
+    #ifndef NDS
+extern "C" {
+#endif
+    
                     LPDLL AsmDLL=0;
-                    Nds_data *ND_DAT = NULL;
 
                     bool LoadDLL(LPDLL *lpdll, const char *filename, char *error_buffer = NULL)
                     {
@@ -182,7 +186,7 @@ bool LoadAsmDLL(const char *filename, struct sAsmSDK_Config *config, char *error
 
         *config->DEBUG = 0;
 
-        config->Log = (FILE**)malloc(sizeof(struct FILE*));
+        config->Log = (FILE**)malloc(sizeof(FILE*));
         
         sdk_nds_data = config->nds_data;
         SDK_DEBUG = config->DEBUG;
@@ -201,5 +205,9 @@ bool CloseAsmDLL(char *error_buffer = NULL)
 {
     return CloseDLL(&AsmDLL, error_buffer);
 }
-    
+
+#ifndef NDS
+}
+#endif
+
 #endif

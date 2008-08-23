@@ -113,7 +113,7 @@ $(BUILD):
 #---------------------------------------------------------------------------------
 clean:
 	@echo clean ...
-	@rm -fr $(BUILD) source/main.o source/wmb.o source/pcap.o source/console.o source/win32dirent.o source/ndsdirent.o source/dirscan.o source/utils.o $(TARGET).elf $(TARGET).nds $(TARGET).arm9 $(TARGET).ds.gba 
+	@rm -fr $(BUILD) source/main.o source/wmb.o source/console.o source/main.o $(TARGET).elf $(TARGET).nds $(TARGET).arm9 $(TARGET).ds.gba 
  
 #---------------------------------------------------------------------------------
 else

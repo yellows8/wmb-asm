@@ -25,6 +25,8 @@ DEALINGS IN THE SOFTWARE.
 #include "..\include\dll.h"
 #include "..\..\SDK\include\wmb_asm_sdk_module.h"
 
+extern volatile Nds_data *module_nds_data;
+
 #ifdef WIN32
 DllClass::DllClass()
 {
