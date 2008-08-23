@@ -29,6 +29,27 @@ DEALINGS IN THE SOFTWARE.
 #undef DLLIMPORT
 #define DLLIMPORT __declspec (dllexport)
 
+#ifdef DLLIMPORT
+	#ifdef NDS
+		#undef DLLIMPORT
+		#define DLLIMPORT
+	#endif
+#endif
+
+//Change the names of the functions on-the-fly when compiling for DS, since everything is in one binary.
+#ifdef NDS
+	#define AsmPlug_GetID NINCH_AsmPlug_GetID
+	#define AsmPlug_GetIDStr NINCH_AsmPlug_GetIDStr
+	#define AsmPlug_GetPriority NINCH_AsmPlug_GetPriority
+	#define AsmPlug_GetStatus NINCH_AsmPlug_GetStatus
+	#define AsmPlug_QueryFailure NINCH_AsmPlug_QueryFailure
+	#define AsmPlug_Handle802_11 NINCH_AsmPlug_Handle802_11
+	#define AsmPlug_Init NINCH_AsmPlug_Init
+	#define AsmPlug_DeInit NINCH_AsmPlug_DeInit
+	#define AsmPlug_GetNdsData NINCH_AsmPlug_GetNdsData
+	#define AsmPlug_Reset NINCH_AsmPlug_Reset
+#endif
+
 #define STAGE_CLIENTHELLO 1
 #define STAGE_SERVERHELLO 2
 #define STAGE_CLIENTKEY_EXCHANGE 3
@@ -37,9 +58,9 @@ DEALINGS IN THE SOFTWARE.
 
 int stage = STAGE_CLIENTHELLO;
 
-sAsmSDK_Config *CONFIG = NULL;
-bool *DEBUG = NULL;
-FILE **Log = NULL;
+sAsmSDK_Config *NINCHCONFIG = NULL;
+bool *NINCHDEBUG = NULL;
+FILE **NINCHLog = NULL;
 
 bool DidInit = 0;
 
@@ -109,10 +130,12 @@ DLLIMPORT bool AsmPlug_Init(sAsmSDK_Config *config)
 {
     AsmPlugin_Init(config, &nds_data);
     
+	#ifndef NDS
     ResetAsm = config->ResetAsm;
-    DEBUG = config->DEBUG;
-    Log = config->Log;
-    CONFIG = config;
+    #endif
+	NINCHDEBUG = config->DEBUG;
+    NINCHLog = config->Log;
+    NINCHCONFIG = config;
     
     memset(Random_Bytes, 0, 28);
     
@@ -312,7 +335,6 @@ int Handle_ClientKeyExchange(unsigned char *data, int length)
     unsigned char *Dat = NULL;
     unsigned char version_major, version_minor;
     unsigned short len;
-    unsigned int Len;
     unsigned char *buffer;
 
     dat = GetEthernet(data,length, 8);
@@ -353,9 +375,7 @@ int Handle_ClientKeyExchange(unsigned char *data, int length)
     Dat+=2;
 
     if(*Dat!=0x10)return 3;//This is not a Client Key Exchange record
-    Dat++;
-    
-    unsigned char temp;
+	
     unsigned char *ptr;
     
     Dat++;
