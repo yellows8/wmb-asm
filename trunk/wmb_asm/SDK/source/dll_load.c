@@ -143,15 +143,19 @@ void* LoadFunctionDLL(LPDLL *lpdll, const char *func_name, const char *func_name
     return func_addr;
 }
 
-bool LoadAsmDLL(const char *filename, sAsmSDK_Config *config, char *error_buffer = NULL)
+#endif
+
+bool LoadAsmDLL(const char *filename, struct sAsmSDK_Config *config, char *error_buffer)
 {
     if(filename==NULL || config==NULL)return 0;
     
+	#ifndef NDS
+	
     AsmDLL = 0;
     
     if(!LoadDLL(&AsmDLL, filename, error_buffer))return 0;
     
-	   #ifndef NDS
+	   
 	        
 	        
             
@@ -168,17 +172,17 @@ bool LoadAsmDLL(const char *filename, sAsmSDK_Config *config, char *error_buffer
             
             
             
-        #endif
+    #endif
         
-        ND_DAT = (Nds_data*)malloc(sizeof(Nds_data));        
-        config->nds_data = (volatile Nds_data**)&ND_DAT;
-    memset((void*)*config->nds_data, 0, sizeof(Nds_data));
+        ND_DAT = (struct Nds_data*)malloc(sizeof(struct Nds_data));        
+        config->nds_data = (volatile struct Nds_data**)&ND_DAT;
+    memset((void*)*config->nds_data, 0, sizeof(struct Nds_data));
 
     config->DEBUG = (bool*)malloc(sizeof(bool));
 
         *config->DEBUG = 0;
 
-        config->Log = (FILE**)malloc(sizeof(FILE*));
+        config->Log = (FILE**)malloc(sizeof(struct FILE*));
         
         sdk_nds_data = config->nds_data;
         SDK_DEBUG = config->DEBUG;
@@ -191,9 +195,11 @@ bool LoadAsmDLL(const char *filename, sAsmSDK_Config *config, char *error_buffer
     return 1;
 }
 
+#ifndef NDS
+
 bool CloseAsmDLL(char *error_buffer = NULL)
 {
     return CloseDLL(&AsmDLL, error_buffer);
 }
     
-    #endif
+#endif

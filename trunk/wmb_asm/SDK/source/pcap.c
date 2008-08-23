@@ -98,7 +98,7 @@ DLLIMPORT struct pcap_t *pcap_open_offline(const char *filename, char *errbuf)
     return cap;
 }
 
-DLLIMPORT int pcap_next_ex(struct pcap_t *fcap, pcap_pkthdr **hdr, const u_char **pktdata)
+DLLIMPORT int pcap_next_ex(struct pcap_t *fcap, struct spcap_pkthdr **hdr, const u_char **pktdata)
 {
     if(fcap==NULL){strcpy(PCAP_ERROR_BUFFER,"FILE POINTER NULL");return -1;}
     if(fcap->file==NULL){strcpy(PCAP_ERROR_BUFFER,"CAPTURE FILE NOT OPENED");return -1;}
@@ -107,7 +107,7 @@ DLLIMPORT int pcap_next_ex(struct pcap_t *fcap, pcap_pkthdr **hdr, const u_char 
     
     if(feof(fcap->file)!=0)return -2;//Reached end of capture
     
-    if(fread(&pktheader,1,sizeof(pcap_pkthdr),fcap->file)!=sizeof(pcap_pkthdr))
+    if(fread(&pktheader,1,sizeof(struct spcap_pkthdr),fcap->file)!=sizeof(struct spcap_pkthdr))
     return -2;
     
     if(fcap->swap)

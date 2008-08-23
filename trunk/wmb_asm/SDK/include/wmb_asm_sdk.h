@@ -228,7 +228,7 @@ void CheckEndianA(void* input, int input_length);
 
 struct sAsmSDK_Params
 {
-    struct pcap_pkthdr *header;
+    struct spcap_pkthdr *header;
     u_char *pkt_data;
     int length;
     char **argv;
@@ -243,9 +243,10 @@ struct sAsmSDK_Params
 
 typedef void (*lpAsmGetStatusCallback)(char *str);
 
-#ifndef NDS
+typedef int (*lpGetPacketNumber)();
 
-    #ifdef USING_DLL
+    #ifdef ASM_SDK_CLIENT
+	#ifdef NDS
         //In this case with building dlls, DLLIMPORT really means to export the function.
         DLLIMPORT bool HandlePacket(sAsmSDK_Params *params);
 
@@ -256,9 +257,26 @@ typedef void (*lpAsmGetStatusCallback)(char *str);
         DLLIMPORT char *GetStatusAsm(int *error_code);
         DLLIMPORT bool QueryAssembleStatus(int *error_code);
         DLLIMPORT unsigned char GetPrecentageCompleteAsm();
+	#endif
     #endif
 
-        
+	#ifdef ASM_SDK_PLUGIN
+		DLLIMPORT unsigned char GetPrecentageCompleteAsm();
+	#endif
+
+	#ifdef ASM_SDK_PLUGIN
+		
+		#ifdef DLLMAIN
+			lpGetPacketNumber GetPacketNum=NULL;
+		#endif
+		
+		#ifndef DLLMAIN
+			extern lpGetPacketNumber GetPacketNum;
+		#endif
+		
+		
+	
+	#endif
 
                 #ifndef NDS
                     
@@ -272,8 +290,6 @@ typedef void (*lpAsmGetStatusCallback)(char *str);
                     
                     typedef char *(*lpGetModuleVersionStr)();
                     typedef int (*lpGetModuleVersionInt)(int);
-                    
-                    typedef int (*lpGetPacketNumber)();
                     
                         #ifndef BUILDING_SDK
                             
@@ -291,10 +307,6 @@ typedef void (*lpAsmGetStatusCallback)(char *str);
                                     lpGetModuleVersionStr GetModuleVersionStr=NULL;
                                     lpGetModuleVersionInt GetModuleVersionInt=NULL;
                                     
-                                    #ifndef ASM_SDK_CLIENT
-                                        lpGetPacketNumber GetPacketNum=NULL;
-                                    #endif
-                                    
                                 #endif
                                 
                                 #ifndef DLLMAIN
@@ -309,17 +321,12 @@ typedef void (*lpAsmGetStatusCallback)(char *str);
                                     extern lpGetModuleVersionStr GetModuleVersionStr;
                                     extern lpGetModuleVersionInt GetModuleVersionInt;
                                     
-                                    #ifndef ASM_SDK_CLIENT
-                                        extern lpGetPacketNumber GetPacketNum;
-                                    #endif
-                                    
                                 #endif
                             
                             #endif
 
                         #endif
                     #endif
-#endif
 
 //These structs are from Juglak's WMB Host. Others are from libnds, while one is mine
 struct iee80211_framehead2 {//<----------This is the struct actually used in the program. The other is a backup.
@@ -566,6 +573,12 @@ struct Nds_data
     #endif
 #endif
 
+	#ifdef ASM_SDK_PLUGIN
+	#ifdef NDS
+		DLLIMPORT void ResetAsm(Nds_data *nds_data);
+	#endif
+	#endif
+
     #ifndef NDS
         #ifdef USING_DLL
             DLLIMPORT void ResetAsm(Nds_data *nds_data);
@@ -609,9 +622,10 @@ struct Nds_data
 				
 				lpGetModuleVersionStr GetModuleVersionStr;
 				lpGetModuleVersionInt GetModuleVersionInt;
-				
-				lpGetPacketNumber GetPacketNumber;
 			#endif
+			
+				lpGetPacketNumber GetPacketNumber;
+			
         };
     
     #ifdef __cplusplus
@@ -636,6 +650,11 @@ struct Nds_data
 		#endif
 
         #ifdef ASM_SDK_CLIENT
+		
+			#ifdef __cplusplus
+				extern "C" {
+			#endif
+		
             bool LoadAsmDLL(const char *filename, sAsmSDK_Config *config, char *error_buffer);
             bool CloseAsmDLL(char *error_buffer);
             
@@ -652,7 +671,8 @@ struct Nds_data
                     //function pointers.
                     void InitDLLFunctions(sAsmSDK_Config *config)
                     {
-                        HandlePacket = config->HandlePacket;
+                        #ifndef NDS
+						HandlePacket = config->HandlePacket;
                         InitAsm = config->InitAsm;
                         ResetAsm = config->ResetAsm;
                         ExitAsm = config->ExitAsm;
@@ -663,11 +683,16 @@ struct Nds_data
                         
                         GetModuleVersionStr = config->GetModuleVersionStr;
                         GetModuleVersionInt = config->GetModuleVersionInt;
-                        
+                        #endif
+						
                         config->GetPacketNumber = &getpacketnumber;
                     }
                 #endif
             
+			#ifdef __cplusplus
+				}
+			#endif
+			
         #endif
         
         #ifndef BUILDING_SDK
@@ -677,6 +702,10 @@ struct Nds_data
             #define ASMPLUG_PRI_NORMAL 0//You can use priorites higher or lower than the ones defined here in the SDK, it's not restricted to only these defines. But you'll need to either make a new define, or just return the prioritiy directly from AsmPlug_GetPriority.
             #define ASMPLUG_PRI_HIGH 1
             
+			#ifdef __cplusplus
+				extern "C" {
+			#endif
+			
             bool CheckFrame(unsigned char *data, unsigned char *host_mac, unsigned char command, unsigned short *size, unsigned char *pos);
             bool CheckFlow(unsigned char *mac,unsigned char flow);
             unsigned int CalcCRC32(unsigned char *data, unsigned int length);
@@ -696,7 +725,9 @@ struct Nds_data
                 *dat = (volatile Nds_data*)malloc(sizeof(Nds_data));
                 memset((void*)*dat, 0, sizeof(Nds_data));
                 
+				#ifndef NDS
                 GetPrecentageCompleteAsm = config->GetPrecentageCompleteAsm;
+				#endif
                 GetPacketNum = config->GetPacketNumber;
             }
             
@@ -727,6 +758,10 @@ struct Nds_data
             #ifndef DLLMAIN
                 void UpdateAvert();
             #endif
+			
+			#ifdef __cplusplus
+				}
+			#endif
             
         #endif
         #endif
