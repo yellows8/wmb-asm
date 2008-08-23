@@ -42,7 +42,7 @@ DEALINGS IN THE SOFTWARE.
 	   unsigned int linkLayerType;
     } __attribute__ ((__packed__));
 
-    struct pcap_pkthdr {
+    struct spcap_pkthdr {
 	   long tv_sec;
         long tv_usec;	/* time stamp */
 	   unsigned int caplen;	/* length of portion present */
@@ -53,7 +53,7 @@ DEALINGS IN THE SOFTWARE.
 	{
 		FILE *file;
 		bool swap;
-		pcap_pkthdr header;
+		struct spcap_pkthdr header;
 		unsigned char *pktdata;
 		char *error_buffer;
 	} __attribute__ ((__packed__));
@@ -63,7 +63,7 @@ DEALINGS IN THE SOFTWARE.
     #endif
 	
         struct pcap_t  *pcap_open_offline(const char *filename, char *errbuf);
-        int     pcap_next_ex(struct pcap_t *file, pcap_pkthdr **hdr, const u_char **pktdata);
+        int     pcap_next_ex(struct pcap_t *file, struct spcap_pkthdr **hdr, const u_char **pktdata);
         void    pcap_close(struct pcap_t *file);
         char    *pcap_geterr(struct pcap_t *file);
         

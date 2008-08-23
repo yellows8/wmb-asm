@@ -371,7 +371,9 @@ int ReadDump(int argc, char *argv[])
 	       //Read and assemble the capture.
            if(!ReadCaptureLoop(cur_file->filename,argc,argv,checkrsa,outdir,run,copydir,use_copydir)==0)
            {
-	       CaptureAsmReset(&ErrorCallback);
+		   int code = 0;
+		   
+	       CaptureAsmReset(&code, &ErrorCallback);
 
             free(outdir);//Free the output directory and copy to directory
     free(copydir);
@@ -401,12 +403,10 @@ int ReadCaptureLoop(char *cap, int argc, char *argv[], bool checkrsa, char *outd
     
     pcap_t *fp=NULL;//Standard libpcap capture reading code. However, this program isn't using libpcap. It's using my own code for this, but with the exact same interface as libpcap.(The capture reading code is contained in the assembler module)
 	char *errbuf = (char*)malloc(PCAP_ERRBUF_SIZE);
-	pcap_pkthdr *header;
+	spcap_pkthdr *header;
 	const u_char *pkt_data;
 	int res;
     memset(errbuf, 0, PCAP_ERRBUF_SIZE);
-    
-    FILE *fconv;
     
     /* Open the capture file */
 	if ((fp = pcap_open_offline(cap,			// name of the file

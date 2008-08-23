@@ -31,6 +31,10 @@ DEALINGS IN THE SOFTWARE.
 
 SuccessCallback AssemblySuccessCallback = NULL;
 
+#ifdef __cplusplus
+  extern "C" {
+#endif
+
 void CheckEndianA(void* input, int input_length);//This one must be called first, with AVS header length as input
 void ConvertEndian(void* input, void* output, int input_length);//Only call this after both of the above are called.
 //This converts the Endian of the input to the Endian of the current machine
@@ -41,10 +45,6 @@ unsigned char* IsValidAVS(u_char *pkt_data);
 
 unsigned int CalcCRC32(unsigned char *data, unsigned int length);
 unsigned short CalcCRC16(unsigned char *data, unsigned int length);
-
-#ifdef __cplusplus
-  extern "C" {
-#endif
 
 bool Handle802_11(unsigned char *data, int length);
 bool AssembleNds(char *output);
@@ -79,7 +79,7 @@ FILE *funusedpkt = NULL;
 bool fpkt_error=0;
 bool save_unused_packets=1;
 
-pcap_pkthdr *glob_header;
+spcap_pkthdr *glob_header;
 char **glob_argv;
 bool glob_checkrsa;
 char *glob_outdir;
