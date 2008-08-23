@@ -241,9 +241,9 @@ struct sAsmSDK_Params
     bool has_avs;
 };
 
-#ifndef NDS
+typedef void (*lpAsmGetStatusCallback)(char *str);
 
-    typedef void (*lpAsmGetStatusCallback)(char *str);
+#ifndef NDS
 
     #ifdef USING_DLL
         //In this case with building dlls, DLLIMPORT really means to export the function.
@@ -628,10 +628,12 @@ struct Nds_data
         #endif
 
         #ifdef ASM_SDK_MODULE
+		#ifndef NDS
             bool LoadDLL(LPDLL *lpdll, const char *filename, char *error_buffer);
             bool CloseDLL(LPDLL *lpdll, char *error_buffer);
             void* LoadFunctionDLL(LPDLL *lpdll, const char *func_name, const char *func_name2, char *error_buffer);
         #endif
+		#endif
 
         #ifdef ASM_SDK_CLIENT
             bool LoadAsmDLL(const char *filename, sAsmSDK_Config *config, char *error_buffer);
