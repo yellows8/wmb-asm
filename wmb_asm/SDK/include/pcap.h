@@ -42,12 +42,12 @@ DEALINGS IN THE SOFTWARE.
 	   unsigned int linkLayerType;
     } __attribute__ ((__packed__));
 
-    typedef struct spcap_pkthdr {
+    struct pcap_pkthdr {
 	   long tv_sec;
         long tv_usec;	/* time stamp */
 	   unsigned int caplen;	/* length of portion present */
 	   unsigned int len;	/* length this packet (off wire) */
-    } __attribute__ ((__packed__)) pcap_pkthdr;
+    } __attribute__ ((__packed__));
     
     struct pcap_t
 	{

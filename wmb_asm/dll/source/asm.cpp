@@ -49,9 +49,16 @@ unsigned short CalcCRC16(unsigned char *data, unsigned int length);
 bool Handle802_11(unsigned char *data, int length);
 bool AssembleNds(char *output);
 
+#ifdef DLLIMPORT
+	#ifdef NDS
+		#undef DLLIMPORT
+		#define DLLIMPORT
+	#endif
+#endif
+
 DLLIMPORT unsigned char GetPrecentageCompleteAsm();
 
-DLLIMPORT void CaptureAsmReset(lpAsmGetStatusCallback callback);
+//DLLIMPORT void CaptureAsmReset(lpAsmGetStatusCallback callback);
 
 DLLIMPORT bool HandlePacket(sAsmSDK_Params *params);
 
@@ -162,6 +169,11 @@ bool PktModInit()
 //This function reorders the plugins in the packetMoudles array, according to the priorties. In this way, priority code is only needed in the initialization function, not across several plugin function calling code, also.
 bool PktModReorder()
 {
+	#ifdef NDS
+		return 1;
+	#endif
+
+	#ifndef NDS
     PacketModule *list = (PacketModule*)malloc(sizeof(PacketModule) * 256);
     int pri = 0;
     int high_pri = 0;//Highest priority found so far.
@@ -227,6 +239,8 @@ bool PktModReorder()
     free(list);
     
     return 1;
+	
+	#endif
 }
 
 void PktModReset()
@@ -299,11 +313,14 @@ bool PktModHandle802_11(unsigned char *data, int length)
     return 0;
 }
 
+#ifndef NDS
 int LoadPacketModule(char *filename, char *error_buffer, char *destr, LPDLL *lpdll);
+#endif
 FILE *modlog = NULL;
 
 bool InitPktModules()
 {
+	#ifndef NDS
     LPDLL lpdll;
     char filename[256];
     memset(filename, 0, 256);
@@ -319,6 +336,8 @@ bool InitPktModules()
     memset(destr, 0, 256);
 	#endif
     
+	#endif
+	
     memset(packetModules, 0, sizeof(PacketModule) * MAX_PKT_MODULES);
     totalPacketModules = 0;
     currentPacketModule = -1;
@@ -355,7 +374,7 @@ bool InitPktModules()
                             //printf("Loading %s\n",cur_file->filename);
                             
                             int ret = LoadPacketModule(cur_file->filename, error_buffer, destr, &lpdll);
-                            if(ret==0)return 0;
+							if(ret==0)return 0;
                             if(ret==2)
                             {
                                 open_failed = 1;
@@ -403,6 +422,7 @@ bool InitPktModules()
     return 1;
 }
 
+#ifndef NDS
 int LoadPacketModule(char *filename, char *error_buffer, char *destr, LPDLL *lpdll)
 {
     
@@ -603,6 +623,7 @@ int LoadPacketModule(char *filename, char *error_buffer, char *destr, LPDLL *lpd
                                     
                                     return 1;
 }
+#endif
 
 //***************************CHECK FCS*************************************************
 inline bool CheckFCS(unsigned char *data, int length)
@@ -692,8 +713,8 @@ DLLIMPORT void ResetAsm(volatile Nds_data *dat)
                         if(dat!=NULL)nds_data = dat;
                         if(dat==NULL)
                         {
-                            volatile Nds_data *data = NULL;
                             #ifndef NDS
+							volatile Nds_data *data = NULL;
 		                      for(int i=0; i<totalPacketModules; i++)
 		                      {
 			                         if(packetModules[i].lpdll==NULL)break;
@@ -727,7 +748,7 @@ DLLIMPORT void ResetAsm(volatile Nds_data *dat)
                                //bool beacon_thing=nds_data.beacon_thing;
                                bool multipleIDs = nds_data->multipleIDs;
                                bool handledIDs[256];
-                               bool FoundGameIDs;
+                               bool FoundGameIDs = 0;
 
 	                           if(nds_data->finished_first_assembly)
 	                           {
@@ -874,8 +895,6 @@ int PKTINDX = 0;
 
 void CaptureAsmResetA(volatile Nds_data *dat, lpAsmGetStatusCallback callback)
 {
-    char *str = NULL;
-    
     nds_data = dat;
     
     if(funusedpkt!=NULL && nds_data->multipleIDs)
@@ -940,9 +959,10 @@ void CaptureAsmResetA(volatile Nds_data *dat, lpAsmGetStatusCallback callback)
 
 DLLIMPORT void CaptureAsmReset(lpAsmGetStatusCallback callback)//Needs to be called after reading the whole capture.
 {
-    volatile Nds_data *data = NULL;
-    char *str = NULL;
         #ifndef NDS
+		volatile Nds_data *data = NULL;
+		char *str = NULL;
+		
 		    for(int i=0; i<totalPacketModules; i++)
 		    {
 			    if(packetModules[i].lpdll==NULL)break;
@@ -1077,9 +1097,7 @@ DLLIMPORT bool HandlePacket(sAsmSDK_Params *params)
 
      for(int ii=0; ii<totalPacketModules; ii++)
 	 {
-        
-	   if(packetModules[ii].lpdll==NULL)break;
-        
+       
 	   if(packetModules[ii].GetNdsData!=NULL)
 	   {
             dat = packetModules[ii].GetNdsData();
@@ -1310,8 +1328,6 @@ bool AssembleNds(char *output)
      
      unsigned char *ptr;
      ptr = (unsigned char*)&nds_data->advert;
-
-     int pos, dsize;
      
      if(nds_data->use_advert)
      {
