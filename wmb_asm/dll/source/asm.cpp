@@ -98,7 +98,7 @@ typedef int (*lpGetID)();
 typedef char *(*lpGetIDStr)();
 typedef int (*lpGetPriority)();
 typedef volatile Nds_data *(*lpGetNdsData)();
-typedef bool (*lpHandle802_11)(unsigned char *data, int length);
+typedef int (*lpHandle802_11)(unsigned char *data, int length);
 typedef void (*lpReset)();
 typedef char *(*lpGetStatus)(int *error_code);
 typedef int (*lpQueryFailure)();
@@ -131,37 +131,31 @@ bool PktModReorder();
 
 void PktModClose()
 {
-	#ifndef NDS
-		for(int i=0; i<totalPacketModules; i++)
-		{
-			if(packetModules[i].lpdll==NULL)break;
-			
-			if(packetModules[i].DeInit!=NULL)
+	for(int i=0; i<totalPacketModules; i++)
+	{
+		if(packetModules[i].DeInit!=NULL)
 			packetModules[i].DeInit();
-			
+		
+		#ifndef NDS
 			CloseDLL(&packetModules[i].lpdll, NULL);
-		}
-	#endif
+		#endif
+	}
 }
 
 bool PktModInit()
 {
 	#ifndef NDS
-	Nds_data *dat = NULL;
-	
 	if(!PktModReorder())return 0;
+	#endif
 	
 		for(int i=0; i<totalPacketModules; i++)
 		{
-			if(packetModules[i].lpdll==NULL)break;
-
 			if(packetModules[i].Init!=NULL)
 			{
 				if(!packetModules[i].Init(CONFIG))
 				    return 0;
             }
 		}
-	#endif
 	
 	return 1;
 }
@@ -245,15 +239,11 @@ bool PktModReorder()
 
 void PktModReset()
 {
-	#ifndef NDS
-		for(int i=0; i<totalPacketModules; i++)
-		{
-			if(packetModules[i].lpdll==NULL)break;
-			
-			if(packetModules[i].reset!=NULL)
-				packetModules[i].reset();
-		}
-	#endif
+	for(int i=0; i<totalPacketModules; i++)
+	{	
+		if(packetModules[i].reset!=NULL)
+			packetModules[i].reset();
+	}
 }
 
 bool PktModHandle802_11(unsigned char *data, int length)
@@ -262,13 +252,8 @@ bool PktModHandle802_11(unsigned char *data, int length)
     
     if(currentPacketModule == -1)
     {
-    
-		#ifndef NDS
 			for(int ii=0; ii<totalPacketModules; ii++)
 			{
-                
-				if(packetModules[ii].lpdll==NULL)break;
-				
 				if(packetModules[ii].handle802_11!=NULL)
 				{
                     ret = packetModules[ii].handle802_11(data, length);
@@ -280,8 +265,6 @@ bool PktModHandle802_11(unsigned char *data, int length)
 					}
 				}
 			}
-		#endif
-    
     }
     else
     {
@@ -289,12 +272,8 @@ bool PktModHandle802_11(unsigned char *data, int length)
         
         if(ret==0)
         {
-            #ifndef NDS
 			for(int ii=0; ii<totalPacketModules; ii++)
 			{
-
-				if(packetModules[ii].lpdll==NULL)break;
-
 				if(packetModules[ii].handle802_11!=NULL && ii!=currentPacketModule)
 				{
                     ret = packetModules[ii].handle802_11(data, length);
@@ -306,7 +285,6 @@ bool PktModHandle802_11(unsigned char *data, int length)
 					}
 				}
 			}
-		    #endif
         }
     }
     
@@ -317,6 +295,47 @@ bool PktModHandle802_11(unsigned char *data, int length)
 int LoadPacketModule(char *filename, char *error_buffer, char *destr, LPDLL *lpdll);
 #endif
 FILE *modlog = NULL;
+
+#ifdef __cplusplus
+  extern "C" {
+#endif
+
+int WMB_AsmPlug_GetID();
+char *WMB_AsmPlug_GetIDStr();
+int WMB_AsmPlug_GetPriority();
+char *WMB_AsmPlug_GetStatus(int *error_code);
+int WMB_AsmPlug_QueryFailure();
+int WMB_AsmPlug_Handle802_11(unsigned char *data, int length);
+bool WMB_AsmPlug_Init(sAsmSDK_Config *config);
+bool WMB_AsmPlug_DeInit();
+volatile Nds_data *WMB_AsmPlug_GetNdsData();
+void WMB_AsmPlug_Reset();
+
+int DLSTATION_AsmPlug_GetID();
+char *DLSTATION_AsmPlug_GetIDStr();
+int DLSTATION_AsmPlug_GetPriority();
+char *DLSTATION_AsmPlug_GetStatus(int *error_code);
+int DLSTATION_AsmPlug_QueryFailure();
+int DLSTATION_AsmPlug_Handle802_11(unsigned char *data, int length);
+bool DLSTATION_AsmPlug_Init(sAsmSDK_Config *config);
+bool DLSTATION_AsmPlug_DeInit();
+volatile Nds_data *DLSTATION_AsmPlug_GetNdsData();
+void DLSTATION_AsmPlug_Reset();
+
+int NINCH_AsmPlug_GetID();
+char *NINCH_AsmPlug_GetIDStr();
+int NINCH_AsmPlug_GetPriority();
+char *NINCH_AsmPlug_GetStatus(int *error_code);
+int NINCH_AsmPlug_QueryFailure();
+int NINCH_AsmPlug_Handle802_11(unsigned char *data, int length);
+bool NINCH_AsmPlug_Init(sAsmSDK_Config *config);
+bool NINCH_AsmPlug_DeInit();
+volatile Nds_data *NINCH_AsmPlug_GetNdsData();
+void NINCH_AsmPlug_Reset();
+
+#ifdef __cplusplus
+  }
+#endif
 
 bool InitPktModules()
 {
@@ -331,16 +350,54 @@ bool InitPktModules()
 
     char *error_buffer = (char*)malloc(256);
 	char *destr = (char*)malloc(256);
-    #ifndef NDS
     memset(error_buffer, 0, 256);
     memset(destr, 0, 256);
-	#endif
-    
 	#endif
 	
     memset(packetModules, 0, sizeof(PacketModule) * MAX_PKT_MODULES);
     totalPacketModules = 0;
     currentPacketModule = -1;
+
+	#ifdef NDS
+		
+		//Ordering of packet modules in the array when compiling for DS, must be done manually, for ordering and priority ordering.
+		packetModules[totalPacketModules].Init = &NINCH_AsmPlug_Init;
+		packetModules[totalPacketModules].DeInit = &NINCH_AsmPlug_DeInit;
+		packetModules[totalPacketModules].GetNdsData = &NINCH_AsmPlug_GetNdsData;
+		packetModules[totalPacketModules].handle802_11 = &NINCH_AsmPlug_Handle802_11;
+		packetModules[totalPacketModules].reset = &NINCH_AsmPlug_Reset;
+		packetModules[totalPacketModules].get_status = &NINCH_AsmPlug_GetStatus;
+		packetModules[totalPacketModules].query_failure = &NINCH_AsmPlug_QueryFailure;
+		packetModules[totalPacketModules].GetID = &NINCH_AsmPlug_GetID;
+		packetModules[totalPacketModules].GetIDStr = &NINCH_AsmPlug_GetIDStr;
+		packetModules[totalPacketModules].GetPriority = &NINCH_AsmPlug_GetPriority;
+		totalPacketModules++;
+		
+		packetModules[totalPacketModules].Init = &DLSTATION_AsmPlug_Init;
+		packetModules[totalPacketModules].DeInit = &DLSTATION_AsmPlug_DeInit;
+		packetModules[totalPacketModules].GetNdsData = &DLSTATION_AsmPlug_GetNdsData;
+		packetModules[totalPacketModules].handle802_11 = &DLSTATION_AsmPlug_Handle802_11;
+		packetModules[totalPacketModules].reset = &DLSTATION_AsmPlug_Reset;
+		packetModules[totalPacketModules].get_status = &DLSTATION_AsmPlug_GetStatus;
+		packetModules[totalPacketModules].query_failure = &DLSTATION_AsmPlug_QueryFailure;
+		packetModules[totalPacketModules].GetID = &DLSTATION_AsmPlug_GetID;
+		packetModules[totalPacketModules].GetIDStr = &DLSTATION_AsmPlug_GetIDStr;
+		packetModules[totalPacketModules].GetPriority = &DLSTATION_AsmPlug_GetPriority;
+		totalPacketModules++;
+		
+		packetModules[totalPacketModules].Init = &WMB_AsmPlug_Init;
+		packetModules[totalPacketModules].DeInit = &WMB_AsmPlug_DeInit;
+		packetModules[totalPacketModules].GetNdsData = &WMB_AsmPlug_GetNdsData;
+		packetModules[totalPacketModules].handle802_11 = &WMB_AsmPlug_Handle802_11;
+		packetModules[totalPacketModules].reset = &WMB_AsmPlug_Reset;
+		packetModules[totalPacketModules].get_status = &WMB_AsmPlug_GetStatus;
+		packetModules[totalPacketModules].query_failure = &WMB_AsmPlug_QueryFailure;
+		packetModules[totalPacketModules].GetID = &WMB_AsmPlug_GetID;
+		packetModules[totalPacketModules].GetIDStr = &WMB_AsmPlug_GetIDStr;
+		packetModules[totalPacketModules].GetPriority = &WMB_AsmPlug_GetPriority;
+		totalPacketModules++;
+		
+	#endif
 
     #ifndef NDS
     

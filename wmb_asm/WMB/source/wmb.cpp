@@ -66,6 +66,20 @@ void Init();
 	#endif
 #endif
 
+//Change the names of the functions on-the-fly when compiling for DS, since everything is in one binary.
+#ifdef NDS
+	#define AsmPlug_GetID WMB_AsmPlug_GetID
+	#define AsmPlug_GetIDStr WMB_AsmPlug_GetIDStr
+	#define AsmPlug_GetPriority WMB_AsmPlug_GetPriority
+	#define AsmPlug_GetStatus WMB_AsmPlug_GetStatus
+	#define AsmPlug_QueryFailure WMB_AsmPlug_QueryFailure
+	#define AsmPlug_Handle802_11 WMB_AsmPlug_Handle802_11
+	#define AsmPlug_Init WMB_AsmPlug_Init
+	#define AsmPlug_DeInit WMB_AsmPlug_DeInit
+	#define AsmPlug_GetNdsData WMB_AsmPlug_GetNdsData
+	#define AsmPlug_Reset WMB_AsmPlug_Reset
+#endif
+
 DLLIMPORT int AsmPlug_GetID()
 {
     return 0;
