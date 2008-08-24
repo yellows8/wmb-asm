@@ -188,7 +188,8 @@ void ErrorCallback(char *str)
 {
     if(str!=NULL)
     {
-        printf("ERROR: %s\n",str);
+        printf("ERROR: ");
+        printf(" %s\n", str);
     }
 }
 
@@ -309,12 +310,12 @@ int ReadDump(int argc, char *argv[])
         }
         else
         {
-            /*if(strstr(argv[i],".bin"))
+            if(strstr(argv[i],".bin"))
             {
                 ConvertBin(argv[i]);
             }
             else
-            {*/
+            {
                 if(ScanDirectory(files_list,argv[i],(char*)".cap")==NULL)
                 {
                     //ScanDirectory will put the filename contained in argv[i], in files_list, if it's a file.
@@ -322,7 +323,7 @@ int ReadDump(int argc, char *argv[])
                     //during this scanning, it will repeat, and scan that directory for captures. And so on if it finds more directories in that directory.
                     printf("Failed to open file or directory %s\n",argv[i]);
                 }
-            //}
+            }
         }
     }
     
@@ -369,7 +370,7 @@ int ReadDump(int argc, char *argv[])
                }
 	       
 	       //Read and assemble the capture.
-           if(!ReadCaptureLoop(cur_file->filename,argc,argv,checkrsa,outdir,run,copydir,use_copydir)==0)
+           if(!ReadCaptureLoop(cur_file->filename,argc,argv,checkrsa,outdir,run,copydir,use_copydir))
            {
 		   int code = 0;
 		   
@@ -444,6 +445,7 @@ int ReadCaptureLoop(char *cap, int argc, char *argv[], bool checkrsa, char *outd
         //Send the packet to the assembler to process & assemble.
         if(!HandlePacket(params))
         {
+            printf("O_O\n");
             free(params);
             return 0;
         }

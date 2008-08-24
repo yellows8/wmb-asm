@@ -253,7 +253,7 @@ void PktModReset()
 
 bool PktModHandle802_11(unsigned char *data, int length)
 {
-    bool ret = 0;
+    int ret = 0;
     
     if(currentPacketModule == -1)
     {
@@ -1015,7 +1015,7 @@ void CaptureAsmResetA(volatile Nds_data *dat, lpAsmGetStatusCallback callback)
     ResetAsm((Nds_data*)module_nds_data);
 }
 
-DLLIMPORT void CaptureAsmReset(lpAsmGetStatusCallback callback)//Needs to be called after reading the whole capture.
+DLLIMPORT void CaptureAsmReset(int *code, lpAsmGetStatusCallback callback)//Needs to be called after reading the whole capture.
 {
         #ifndef NDS
 		volatile Nds_data *data = NULL;
@@ -1061,7 +1061,10 @@ void GetStatusAsmA(lpAsmGetStatusCallback callback, int index)
     *error = 0;
     
     if(packetModules[index].query_failure() != 3)//If these capture/transfer actually has packets for this plugin's protocol, get any errors, then trigger the callback with a pointer to the error's string.
-    callback( packetModules[index].get_status(error) );
+    {
+        char *str = packetModules[index].get_status(error);
+        callback( str );
+    }
     
     free(error);
 }
