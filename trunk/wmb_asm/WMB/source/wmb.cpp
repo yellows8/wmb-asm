@@ -278,10 +278,6 @@ void WMBBeaconGrab(unsigned char *data)
             }
      }
 
-    //printf("C\n");
-
-    got_all = 1;
-
      if(got_all)
      {
             
