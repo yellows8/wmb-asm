@@ -19,13 +19,15 @@ OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 DEALINGS IN THE SOFTWARE.
 */
 
+//#define BUILDMII//When this define line is uncommented, the .cpp file can be compiled as a stand-alone command-line program, if you have the Wmb Asm SDK.
+
 #include "..\SDK\include\wmb_asm_sdk_client.h"
 
 unsigned char *ConvertBinBuff(unsigned char *data, int length);
 
 void ConvertBin(char *filename)
 {
-    /*printf("Converting %s...\n",filename);
+    printf("Converting %s...\n",filename);
     
     FILE *fbin, *fnds;
     unsigned char *input_buffer, *output_buffer;
@@ -51,7 +53,10 @@ void ConvertBin(char *filename)
     
     fclose(fbin);
     
+    printf("Length: %d\n", length);
+    
     output_buffer = ConvertBinBuff(input_buffer, length);
+    //output_buffer = input_buffer;
     
     fnds = fopen(str, "wb");
     if(fnds==NULL)
@@ -60,11 +65,11 @@ void ConvertBin(char *filename)
         return;
     }
     
-    fwrite(output_buffer, 1, length, fnds);
+    fwrite(output_buffer, 1, length - 0x1C8, fnds);
     
     fclose(fnds);
     
-    printf("Successfully converted the file to %s!\n",str);*/
+    printf("Successfully converted the file to %s!\n",str);
 }
 
 unsigned char *ConvertBinBuff(unsigned char *data, int length)
@@ -76,3 +81,28 @@ unsigned char *ConvertBinBuff(unsigned char *data, int length)
     
     return nds;
 }
+
+#ifdef BUILDMII
+
+int main(int argc, char *argv[])
+{
+    if(argc==1)
+    {
+        printf("Binconv by yellowstar 08/24/08\n");
+        printf("Convert Nintendo Channel DS Demo .bin files to an .nds.\n");
+        printf("Usage:\n");
+        printf("binconv <list of input demo.bin>\n");
+        printf("The output .nds will have the same filename as the input,\nexcept the extension will be .nds.\n");
+    }
+    else
+    {
+        for(int i=1; i<=argc-1; i++)
+            ConvertBin(argv[i]);
+    }
+    
+    system("PAUSE");
+    
+    return 0;
+}
+
+#endif

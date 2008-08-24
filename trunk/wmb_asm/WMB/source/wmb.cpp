@@ -99,6 +99,11 @@ DLLIMPORT int AsmPlug_GetPriority()
 
 DLLIMPORT char *AsmPlug_GetStatus(int *error_code)
 {
+    if(wmb_stage==SDK_STAGE_BEACON && !wmb_nds_data->finished_first_assembly)
+    {
+        *error_code=SDK_STAGE_BEACON;
+        return (char*)"01: Failed to finish the beacon stage.\n";
+    }
     
     if(wmb_stage==SDK_STAGE_AUTH && !wmb_nds_data->finished_first_assembly)
     {
