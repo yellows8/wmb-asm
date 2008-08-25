@@ -836,8 +836,6 @@ DLLIMPORT void ResetAsm(volatile Nds_data *dat)
 									module_nds_data->FoundGameIDs = FoundGameIDs;
                                }
                                
-                               memset((void*)module_nds_data->beacon_data, 0, 980 * 15);
-                               
                                currentPacketModule = -1;
                                PktModReset();
 }

@@ -7,11 +7,11 @@
 #define WMB_ASM_MODULE_PRIVATE_H
 
 /* VERSION DEFINITIONS */
-#define VER_STRING	"2.0.1.897"
+#define VER_STRING	"2.0.1.898"
 #define VER_MAJOR	2
 #define VER_MINOR	0
 #define VER_RELEASE	1
-#define VER_BUILD	897
+#define VER_BUILD	898
 #define COMPANY_NAME	"yellowstar"
 #define FILE_VERSION	"2.0b r2"
 #define FILE_DESCRIPTION	"Module for assembling WMB captures"
