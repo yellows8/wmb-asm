@@ -263,8 +263,10 @@ void WMBBeaconGrab(unsigned char *data)
         //This code is based on code from masscat's WMB client.
         for(int i=0; i<9; i++)
         {
-             if(!wmb_nds_data->found_beacon[i])got_all=0;
+             if(!wmb_nds_data->found_beacon[i + ((int)ds->gameID * 10)])got_all=0;
         }
+        
+        if(got_all)wmb_nds_data->gameID = ds->gameID;
      }
      else
      {
@@ -480,6 +482,7 @@ int WMBProcessHeader(unsigned char *data, int length)
         dat=&data[(int)pos-2];
         
         unsigned char ID = *dat;
+        if(wmb_nds_data->multipleIDs)
         wmb_nds_data->gameID = ID;
         
             if(wmb_nds_data->handledIDs[(int)ID] && wmb_nds_data->multipleIDs)
@@ -628,7 +631,7 @@ int WMBProcessData(unsigned char *data, int length)
     dat=&data[(int)pos-2];
     //unsigned char ID = GetGameID(data);
     unsigned char ID = *dat;
-        if(ID!=wmb_nds_data->gameID)
+        if(ID!=wmb_nds_data->gameID && wmb_nds_data->multipleIDs)
         {
                 if(*WMBDEBUG)
                 {
@@ -850,17 +853,16 @@ int WMBProcessBeacons(unsigned char *data, int length)
                                        
                                          if(checksum!=ds->checksum)
                                          {
-											if(*WMBDEBUG)
+											/*if(*WMBDEBUG)
 											{
-												fprintfdebug(*WMBLog,"BEACON SEQ %d FAILED CRC16 CHECK!\n",(int)ds->advert_sequence_number);
+												fprintfdebug(*WMBLog,"BEACON SEQ %d FAILED CRC16 CHECK %d!\n",(int)ds->advert_sequence_number, GetPacketNum());
 												fflushdebug(*WMBLog);
-                                            }
+                                            }*/
                                          return 0;
                                          }
                                         //printf("D\n");
                                          if(ds->data_size==0x01)return -1;//This beacon isn't part of the advert          
-                                         //if(ds->gameID!=5)return -1;//Fake beacon with gameID 5, and screwed data through the beacon, sent by Nintendo Spot.
-                                         
+                                         if(ds->gameID==5)return -1;//Fake beacon with gameID 5, and screwed data through the beacon, sent by Nintendo Spot.
                                          
                                          wmb_nds_data->foundIDs[(int)ds->gameID]=1;
                                          if(!wmb_nds_data->gotID && ds->sequence_number!=8)
@@ -931,7 +933,7 @@ int WMBProcessBeacons(unsigned char *data, int length)
 												fprintfdebug(*WMBLog,"FOUND BEACON DSSEQ %d AD %d BC %d CON %d LEN %d DS %d BC %d LEN %d ID %d NONAD %d PKTNUM %d\n",
 												(int)ds->sequence_number,(int)ds->advert_sequence_number,
 												ReadSeq(&Beacon->seq), (int)ds->connected_clients, (int)ds->advert_len,
-												(int)ds->data_size,(int)ds->advert_len,(int)ds->advert_len,(int)ds->gameID,(int)ds->non_advert, 1);
+												(int)ds->data_size,(int)ds->advert_len,(int)ds->advert_len,(int)ds->gameID,(int)ds->non_advert, GetPacketNum());
 												fflushdebug(*WMBLog);
                                             }
 
