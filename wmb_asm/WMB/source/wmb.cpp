@@ -165,6 +165,19 @@ DLLIMPORT int AsmPlug_QueryFailure()
     return 0;
 }
 
+DLLIMPORT int AsmPlug_GetModeStatus(int mode)//Queries whether or not the specified mode is available in this packet module.
+{
+    if(mode == MODE_ASM)return 1;
+    if(mode != MODE_ASM)return 0;
+}
+
+DLLIMPORT int AsmPlug_SwitchMode(int mode)
+{
+    if(mode != MODE_ASM)return 3;
+    
+    return 1;
+}
+
 DLLIMPORT int AsmPlug_Handle802_11(unsigned char *data, int length)
 {
      if(wmb_stage==SDK_STAGE_BEACON)return WMBProcessBeacons(data,length);

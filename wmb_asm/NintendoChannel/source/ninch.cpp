@@ -169,6 +169,19 @@ DLLIMPORT void AsmPlug_Reset()
 	memset(client_mac,0,6);*/
 }
 
+DLLIMPORT int AsmPlug_GetModeStatus(int mode)//Queries whether or not the specified mode is available in this packet module.
+{
+    if(mode == MODE_ASM)return 1;
+    if(mode != MODE_ASM)return 0;
+}
+
+DLLIMPORT int AsmPlug_SwitchMode(int mode)
+{
+    if(mode != MODE_ASM)return 3;
+
+    return 1;
+}
+
 #ifdef __cplusplus
   }
 #endif

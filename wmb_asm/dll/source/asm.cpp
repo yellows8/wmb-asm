@@ -26,6 +26,7 @@ DEALINGS IN THE SOFTWARE.
 #define DLLMAIN
 
 #include "..\..\SDK\include\wmb_asm_sdk_module.h"
+#include "..\include\network.h"
 
 #define MAX_PKT_MODULES 255
 
@@ -99,6 +100,8 @@ sAsmSDK_Config *CONFIG = NULL;
 
 volatile Nds_data *module_nds_data;
 
+int asm_mode = MODE_ASM;
+
 typedef bool (*lpInit)(sAsmSDK_Config *config);
 typedef bool (*lpDeInit)();
 typedef int (*lpGetID)();
@@ -108,7 +111,9 @@ typedef volatile Nds_data *(*lpGetNdsData)();
 typedef int (*lpHandle802_11)(unsigned char *data, int length);
 typedef void (*lpReset)();
 typedef char *(*lpGetStatus)(int *error_code);
+typedef int (*lpGetModeStatus)(int status);
 typedef int (*lpQueryFailure)();
+typedef int (*lpSwitchMode)(int mode);
 
 struct PacketModule
 {
@@ -118,6 +123,8 @@ struct PacketModule
     lpHandle802_11 handle802_11;
     lpReset reset;
     lpGetStatus get_status;
+    lpSwitchMode SwitchMode;
+    lpGetModeStatus GetModeStatus;
     lpQueryFailure query_failure;
     lpGetID GetID;
     lpGetIDStr GetIDStr;
@@ -250,6 +257,15 @@ void PktModReset()
 	{	
 		if(packetModules[i].reset!=NULL)
 			packetModules[i].reset();
+	}
+}
+
+void PktModSwitchMode(int mode)
+{
+	for(int i=0; i<totalPacketModules; i++)
+	{
+		if(packetModules[i].SwitchMode!=NULL)
+			packetModules[i].SwitchMode(mode);
 	}
 }
 
@@ -676,6 +692,40 @@ int LoadPacketModule(char *filename, char *error_buffer, char *destr, LPDLL *lpd
 
                                             return 0;
                                         }
+                                        
+                                        if((packetModules[totalPacketModules].GetModeStatus=(lpGetModeStatus)LoadFunctionDLL(lpdll, "AsmPlug_GetModeStatus", NULL, error_buffer))==NULL)
+                                        {
+                                            sprintf(destr, "ERROR: In module %s: %s", filename, error_buffer);
+
+                                                if(modlog!=NULL)
+                                                {
+                                                    fprintf(modlog, "%s", destr);
+                                                    fflush(modlog);
+                                                }
+
+                                            CloseDLL(lpdll, NULL);
+
+                                            printf("An error occured while loading the packet module plugin(s). The error was written to module_log.txt\n%s\n",destr);
+
+                                            return 0;
+                                        }
+                                        
+                                        if((packetModules[totalPacketModules].SwitchMode=(lpSwitchMode)LoadFunctionDLL(lpdll, "AsmPlug_SwitchMode", NULL, error_buffer))==NULL)
+                                        {
+                                            sprintf(destr, "ERROR: In module %s: %s", filename, error_buffer);
+
+                                                if(modlog!=NULL)
+                                                {
+                                                    fprintf(modlog, "%s", destr);
+                                                    fflush(modlog);
+                                                }
+
+                                            CloseDLL(lpdll, NULL);
+
+                                            printf("An error occured while loading the packet module plugin(s). The error was written to module_log.txt\n%s\n",destr);
+
+                                            return 0;
+                                        }
 
                                         packetModules[totalPacketModules].ID = packetModules[totalPacketModules].GetID();
                                         packetModules[totalPacketModules].IDStr = packetModules[totalPacketModules].GetIDStr();
@@ -847,6 +897,8 @@ DLLIMPORT void ExitAsm()
     ResetAsm(NULL);
     PktModClose();
     
+    deinit_network();
+    
     if(funusedpkt!=NULL)
     {
     fclose(funusedpkt);
@@ -866,6 +918,35 @@ DLLIMPORT void ExitAsm()
             
             free(DEBUG);
         }
+}
+
+DLLIMPORT int SwitchMode(int mode)
+{
+    if(mode < 0 || mode > MODE_HOST)return 0;
+    
+    int ret = init_network();
+    if(ret!=0)return ret;
+    
+    ResetAsm(NULL);
+    PktModReset();
+    
+    asm_mode = mode;
+    
+    PktModSwitchMode(mode);
+    
+    return 1;
+}
+
+DLLIMPORT int SelectPacketModule(int index)
+{
+    if(index < 0 || index > totalPacketModules)return 0;
+    
+    int ret = packetModules[index].GetModeStatus(asm_mode);
+    if(ret!=1)return ret;
+    
+    currentPacketModule = index;
+    
+    return 1;
 }
 
 #ifdef __cplusplus

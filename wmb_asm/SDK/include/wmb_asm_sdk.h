@@ -679,6 +679,10 @@ struct Nds_data
 			
         #endif
         
+        #define MODE_ASM 0
+        #define MODE_CLIENT 1
+        #define MODE_HOST 2
+        
         #ifndef BUILDING_SDK
         #ifdef ASM_SDK_PLUGIN
             

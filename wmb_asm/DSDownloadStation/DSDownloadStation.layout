@@ -14,11 +14,11 @@ Open=0
 Top=0
 [Editors]
 Focused=-1
-Order=
+Order=-1
 [Editor_2]
-Open=0
-Top=0
-CursorCol=61
-CursorRow=658
-TopLine=524
+Open=1
+Top=1
+CursorCol=2
+CursorRow=325
+TopLine=298
 LeftChar=1
