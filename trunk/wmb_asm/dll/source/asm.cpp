@@ -32,6 +32,8 @@ DEALINGS IN THE SOFTWARE.
 #undef DLLIMPORT
 #define DLLIMPORT __declspec (dllexport)
 
+//#define DUMPARMBINARIES//If this this uncommented and defined, the Arm7/9 binaries will be dumped to arm7.bin and arm9.bin during assembly. This will not dump these binaries for the DLStation plugin, as the data transferred is already an .nds.
+
 SuccessCallback AssemblySuccessCallback = NULL;
 
 #ifdef __cplusplus
@@ -1532,6 +1534,12 @@ bool AssembleNds(char *output)
 
      fwrite((void*)&module_nds_data->saved_data[0],1,module_nds_data->arm7s,nds);
 
+     #ifdef DUMPARMBINARIES
+     fdump = fopen("arm9.bin", "wb");
+     fwrite((void*)&module_nds_data->saved_data[0],1,module_nds_data->arm7s,fdump);
+     fclose(fdump);
+     #endif
+
      sz=((int)module_nds_data->header.arm7romSource-(int)ftell(nds));
      Temp = new unsigned char[sz];
      memset(Temp,0,sz);
@@ -1542,6 +1550,12 @@ bool AssembleNds(char *output)
      if(module_nds_data->arm7e > module_nds_data->arm7s)
      {
         fwrite((void*)&module_nds_data->saved_data[module_nds_data->arm7s],1,module_nds_data->arm7e - module_nds_data->arm7s,nds);
+     
+        #ifdef DUMPARMBINARIES
+        fdump = fopen("arm7.bin", "wb");
+        fwrite((void*)&module_nds_data->saved_data[module_nds_data->arm7s],1,module_nds_data->arm7e - module_nds_data->arm7s,fdump);
+        fclose(fdump);
+        #endif
      }
 
             if(module_nds_data->header.bannerOffset==0)

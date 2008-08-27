@@ -862,7 +862,7 @@ int WMBProcessBeacons(unsigned char *data, int length)
                                          }
                                         //printf("D\n");
                                          if(ds->data_size==0x01)return -1;//This beacon isn't part of the advert          
-                                         if(ds->gameID==5)return -1;//Fake beacon with gameID 5, and screwed data through the beacon, sent by Nintendo Spot.
+                                         if(ds->advert_len==0xf3)return -1;//Fake WMB beacon, with screwed data through the beacon, sent by Nintendo Spot.
                                          
                                          wmb_nds_data->foundIDs[(int)ds->gameID]=1;
                                          if(!wmb_nds_data->gotID && ds->sequence_number!=8)
