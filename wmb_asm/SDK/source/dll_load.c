@@ -173,7 +173,12 @@ bool LoadAsmDLL(const char *filename, struct sAsmSDK_Config *config, char *error
             config->GetPrecentageCompleteAsm=(lpGetPrecentageCompleteAsm)LoadFunctionDLL(&AsmDLL, "GetPrecentageCompleteAsm", "_Z24GetPrecentageCompleteAsmv", error_buffer);if((config->GetPrecentageCompleteAsm)==NULL)return 0;
             config->GetModuleVersionStr=(lpGetModuleVersionStr)LoadFunctionDLL(&AsmDLL, "GetModuleVersionStr", "_Z19GetModuleVersionStrv", error_buffer);if((config->GetModuleVersionStr)==NULL)return 0;
             config->GetModuleVersionInt=(lpGetModuleVersionInt)LoadFunctionDLL(&AsmDLL, "GetModuleVersionInt", "_Z19GetModuleVersionInti", error_buffer);if((config->GetModuleVersionInt)==NULL)return 0;
-            
+            config->SwitchMode=(lpSwitchMode)LoadFunctionDLL(&AsmDLL, "SwitchMode", NULL, error_buffer);if((config->SwitchMode)==NULL)return 0;
+            config->SelectPacketModule=(lpSelectPacketModule)LoadFunctionDLL(&AsmDLL, "SelectPacketModule", NULL, error_buffer);if((config->SelectPacketModule)==NULL)return 0;
+            config->GetPacketModules=(lpGetPacketModules)LoadFunctionDLL(&AsmDLL, "GetPacketModules", NULL, error_buffer);if((config->GetPacketModules)==NULL)return 0;
+            config->GetTotalPacketModules=(lpGetTotalPacketModules)LoadFunctionDLL(&AsmDLL, "GetTotalPacketModules", NULL, error_buffer);if((config->GetTotalPacketModules)==NULL)return 0;
+            config->GetPacketModuleID=(lpGetPacketModuleID)LoadFunctionDLL(&AsmDLL, "GetPacketModuleID", NULL, error_buffer);if((config->GetPacketModuleID)==NULL)return 0;
+            config->GetPacketModuleIDStr=(lpGetPacketModuleIDStr)LoadFunctionDLL(&AsmDLL, "GetPacketModuleIDStr", NULL, error_buffer);if((config->GetPacketModuleIDStr)==NULL)return 0;
             
             
     #endif

@@ -245,6 +245,8 @@ typedef void (*lpAsmGetStatusCallback)(char *str);
 
 typedef int (*lpGetPacketNumber)();
 
+typedef struct PacketModule;
+
     #ifdef ASM_SDK_CLIENT
 	#ifdef NDS
         //In this case with building dlls, DLLIMPORT really means to export the function.
@@ -257,6 +259,13 @@ typedef int (*lpGetPacketNumber)();
         DLLIMPORT char *GetStatusAsm(int *error_code);
         DLLIMPORT bool QueryAssembleStatus(int *error_code);
         DLLIMPORT unsigned char GetPrecentageCompleteAsm();
+        
+        DLLIMPORT int SwitchMode(int mode);
+        DLLIMPORT int SelectPacketModule(int index);
+        DLLIMPORT PacketModule *GetPacketModules();
+        DLLIMPORT int GetTotalPacketModules();
+        DLLIMPORT int GetPacketModuleID(int index);
+        DLLIMPORT char *GetPacketModuleIDStr(int index);
 	#endif
     #endif
 
@@ -288,6 +297,13 @@ typedef int (*lpGetPacketNumber)();
                     typedef char *(*lpGetModuleVersionStr)();
                     typedef int (*lpGetModuleVersionInt)(int);
                     
+                    typedef int (*lpSwitchMode)(int mode);
+                    typedef int (*lpSelectPacketModule)(int index);
+                    typedef PacketModule *(*lpGetPacketModules)();
+                    typedef int (*lpGetTotalPacketModules)();
+                    typedef int (*lpGetPacketModuleID)(int index);
+                    typedef char *(*lpGetPacketModuleIDStr)(int index);
+                    
                         #ifndef BUILDING_SDK
                             
                             #ifndef ASM_SDK_MODULE
@@ -306,6 +322,13 @@ typedef int (*lpGetPacketNumber)();
                                     
                                     lpGetPacketNumber GetPacketNum = NULL;
                                     
+                                    lpSwitchMode SwitchMode = NULL;
+                                    lpSelectPacketModule SelectPacketModule = NULL;
+                                    lpGetPacketModules GetPacketModules = NULL;
+                                    lpGetTotalPacketModules GetTotalPacketModules = NULL;
+                                    lpGetPacketModuleID GetPacketModuleID = NULL;
+                                    lpGetPacketModuleIDStr GetPacketModuleIDStr = NULL;
+                                    
                                 #endif
                                 
                                 #ifndef DLLMAIN
@@ -321,6 +344,13 @@ typedef int (*lpGetPacketNumber)();
                                     extern lpGetModuleVersionInt GetModuleVersionInt;
                                     
                                     extern lpGetPacketNumber GetPacketNum;
+                                    
+                                    extern lpSwitchMode SwitchMode;
+                                    extern lpSelectPacketModule SelectPacketModule;
+                                    extern lpGetPacketModules GetPacketModules;
+                                    extern lpGetTotalPacketModules GetTotalPacketModules;
+                                    extern lpGetPacketModuleID GetPacketModuleID;
+                                    extern lpGetPacketModuleIDStr GetPacketModuleIDStr;
                                     
                                 #endif
                             
@@ -604,6 +634,13 @@ struct Nds_data
 				
 				lpGetModuleVersionStr GetModuleVersionStr;
 				lpGetModuleVersionInt GetModuleVersionInt;
+				
+				lpSwitchMode SwitchMode;
+                lpSelectPacketModule SelectPacketModule;
+                lpGetPacketModules GetPacketModules;
+                lpGetTotalPacketModules GetTotalPacketModules;
+                lpGetPacketModuleID GetPacketModuleID;
+                lpGetPacketModuleIDStr GetPacketModuleIDStr;
 			#endif
 			
 				lpGetPacketNumber GetPacketNumber;
@@ -667,6 +704,13 @@ struct Nds_data
                         
                         GetModuleVersionStr = config->GetModuleVersionStr;
                         GetModuleVersionInt = config->GetModuleVersionInt;
+                        
+                        SwitchMode = config->SwitchMode;
+                        SelectPacketModule = config->SelectPacketModule;
+                        GetPacketModules = config->GetPacketModules;
+                        GetTotalPacketModules = config->GetTotalPacketModules;
+                        GetPacketModuleID = config->GetPacketModuleID;
+                        GetPacketModuleIDStr = config->GetPacketModuleIDStr;
                         #endif
 						
                         config->GetPacketNumber = &getpacketnumber;
