@@ -949,6 +949,30 @@ DLLIMPORT int SelectPacketModule(int index)
     return 1;
 }
 
+DLLIMPORT PacketModule *GetPacketModules()
+{
+    return packetModules;
+}
+
+DLLIMPORT int GetTotalPacketModules()
+{
+    return totalPacketModules;
+}
+
+DLLIMPORT int GetPacketModuleID(int index)
+{
+    if(index < 0 || index > totalPacketModules)return 0;
+    
+    return packetModules[index].ID;
+}
+
+DLLIMPORT char *GetPacketModuleIDStr(int index)
+{
+    if(index < 0 || index > totalPacketModules)return NULL;
+    
+    return packetModules[index].IDStr;
+}
+
 #ifdef __cplusplus
   }
 #endif
