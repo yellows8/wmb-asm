@@ -1,5 +1,5 @@
 /*
-Wmb Asm and all software in the Wmb Asm package are licensed under the MIT license:
+Binconv and all software in the Wmb Asm package are licensed under the MIT license:
 Copyright (c) 2008 yellowstar
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this
@@ -21,7 +21,13 @@ DEALINGS IN THE SOFTWARE.
 
 //#define BUILDMII//When this define line is uncommented, the .cpp file can be compiled as a stand-alone command-line program, if you have the Wmb Asm SDK.
 
+#ifndef BUILDMII
 #include "..\SDK\include\wmb_asm_sdk_client.h"
+#endif
+
+unsigned short calccrc16(unsigned char *data, unsigned int length);
+void ConvertEndian(void* input, void* output, int input_length);
+unsigned char *ConvertBinBuff(unsigned char *data, int length);
 
 struct NCBin_Header
 {
@@ -37,9 +43,77 @@ struct NCBin_Header
     unsigned char unk[12];
 } __attribute__ ((__packed__));
 
-unsigned char *ConvertBinBuff(unsigned char *data, int length);
+#ifdef BUILDMII
 
-unsigned short calccrc16(unsigned char *data, unsigned int length);
+#define ENDIAN_LITTE 0
+#define ENDIAN_BIG 1
+bool machine_endian=ENDIAN_LITTE;
+
+struct TNDSBanner {
+  unsigned short version;
+  unsigned short crc;
+  unsigned char reserved[28];
+  unsigned char icon[512];
+  unsigned short palette[16];
+  unsigned short titles[6][128];
+} __attribute__ ((__packed__));
+
+struct TNDSHeader {
+  char gameTitle[12];
+  char gameCode[4];
+  char makercode[2];
+  unsigned char unitCode;
+  unsigned char deviceType;           // type of device in the game card
+  unsigned char deviceSize;           // device capacity (1<<n Mbit)
+  unsigned char reserved1[9];
+  unsigned char romversion;
+  unsigned char flags;                // auto-boot flag
+
+  unsigned int arm9romSource;
+  unsigned int arm9executeAddress;
+  unsigned int arm9destination;
+  unsigned int arm9binarySize;
+
+  unsigned int arm7romSource;
+  unsigned int arm7executeAddress;
+  unsigned int arm7destination;
+  unsigned int arm7binarySize;
+
+  unsigned int filenameSource;
+  unsigned int filenameSize;
+  unsigned int fatSource;
+  unsigned int fatSize;
+
+  unsigned int arm9overlaySource;
+  unsigned int arm9overlaySize;
+  unsigned int arm7overlaySource;
+  unsigned int arm7overlaySize;
+
+  unsigned int cardControl13;  // used in modes 1 and 3
+  unsigned int cardControlBF;  // used in mode 2
+  unsigned int bannerOffset;
+
+  unsigned short secureCRC16;
+
+  unsigned short readTimeout;
+
+  unsigned int unknownRAM1;
+  unsigned int unknownRAM2;
+
+  unsigned int bfPrime1;
+  unsigned int bfPrime2;
+  unsigned int romSize;
+
+  unsigned int headerSize;
+  unsigned int zeros88[14];
+  unsigned char gbaLogo[156];
+  unsigned short logoCRC16;
+  unsigned short headerCRC16;
+
+  unsigned char zero[160];
+} __attribute__ ((__packed__));
+
+#endif
 
 void ConvertBin(char *filename)
 {
@@ -232,6 +306,55 @@ unsigned short calccrc16(unsigned char *data, unsigned int length)
 
 	return crc;
 }
+
+#ifdef BUILDMII
+
+void CheckEndianA(void* input, int input_length)
+{
+     if(input_length!=4)return;
+
+     int wanted_value=64;
+     int *int_input=(int*)input;
+
+     if(wanted_value==*int_input)machine_endian=ENDIAN_BIG;
+     if(wanted_value!=*int_input)machine_endian=ENDIAN_LITTE;
+}
+
+void ConvertEndian(void* input, void* output, int input_length)
+{
+     if(machine_endian==ENDIAN_BIG)return;
+
+     unsigned char *in, *out;
+     in=(unsigned char*)malloc((size_t)input_length);
+     out=(unsigned char*)malloc((size_t)input_length);
+     if(in==NULL || out==NULL)
+     {
+            printf("FATAL ERROR: FAILED TO ALLOCATE MEMORY FOR CONVERTENDIAN.\n");
+            system("PAUSE");
+            #ifndef NDS
+            exit(1);
+            #endif
+     }
+
+     memset(out,0,(size_t)input_length);
+     memset(in,0,(size_t)input_length);
+     memcpy(in,input,(size_t)input_length);
+
+     int I=input_length;
+     int i;
+     for(i=1; i<=input_length; i++)
+     {
+             out[I-1]=in[i-1];
+             I--;
+     }
+
+     memcpy(output,out,(size_t)input_length);
+
+     free(out);
+     free(in);
+}
+
+#endif
 
 #ifdef BUILDMII
 

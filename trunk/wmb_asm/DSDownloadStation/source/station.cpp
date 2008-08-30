@@ -708,7 +708,7 @@ int HandleSP_MenuDownload(unsigned char *data, int length)
     int size = 0;
     unsigned short *seq = 0;
     unsigned char *buffer;
-    //int lzo_ret = 0;
+    int lzo_ret = 0;
     lzo_uint out_len = 0;
     FILE *dump;
     char str[256];
@@ -724,7 +724,8 @@ int HandleSP_MenuDownload(unsigned char *data, int length)
             
             size = (int)*dat;
             size *= 2;
-            size-=32;
+            //size-=32;
+            size++;
             
             if(size<=0)return 3;
             
@@ -732,17 +733,17 @@ int HandleSP_MenuDownload(unsigned char *data, int length)
             seq = (unsigned short*)dat;
             dat+=2;
             
-            buffer = (unsigned char*)malloc(5000);
-            memset(buffer, 0, 5000);
+            buffer = (unsigned char*)malloc(100000);
+            memset(buffer, 0, 100000);
             
-            //printf("Copying seq %d sz %d\n", (int)*seq, size);
+            fprintf(*DLSTATIONLog, "Nintendo Spot: Copying menu seq %d sz %d Num %d\n", (int)*seq, size, GetPacketNum());
             memcpy(buffer, dat, size);
             //lzo_ret = lzo1x_decompress(dat,size,buffer,&out_len,NULL);
             //if(lzo_ret!=LZO_E_OK)printf("Menu decompression failed: error %d\n",lzo_ret);
             
             sprintf(str, "SpotMenu\\menu_%d.bin",(int)*seq);
             dump = fopen(str, "wb");
-            fwrite(buffer, 1, out_len, dump);
+            fwrite(buffer, 1, size, dump);
             fclose(dump);
             
             free(buffer);
