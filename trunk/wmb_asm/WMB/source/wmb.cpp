@@ -230,6 +230,7 @@ DLLIMPORT void AsmPlug_Reset()
     
     memset(wmb_host_mac,0,6);
 	memset(wmb_client_mac,0,6);
+	memset((void*)wmb_nds_data->beacon_data, 0, 980 * 15);
 }
 
 #ifdef __cplusplus
@@ -252,7 +253,7 @@ void WMBBeaconGrab(unsigned char *data)
 			//printf("A\n");
 		}
      
-     if(*ptr<=2)
+     if(*ptr<=1)
      {
                         int pos=0;
                         for(int i=0; i<(int)ds->advert_sequence_number; i++)
