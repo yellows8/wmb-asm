@@ -1,7 +1,7 @@
 # Project: wmb_asm_cmd
 # Compiler: Default GCC compiler
 # Compiler Type: MingW 3
-# Makefile created by wxDev-C++ 6.10.2 on 29/08/08 14:19
+# Makefile created by wxDev-C++ 6.10.2 on 02/09/08 21:47
 
 CPP       = g++.exe
 CC        = gcc.exe
