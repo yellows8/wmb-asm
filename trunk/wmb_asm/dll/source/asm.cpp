@@ -327,6 +327,8 @@ int WMB_AsmPlug_GetID();
 char *WMB_AsmPlug_GetIDStr();
 int WMB_AsmPlug_GetPriority();
 char *WMB_AsmPlug_GetStatus(int *error_code);
+int WMB_AsmPlug_GetModeStatus(int module);
+int WMB_AsmPlug_SwitchMode(int mode);
 int WMB_AsmPlug_QueryFailure();
 int WMB_AsmPlug_Handle802_11(unsigned char *data, int length);
 bool WMB_AsmPlug_Init(sAsmSDK_Config *config);
@@ -338,6 +340,8 @@ int DLSTATION_AsmPlug_GetID();
 char *DLSTATION_AsmPlug_GetIDStr();
 int DLSTATION_AsmPlug_GetPriority();
 char *DLSTATION_AsmPlug_GetStatus(int *error_code);
+int DLSTATION_AsmPlug_GetModeStatus(int module);
+int DLSTATION_AsmPlug_SwitchMode(int mode);
 int DLSTATION_AsmPlug_QueryFailure();
 int DLSTATION_AsmPlug_Handle802_11(unsigned char *data, int length);
 bool DLSTATION_AsmPlug_Init(sAsmSDK_Config *config);
@@ -349,6 +353,8 @@ int NINCH_AsmPlug_GetID();
 char *NINCH_AsmPlug_GetIDStr();
 int NINCH_AsmPlug_GetPriority();
 char *NINCH_AsmPlug_GetStatus(int *error_code);
+int NINCH_AsmPlug_GetModeStatus(int module);
+int NINCH_AsmPlug_SwitchMode(int mode);
 int NINCH_AsmPlug_QueryFailure();
 int NINCH_AsmPlug_Handle802_11(unsigned char *data, int length);
 bool NINCH_AsmPlug_Init(sAsmSDK_Config *config);
@@ -394,6 +400,8 @@ bool InitPktModules()
 		packetModules[totalPacketModules].GetID = &NINCH_AsmPlug_GetID;
 		packetModules[totalPacketModules].GetIDStr = &NINCH_AsmPlug_GetIDStr;
 		packetModules[totalPacketModules].GetPriority = &NINCH_AsmPlug_GetPriority;
+		packetModules[totalPacketModules].GetModeStatus = &NINCH_AsmPlug_GetModeStatus;
+		packetModules[totalPacketModules].SwitchMode = &NINCH_AsmPlug_SwitchMode;
 		totalPacketModules++;
 		
 		packetModules[totalPacketModules].Init = &DLSTATION_AsmPlug_Init;
@@ -406,6 +414,8 @@ bool InitPktModules()
 		packetModules[totalPacketModules].GetID = &DLSTATION_AsmPlug_GetID;
 		packetModules[totalPacketModules].GetIDStr = &DLSTATION_AsmPlug_GetIDStr;
 		packetModules[totalPacketModules].GetPriority = &DLSTATION_AsmPlug_GetPriority;
+		packetModules[totalPacketModules].GetModeStatus = &DLSTATION_AsmPlug_GetModeStatus;
+		packetModules[totalPacketModules].SwitchMode = &DLSTATION_AsmPlug_SwitchMode;
 		totalPacketModules++;
 		
 		packetModules[totalPacketModules].Init = &WMB_AsmPlug_Init;
@@ -418,6 +428,8 @@ bool InitPktModules()
 		packetModules[totalPacketModules].GetID = &WMB_AsmPlug_GetID;
 		packetModules[totalPacketModules].GetIDStr = &WMB_AsmPlug_GetIDStr;
 		packetModules[totalPacketModules].GetPriority = &WMB_AsmPlug_GetPriority;
+		packetModules[totalPacketModules].GetModeStatus = &WMB_AsmPlug_GetModeStatus;
+		packetModules[totalPacketModules].SwitchMode = &WMB_AsmPlug_SwitchMode;
 		totalPacketModules++;
 		
 	#endif

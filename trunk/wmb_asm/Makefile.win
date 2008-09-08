@@ -1,21 +1,21 @@
 # Project: wmb_asm_cmd
 # Compiler: Default GCC compiler
 # Compiler Type: MingW 3
-# Makefile created by wxDev-C++ 6.10.2 on 02/09/08 21:47
+# Makefile created by wxDev-C++ 6.10.2 on 07/09/08 19:34
 
 CPP       = g++.exe
 CC        = gcc.exe
 WINDRES   = windres.exe
-OBJ       = source/console.o source/main.o source/binconv.o wmb_asm_cmd_private.res
-LINKOBJ   = source/console.o source/main.o source/binconv.o wmb_asm_cmd_private.res
-LIBS      = -L"C:/Dev-Cpp/Lib" -L"C:/idasdk/libgcc.w32" -L"C:/Dev-Cpp/lib" SDK/lib/WmbAsmSDK.a  -g3 
+OBJ       = Objects/MingW/binconv.o Objects/MingW/main.o Objects/MingW/wmb_asm_cmd_private.res
+LINKOBJ   = Objects/MingW/binconv.o Objects/MingW/main.o Objects/MingW/wmb_asm_cmd_private.res
+LIBS      = -L"C:/Dev-Cpp/Lib" -L"C:/idasdk/libgcc.w32" SDK/lib/WmbAsmSDK.a  -g3 
 INCS      = -I"include" -I"C:/idasdk/include"
 CXXINCS   = -I"C:/Dev-Cpp/lib/gcc/mingw32/3.4.2/include" -I"C:/Dev-Cpp/include/c++/3.4.2/backward" -I"C:/Dev-Cpp/include/c++/3.4.2/mingw32" -I"C:/Dev-Cpp/include/c++/3.4.2" -I"C:/Dev-Cpp/include" -I"C:/Dev-Cpp/" -I"C:/Dev-Cpp/include/common/wx/msw" -I"C:/Dev-Cpp/include/common/wx/generic" -I"C:/Dev-Cpp/include/common/wx/fl" -I"C:/Dev-Cpp/include/common/wx/gizmos" -I"C:/Dev-Cpp/include/common/wx/html" -I"C:/Dev-Cpp/include/common/wx/mmedia" -I"C:/Dev-Cpp/include/common/wx/net" -I"C:/Dev-Cpp/include/common/wx/ogl" -I"C:/Dev-Cpp/include/common/wx/plot" -I"C:/Dev-Cpp/include/common/wx/protocol" -I"C:/Dev-Cpp/include/common/wx/stc" -I"C:/Dev-Cpp/include/common/wx/svg" -I"C:/Dev-Cpp/include/common/wx/xml" -I"C:/Dev-Cpp/include/common/wx/xrc" -I"C:/Dev-Cpp/include/common/wx" -I"C:/Dev-Cpp/include/common" -I"C:/idasdk/include"
 RCINCS    = --include-dir "C:/Dev-Cpp/include/common"
 BIN       = wmb_asm.exe
 DEFINES   = 
-CXXFLAGS  = $(CXXINCS) $(DEFINES)   -ansi -O3 -g3
-CFLAGS    = $(INCS) $(DEFINES)    -ansi -O3 -g3
+CXXFLAGS  = $(CXXINCS) $(DEFINES)   -O3 -g3
+CFLAGS    = $(INCS) $(DEFINES)   -O3 -g3
 GPROF     = gprof.exe
 RM        = rm -f
 LINK      = g++.exe
@@ -29,14 +29,11 @@ clean: clean-custom
 $(BIN): $(OBJ)
 	$(LINK) $(LINKOBJ) -o "wmb_asm.exe" $(LIBS)
 
-source/console.o: $(GLOBALDEPS) source/console.cpp SDK/include/wmb_asm_sdk_client.h SDK/include/wmb_asm_sdk.h SDK/include/pcap.h SDK/include/inet.h SDK/include/dirscan.h SDK/include/win32dirent.h SDK/include/ndsdirent.h SDK/include/wmb_asm_sdk_internal.h
-	$(CPP) -c source/console.cpp -o source/console.o $(CXXFLAGS)
+Objects/MingW/binconv.o: $(GLOBALDEPS) source/binconv.cpp SDK/include/wmb_asm_sdk_client.h SDK/include/wmb_asm_sdk.h SDK/include/pcap.h SDK/include/inet.h SDK/include/dirscan.h SDK/include/win32dirent.h SDK/include/ndsdirent.h SDK/include/wmb_asm_sdk_internal.h
+	$(CPP) -c source/binconv.cpp -o Objects/MingW/binconv.o $(CXXFLAGS)
 
-source/main.o: $(GLOBALDEPS) source/main.cpp SDK/include/wmb_asm_sdk_client.h SDK/include/wmb_asm_sdk.h SDK/include/pcap.h SDK/include/inet.h SDK/include/dirscan.h SDK/include/win32dirent.h SDK/include/ndsdirent.h SDK/include/wmb_asm_sdk_internal.h
-	$(CPP) -c source/main.cpp -o source/main.o $(CXXFLAGS)
+Objects/MingW/main.o: $(GLOBALDEPS) source/main.cpp SDK/include/wmb_asm_sdk_client.h SDK/include/wmb_asm_sdk.h SDK/include/pcap.h SDK/include/inet.h SDK/include/dirscan.h SDK/include/win32dirent.h SDK/include/ndsdirent.h SDK/include/wmb_asm_sdk_internal.h
+	$(CPP) -c source/main.cpp -o Objects/MingW/main.o $(CXXFLAGS)
 
-source/binconv.o: $(GLOBALDEPS) source/binconv.cpp SDK/include/wmb_asm_sdk_client.h SDK/include/wmb_asm_sdk.h SDK/include/pcap.h SDK/include/inet.h SDK/include/dirscan.h SDK/include/win32dirent.h SDK/include/ndsdirent.h SDK/include/wmb_asm_sdk_internal.h
-	$(CPP) -c source/binconv.cpp -o source/binconv.o $(CXXFLAGS)
-
-wmb_asm_cmd_private.res: wmb_asm_cmd_private.rc 
-	$(WINDRES) --input-format=rc -o wmb_asm_cmd_private.res $(RCINCS) WMB_AS~1.RC -O coff
+Objects/MingW/wmb_asm_cmd_private.res: Objects/MingW/wmb_asm_cmd_private.rc 
+	$(WINDRES) --input-format=rc -o Objects/MingW/wmb_asm_cmd_private.res $(RCINCS) Objects/MingW/WMB_AS~1.RC -O coff
