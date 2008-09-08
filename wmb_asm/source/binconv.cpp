@@ -153,7 +153,7 @@ void ConvertBin(char *filename)
     fnds = fopen(str, "wb");
     if(fnds==NULL)
     {
-        printf("Failed to open file %s\n");
+        printf("Failed to open file %s\n", str);
         return;
     }
     

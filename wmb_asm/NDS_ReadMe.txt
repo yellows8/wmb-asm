@@ -11,9 +11,8 @@ Run wmb_asm.nds, and the capture should be assembled. Once done, the output shou
 Restart your DS and goto your card's menu. The output should appear.
 
 Compiling
-This program was built with the GNU compiler, but others should work, but some changes might be needed for other compilers.
-Makefile.win is the Makefile for compiling for PC/Windows. You'll probably need to edit this to make it compile on other platforms.
 Makefile is the Makefile for compiling on DS. You can obtain the source code from SVN, from the Google Code project page.
+All the files in the source and include directories, in the wmb_asm directory, are for Wmb Asm DS.
 
 Wmb Asm Google Code Project page: http://code.google.com/p/wmb-asm/
 

@@ -48,6 +48,8 @@ DEALINGS IN THE SOFTWARE.
 	#define AsmPlug_DeInit NINCH_AsmPlug_DeInit
 	#define AsmPlug_GetNdsData NINCH_AsmPlug_GetNdsData
 	#define AsmPlug_Reset NINCH_AsmPlug_Reset
+	#define AsmPlug_GetModeStatus NINCH_AsmPlug_GetModeStatus
+	#define AsmPlug_SwitchMode NINCH_AsmPlug_SwitchMode
 #endif
 
 #define STAGE_CLIENTHELLO 1
@@ -173,6 +175,8 @@ DLLIMPORT int AsmPlug_GetModeStatus(int mode)//Queries whether or not the specif
 {
     if(mode == MODE_ASM)return 1;
     if(mode != MODE_ASM)return 0;
+	
+	return 0;
 }
 
 DLLIMPORT int AsmPlug_SwitchMode(int mode)

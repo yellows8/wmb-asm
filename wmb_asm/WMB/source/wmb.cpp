@@ -80,6 +80,8 @@ void Init();
 	#define AsmPlug_DeInit WMB_AsmPlug_DeInit
 	#define AsmPlug_GetNdsData WMB_AsmPlug_GetNdsData
 	#define AsmPlug_Reset WMB_AsmPlug_Reset
+	#define AsmPlug_GetModeStatus WMB_AsmPlug_GetModeStatus
+	#define AsmPlug_SwitchMode WMB_AsmPlug_SwitchMode
 #endif
 
 DLLIMPORT int AsmPlug_GetID()
@@ -169,6 +171,8 @@ DLLIMPORT int AsmPlug_GetModeStatus(int mode)//Queries whether or not the specif
 {
     if(mode == MODE_ASM)return 1;
     if(mode != MODE_ASM)return 0;
+	
+	return 0;
 }
 
 DLLIMPORT int AsmPlug_SwitchMode(int mode)

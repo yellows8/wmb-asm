@@ -57,6 +57,8 @@ DEALINGS IN THE SOFTWARE.
 	#define AsmPlug_DeInit DLSTATION_AsmPlug_DeInit
 	#define AsmPlug_GetNdsData DLSTATION_AsmPlug_GetNdsData
 	#define AsmPlug_Reset DLSTATION_AsmPlug_Reset
+	#define AsmPlug_GetModeStatus DLSTATION_AsmPlug_GetModeStatus
+	#define AsmPlug_SwitchMode DLSTATION_AsmPlug_SwitchMode
 #endif
 
 #define STAGEDL_ASSOC_RESPONSE 1
@@ -315,6 +317,8 @@ DLLIMPORT int AsmPlug_GetModeStatus(int mode)//Queries whether or not the specif
 {
     if(mode == MODE_ASM)return 1;
     if(mode != MODE_ASM)return 0;
+	
+	return 0;
 }
 
 DLLIMPORT int AsmPlug_SwitchMode(int mode)
