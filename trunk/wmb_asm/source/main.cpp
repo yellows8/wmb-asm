@@ -369,10 +369,10 @@ int ReadDump(int argc, char *argv[])
                     strncpy(outdir,(const char*)cur_file->filename,(size_t)pos);//Copy in the capture's directory name into the output directory name
                }
 	       
+	       int code = 0;
 	       //Read and assemble the capture.
            if(!ReadCaptureLoop(cur_file->filename,argc,argv,checkrsa,outdir,run,copydir,use_copydir))
            {
-		   int code = 0;
 		   
 	       CaptureAsmReset(&code, &ErrorCallback);
 
@@ -386,6 +386,8 @@ int ReadDump(int argc, char *argv[])
             }
 
         //}
+        
+        CaptureAsmReset(&code, &ErrorCallback);
 
            cur_file=cur_file->next;//Begin processing the next capture/file
       }

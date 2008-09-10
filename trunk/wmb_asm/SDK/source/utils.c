@@ -26,7 +26,7 @@ DEALINGS IN THE SOFTWARE.
 #include "..\include\wmb_asm_sdk.h"
 
 #ifndef NDS
-extern "C" {
+//extern "C" {
 #endif
 
 unsigned char normal_mac[5] = {0x03,0x09,0xBF,0x00,0x00};
@@ -810,5 +810,5 @@ void ExecuteApp(char *appname, char *cmdline)
 #endif
 
 #ifndef NDS
-}
+//}
 #endif

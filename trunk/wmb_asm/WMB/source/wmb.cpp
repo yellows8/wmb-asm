@@ -184,6 +184,7 @@ DLLIMPORT int AsmPlug_SwitchMode(int mode)
 
 DLLIMPORT int AsmPlug_Handle802_11(unsigned char *data, int length)
 {
+     
      if(wmb_stage==SDK_STAGE_BEACON)return WMBProcessBeacons(data,length);
      if(wmb_stage==SDK_STAGE_AUTH)return WMBProcessAuth(data,length);
      if(wmb_stage==SDK_STAGE_RSA)return WMBProcessRSA(data,length);
@@ -235,6 +236,12 @@ DLLIMPORT void AsmPlug_Reset()
     memset(wmb_host_mac,0,6);
 	memset(wmb_client_mac,0,6);
 	memset((void*)wmb_nds_data->beacon_data, 0, 980 * 15);
+	
+	if(*WMBDEBUG)
+	{
+        fprintfdebug(*WMBLog, "ASM RESET\n");
+        fflushdebug(*WMBLog);
+    }
 }
 
 #ifdef __cplusplus

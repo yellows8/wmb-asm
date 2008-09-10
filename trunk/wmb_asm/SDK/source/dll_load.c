@@ -25,12 +25,12 @@ DEALINGS IN THE SOFTWARE.
     #ifndef NDS
     
     #ifndef NDS
-extern "C" {
+//extern "C" {
 #endif
     
                     LPDLL AsmDLL=0;
 
-                    bool LoadDLL(LPDLL *lpdll, const char *filename, char *error_buffer = NULL)
+                    bool LoadDLL(LPDLL *lpdll, const char *filename, char *error_buffer)
                     {
                         
                         char modname[256];
@@ -39,8 +39,9 @@ extern "C" {
                         
                         bool found=0;
                         int pos=strlen(filename);
+                        int i;
                         
-                        for(int i=2; i<(int)strlen(filename); i++)
+                        for(i=2; i<(int)strlen(filename); i++)
                         {
                             if(filename[i]=='.')
                             {
@@ -85,7 +86,7 @@ extern "C" {
     return 1;
 }
 
-bool CloseDLL(LPDLL *lpdll, char *error_buffer = NULL)
+bool CloseDLL(LPDLL *lpdll, char *error_buffer)
 {
     
         #ifdef WIN32
@@ -107,7 +108,7 @@ bool CloseDLL(LPDLL *lpdll, char *error_buffer = NULL)
     return 1;
 }
 
-void* LoadFunctionDLL(LPDLL *lpdll, const char *func_name, const char *func_name2, char *error_buffer = NULL)
+void* LoadFunctionDLL(LPDLL *lpdll, const char *func_name, const char *func_name2, char *error_buffer)
 {
     void* func_addr=NULL;
     char *f_name = NULL;
@@ -206,13 +207,13 @@ bool LoadAsmDLL(const char *filename, struct sAsmSDK_Config *config, char *error
 
 #ifndef NDS
 
-bool CloseAsmDLL(char *error_buffer = NULL)
+bool CloseAsmDLL(char *error_buffer)
 {
     return CloseDLL(&AsmDLL, error_buffer);
 }
 
 #ifndef NDS
-}
+//}
 #endif
 
 #endif

@@ -1010,7 +1010,7 @@ void CaptureBacktrack()
             memset(buffer,0,(size_t)GetSnapshotLength());
             save_unused_packets=0;//HandlePacket would write the packets we send to it, to this file we are reading, if this wasn't set to zero. Which would obviously cause problems.
             sAsmSDK_Params *params = NULL;
-
+            
                 if(funusedpkt!=NULL)
                 {
 							if(*DEBUG)
@@ -1078,7 +1078,7 @@ void CaptureAsmResetA(volatile Nds_data *dat, lpAsmGetStatusCallback callback)
     {
         fclose(funusedpkt);
         funusedpkt=NULL;
-
+        
         CaptureBacktrack();
 
         total_assembled=0;
