@@ -286,8 +286,8 @@ typedef struct PacketModule;
 
                 #ifndef NDS
                     
-                    typedef bool (*lpHandlePacket)(sAsmSDK_Params *params);
-                    typedef bool (*lpInitAsm)(SuccessCallback callback, bool debug, sAsmSDK_Config *config);
+                    typedef bool (*lpHandlePacket)(struct sAsmSDK_Params *params);
+                    typedef bool (*lpInitAsm)(SuccessCallback callback, bool debug, struct sAsmSDK_Config *config);
                     typedef void (*lpExitAsm)(void);
                     typedef void (*lpCaptureAsmReset)(int *code, lpAsmGetStatusCallback callback);
                     typedef char* (*lpGetStatusAsm)(int *error_code);
@@ -299,7 +299,7 @@ typedef struct PacketModule;
                     
                     typedef int (*lpSwitchMode)(int mode);
                     typedef int (*lpSelectPacketModule)(int index);
-                    typedef PacketModule *(*lpGetPacketModules)();
+                    typedef struct PacketModule *(*lpGetPacketModules)();
                     typedef int (*lpGetTotalPacketModules)();
                     typedef int (*lpGetPacketModuleID)(int index);
                     typedef char *(*lpGetPacketModuleIDStr)(int index);
@@ -593,10 +593,10 @@ struct Nds_data
 
     #ifndef NDS
         #ifdef USING_DLL
-            DLLIMPORT void ResetAsm(Nds_data *nds_data);
+            DLLIMPORT void ResetAsm(struct Nds_data *nds_data);
         #endif
         
-        typedef void (*lpResetAsm)(Nds_data *nds_data);
+        typedef void (*lpResetAsm)(struct Nds_data *nds_data);
         
         #ifndef BUILDING_SDK
             

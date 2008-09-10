@@ -26,11 +26,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifdef __cplusplus
-extern "C"
-{
-#endif
-
 struct DIR
 {
     long                handle; /* -1 for failed rewind */
@@ -136,10 +131,6 @@ DLLIMPORT void rewinddir(DIR *dir)
         errno = EBADF;
     }
 }
-
-#ifdef __cplusplus
-}
-#endif
 
 /*
 
