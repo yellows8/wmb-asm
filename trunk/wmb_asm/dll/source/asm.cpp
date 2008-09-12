@@ -132,7 +132,7 @@ struct PacketModule
 	#ifndef NDS
     LPDLL lpdll;//The handle of the module if this one isn't a built-in packet handler.
 	#endif
-	
+
 	int ID;
 	char *IDStr;
 	int Priority;
@@ -149,7 +149,7 @@ void PktModClose()
 	{
 		if(packetModules[i].DeInit!=NULL)
 			packetModules[i].DeInit();
-		
+
 		#ifndef NDS
 			CloseDLL(&packetModules[i].lpdll, NULL);
 		#endif
@@ -161,7 +161,7 @@ bool PktModInit()
 	#ifndef NDS
 	if(!PktModReorder())return 0;
 	#endif
-	
+
 		for(int i=0; i<totalPacketModules; i++)
 		{
 			if(packetModules[i].Init!=NULL)
@@ -170,7 +170,7 @@ bool PktModInit()
 				    return 0;
             }
 		}
-	
+
 	return 1;
 }
 
@@ -196,11 +196,11 @@ bool PktModReorder()
         return 0;
     }
     memset(list, 0, sizeof(PacketModule) * MAX_PKT_MODULES);
-    
+
     while(packetModules[plug_cur].lpdll!=NULL)
     {
         pri = packetModules[plug_cur].Priority;
-        
+
             if(!found)
             {
                 high_pri = pri;
@@ -208,53 +208,53 @@ bool PktModReorder()
                 found = 1;
             }
             else
-            {   
+            {
                 if(pri > high_pri)
                     high_pri = pri;
-                
+
                 if(pri < lowest_pri)
                     lowest_pri = pri;
-                
+
             }
-            
+
         plug_cur++;
     }
     plug_cur = 0;
     found = 0;
-    
+
     cur = high_pri;
     pri_cur = 0;
     while(cur>=lowest_pri)
     {
-        
+
             while(packetModules[plug_cur].lpdll!=NULL)
             {
                 pri = packetModules[plug_cur].Priority;
-                
+
                     if(pri==cur)
                     {
                         memcpy(&list[pri_cur], &packetModules[plug_cur], sizeof(PacketModule));
                         pri_cur++;
                     }
-                
+
                 plug_cur++;
             }
         plug_cur = 0;
         cur--;
     }
-    
+
     memcpy(packetModules, list, sizeof(PacketModule) * MAX_PKT_MODULES);
     free(list);
-    
+
     return 1;
-	
+
 	#endif
 }
 
 void PktModReset()
 {
 	for(int i=0; i<totalPacketModules; i++)
-	{	
+	{
 		if(packetModules[i].reset!=NULL)
 			packetModules[i].reset();
 	}
@@ -272,7 +272,7 @@ void PktModSwitchMode(int mode)
 bool PktModHandle802_11(unsigned char *data, int length)
 {
     int ret = 0;
-    
+
     if(currentPacketModule == -1)
     {
 			for(int ii=0; ii<totalPacketModules; ii++)
@@ -280,7 +280,7 @@ bool PktModHandle802_11(unsigned char *data, int length)
 				if(packetModules[ii].handle802_11!=NULL)
 				{
                     ret = packetModules[ii].handle802_11(data, length);
-					
+
 					if(ret!=0)
 					{
                     currentPacketModule = ii;
@@ -292,7 +292,7 @@ bool PktModHandle802_11(unsigned char *data, int length)
     else
     {
         ret = packetModules[currentPacketModule].handle802_11(data, length);
-        
+
         if(ret==0)
         {
 			for(int ii=0; ii<totalPacketModules; ii++)
@@ -310,7 +310,7 @@ bool PktModHandle802_11(unsigned char *data, int length)
 			}
         }
     }
-    
+
     return 0;
 }
 
@@ -382,13 +382,13 @@ bool InitPktModules()
     memset(error_buffer, 0, 256);
     memset(destr, 0, 256);
 	#endif
-	
+
     memset(packetModules, 0, sizeof(PacketModule) * MAX_PKT_MODULES);
     totalPacketModules = 0;
     currentPacketModule = -1;
 
 	#ifdef NDS
-		
+
 		//Ordering of packet modules in the array when compiling for DS, must be done manually, for ordering and priority ordering.
 		packetModules[totalPacketModules].Init = &NINCH_AsmPlug_Init;
 		packetModules[totalPacketModules].DeInit = &NINCH_AsmPlug_DeInit;
@@ -403,7 +403,7 @@ bool InitPktModules()
 		packetModules[totalPacketModules].GetModeStatus = &NINCH_AsmPlug_GetModeStatus;
 		packetModules[totalPacketModules].SwitchMode = &NINCH_AsmPlug_SwitchMode;
 		totalPacketModules++;
-		
+
 		packetModules[totalPacketModules].Init = &DLSTATION_AsmPlug_Init;
 		packetModules[totalPacketModules].DeInit = &DLSTATION_AsmPlug_DeInit;
 		packetModules[totalPacketModules].GetNdsData = &DLSTATION_AsmPlug_GetNdsData;
@@ -417,7 +417,7 @@ bool InitPktModules()
 		packetModules[totalPacketModules].GetModeStatus = &DLSTATION_AsmPlug_GetModeStatus;
 		packetModules[totalPacketModules].SwitchMode = &DLSTATION_AsmPlug_SwitchMode;
 		totalPacketModules++;
-		
+
 		packetModules[totalPacketModules].Init = &WMB_AsmPlug_Init;
 		packetModules[totalPacketModules].DeInit = &WMB_AsmPlug_DeInit;
 		packetModules[totalPacketModules].GetNdsData = &WMB_AsmPlug_GetNdsData;
@@ -431,29 +431,29 @@ bool InitPktModules()
 		packetModules[totalPacketModules].GetModeStatus = &WMB_AsmPlug_GetModeStatus;
 		packetModules[totalPacketModules].SwitchMode = &WMB_AsmPlug_SwitchMode;
 		totalPacketModules++;
-		
+
 	#endif
 
     #ifndef NDS
-    
+
         files_list = (FILE_LIST*)malloc(sizeof(FILE_LIST));
         memset(files_list, 0, sizeof(FILE_LIST));
         ScanDirectory(files_list,(char*)".",(char*)".dll");
-            
+
             if(files_list!=NULL)
             {
 
-            
+
             cur_file = files_list;
 
                 while(cur_file!=NULL)
                 {
                     if(cur_file->filename==NULL)break;
                     if(strcmp(cur_file->filename,"")==0)break;
-                    
+
                     if(strstr(cur_file->filename, ".dll")!=0 || strstr(cur_file->filename, ".so")!=0)
                     {
-                    
+
                     if(strstr(cur_file->filename, "wmb_asm.dll")==0 && strstr(cur_file->filename, "wmb_asm.so")==0)//Don't try to load ourself, the Wmb Asm Module.
                     {
 
@@ -462,9 +462,9 @@ bool InitPktModules()
                                 modlog = fopen("module_log.txt","w");
                                     if(modlog==NULL)break;
                             }
-                            
+
                             //printf("Loading %s\n",cur_file->filename);
-                            
+
                             int ret = LoadPacketModule(cur_file->filename, error_buffer, destr, &lpdll);
 							if(ret==0)return 0;
                             if(ret==2)
@@ -472,12 +472,12 @@ bool InitPktModules()
                                 open_failed = 1;
                                 continue;
                             }
-                            
+
                             //printf("Loaded %s\n",cur_file->filename);
                     }
-                    
+
                     }
-                    
+
                     cur_file=cur_file->next;
                 }
             }
@@ -485,7 +485,7 @@ bool InitPktModules()
             {
                 printf("Failed to open file or directory %s\n",(char*)".");
             }
-        
+
         if(modlog!=NULL)
         fclose(modlog);
 
@@ -497,7 +497,7 @@ bool InitPktModules()
             system("PAUSE");
             exit(1);
         }
-        
+
     if(open_failed)return 0;
 
     remove("module_log.txt");//Since we made it this far, there was no errors, so we can safely remove this file without saved errors being deleted.
@@ -505,19 +505,19 @@ bool InitPktModules()
     printf("Done.\n");
 
     #endif
-    
+
     if(!PktModInit())
         return 0;
-    
+
     PktModReset();
-    
+
     return 1;
 }
 
 #ifndef NDS
 int LoadPacketModule(char *filename, char *error_buffer, char *destr, LPDLL *lpdll)
 {
-    
+
     if(!LoadDLL(lpdll, filename, error_buffer))
                                     {
                                         sprintf(destr, "ERROR: %s", error_buffer);
@@ -527,7 +527,7 @@ int LoadPacketModule(char *filename, char *error_buffer, char *destr, LPDLL *lpd
                                             fprintf(modlog, "%s", destr);
                                             fflush(modlog);
                                         }
-                                        
+
                                         printf("An error occured while loading the packet module plugin(s). The error was written to module_log.txt\n%s\n",destr);
 
                                         return 2;
@@ -551,7 +551,7 @@ int LoadPacketModule(char *filename, char *error_buffer, char *destr, LPDLL *lpd
 
                                             return 0;
                                         }
-                                        
+
                                         if((packetModules[totalPacketModules].DeInit=(lpDeInit)LoadFunctionDLL(lpdll, "AsmPlug_DeInit", NULL, error_buffer))==NULL)
                                         {
                                             sprintf(destr, "ERROR: In module %s: %s", filename, error_buffer);
@@ -568,7 +568,7 @@ int LoadPacketModule(char *filename, char *error_buffer, char *destr, LPDLL *lpd
 
                                             return 0;
                                         }
-                                        
+
                                         if((packetModules[totalPacketModules].reset=(lpReset)LoadFunctionDLL(lpdll, "AsmPlug_Reset", "_Z8AsmPlug_Resetv", error_buffer))==NULL)
                                         {
                                             sprintf(destr, "ERROR: In module %s: %s", filename, error_buffer);
@@ -580,7 +580,7 @@ int LoadPacketModule(char *filename, char *error_buffer, char *destr, LPDLL *lpd
                                                 }
 
                                             CloseDLL(lpdll, NULL);
-                                            
+
                                             printf("An error occured while loading the packet module plugin(s). The error was written to module_log.txt\n%s\n",destr);
 
                                             return 0;
@@ -597,7 +597,7 @@ int LoadPacketModule(char *filename, char *error_buffer, char *destr, LPDLL *lpd
                                                 }
 
                                             CloseDLL(lpdll, NULL);
-                                            
+
                                             printf("An error occured while loading the packet module plugin(s). The error was written to module_log.txt\n%s\n",destr);
 
                                             return 0;
@@ -614,7 +614,7 @@ int LoadPacketModule(char *filename, char *error_buffer, char *destr, LPDLL *lpd
                                                 }
 
                                             CloseDLL(lpdll, NULL);
-                                            
+
                                             printf("An error occured while loading the packet module plugin(s). The error was written to module_log.txt\n%s\n",destr);
 
                                             return 0;
@@ -631,12 +631,12 @@ int LoadPacketModule(char *filename, char *error_buffer, char *destr, LPDLL *lpd
                                                 }
 
                                             CloseDLL(lpdll, NULL);
-                                            
+
                                             printf("An error occured while loading the packet module plugin(s). The error was written to module_log.txt\n%s\n",destr);
 
                                             return 0;
                                         }
-                                        
+
                                         if((packetModules[totalPacketModules].GetID=(lpGetID)LoadFunctionDLL(lpdll, "AsmPlug_GetID", NULL, error_buffer))==NULL)
                                         {
                                             sprintf(destr, "ERROR: In module %s: %s", filename, error_buffer);
@@ -648,12 +648,12 @@ int LoadPacketModule(char *filename, char *error_buffer, char *destr, LPDLL *lpd
                                                 }
 
                                             CloseDLL(lpdll, NULL);
-                                            
+
                                             printf("An error occured while loading the packet module plugin(s). The error was written to module_log.txt\n%s\n",destr);
 
                                             return 0;
                                         }
-                                        
+
                                         if((packetModules[totalPacketModules].GetIDStr=(lpGetIDStr)LoadFunctionDLL(lpdll, "AsmPlug_GetIDStr", NULL, error_buffer))==NULL)
                                         {
                                             sprintf(destr, "ERROR: In module %s: %s", filename, error_buffer);
@@ -665,12 +665,12 @@ int LoadPacketModule(char *filename, char *error_buffer, char *destr, LPDLL *lpd
                                                 }
 
                                             CloseDLL(lpdll, NULL);
-                                            
+
                                             printf("An error occured while loading the packet module plugin(s). The error was written to module_log.txt\n%s\n",destr);
 
                                             return 0;
                                         }
-                                        
+
                                         if((packetModules[totalPacketModules].GetPriority=(lpGetPriority)LoadFunctionDLL(lpdll, "AsmPlug_GetPriority", NULL, error_buffer))==NULL)
                                         {
                                             sprintf(destr, "ERROR: In module %s: %s", filename, error_buffer);
@@ -687,7 +687,7 @@ int LoadPacketModule(char *filename, char *error_buffer, char *destr, LPDLL *lpd
 
                                             return 0;
                                         }
-                                        
+
                                         if((packetModules[totalPacketModules].GetNdsData=(lpGetNdsData)LoadFunctionDLL(lpdll, "AsmPlug_GetNdsData", NULL, error_buffer))==NULL)
                                         {
                                             sprintf(destr, "ERROR: In module %s: %s", filename, error_buffer);
@@ -704,7 +704,7 @@ int LoadPacketModule(char *filename, char *error_buffer, char *destr, LPDLL *lpd
 
                                             return 0;
                                         }
-                                        
+
                                         if((packetModules[totalPacketModules].GetModeStatus=(lpGetModeStatus)LoadFunctionDLL(lpdll, "AsmPlug_GetModeStatus", NULL, error_buffer))==NULL)
                                         {
                                             sprintf(destr, "ERROR: In module %s: %s", filename, error_buffer);
@@ -721,7 +721,7 @@ int LoadPacketModule(char *filename, char *error_buffer, char *destr, LPDLL *lpd
 
                                             return 0;
                                         }
-                                        
+
                                         if((packetModules[totalPacketModules].SwitchMode=(lpSwitchMode)LoadFunctionDLL(lpdll, "AsmPlug_SwitchMode", NULL, error_buffer))==NULL)
                                         {
                                             sprintf(destr, "ERROR: In module %s: %s", filename, error_buffer);
@@ -746,7 +746,7 @@ int LoadPacketModule(char *filename, char *error_buffer, char *destr, LPDLL *lpd
                                         packetModules[totalPacketModules].lpdll = *lpdll;
                                         totalPacketModules++;
                                     }
-                                    
+
                                     return 1;
 }
 #endif
@@ -806,23 +806,23 @@ DLLIMPORT int GetModuleVersionInt(int which_number)
 
 DLLIMPORT bool InitAsm(SuccessCallback callback, bool debug, sAsmSDK_Config *config)
 {
-    
+
     DEBUG = config->DEBUG;
     Log = config->Log;
     module_nds_data = *config->nds_data;
     //*config = *config;
     *config->Log = *config->Log;
     if(config->DEBUG==NULL)printf("ACK!\n");
-    
+
     *DEBUG = debug;
-    
+
     CONFIG = config;
-    
+
     if(*DEBUG)
 		{
 			*Log = fopendebug("log.txt","w");
         }
-    
+
 	memset((void*)module_nds_data,0,sizeof(Nds_data));
 	save_unused_packets=1;
 	funusedpkt=NULL;
@@ -830,7 +830,7 @@ DLLIMPORT bool InitAsm(SuccessCallback callback, bool debug, sAsmSDK_Config *con
     AssemblySuccessCallback = callback;
 
     if(!InitPktModules())return 0;
-    
+
     return 1;
 }
 
@@ -846,14 +846,14 @@ DLLIMPORT void ResetAsm(volatile Nds_data *dat)
 			                         {
 				                        data = packetModules[i].GetNdsData();
 				                        if(data==NULL)return;//Should never happen; But if it would, Wmb Asm would get into a infinite loop, and possibly crash eventually.
-				                        
+
 				                        ResetAsm(data);
                                      }
 		                      }
-                            
+
                             return;
                         }
-    
+
                         if(module_nds_data->saved_data!=NULL)free((void*)module_nds_data->saved_data);
                         if(module_nds_data->data_sizes!=NULL)free((void*)module_nds_data->data_sizes);
                         module_nds_data->saved_data=NULL;
@@ -861,7 +861,7 @@ DLLIMPORT void ResetAsm(volatile Nds_data *dat)
 
                                 if(*DEBUG)
                                     fflushdebug(*Log);
-                                
+
 	                           TNDSHeader temp_header;
 	                           nds_rsaframe temp_rsa;
 	                           bool first=module_nds_data->finished_first_assembly;
@@ -899,18 +899,18 @@ DLLIMPORT void ResetAsm(volatile Nds_data *dat)
 									memcpy((void*)module_nds_data->handledIDs, (void*)handledIDs,256);
 									module_nds_data->FoundGameIDs = FoundGameIDs;
                                }
-                               
+
                                currentPacketModule = -1;
                                PktModReset();
 }
 
 DLLIMPORT void ExitAsm()
-{   
+{
     ResetAsm(NULL);
     PktModClose();
-    
+
     deinit_network();
-    
+
     if(funusedpkt!=NULL)
     {
     fclose(funusedpkt);
@@ -927,7 +927,7 @@ DLLIMPORT void ExitAsm()
 			    {
 					fclosedebug(*Log);
                 }
-            
+
             free(DEBUG);
         }
 }
@@ -935,29 +935,29 @@ DLLIMPORT void ExitAsm()
 DLLIMPORT int SwitchMode(int mode)
 {
     if(mode < 0 || mode > MODE_HOST)return 0;
-    
+
     int ret = init_network();
     if(ret!=0)return ret;
-    
+
     ResetAsm(NULL);
     PktModReset();
-    
+
     asm_mode = mode;
-    
+
     PktModSwitchMode(mode);
-    
+
     return 1;
 }
 
 DLLIMPORT int SelectPacketModule(int index)
 {
     if(index < 0 || index > totalPacketModules)return 0;
-    
+
     int ret = packetModules[index].GetModeStatus(asm_mode);
     if(ret!=1)return ret;
-    
+
     currentPacketModule = index;
-    
+
     return 1;
 }
 
@@ -974,14 +974,14 @@ DLLIMPORT int GetTotalPacketModules()
 DLLIMPORT int GetPacketModuleID(int index)
 {
     if(index < 0 || index > totalPacketModules)return 0;
-    
+
     return packetModules[index].ID;
 }
 
 DLLIMPORT char *GetPacketModuleIDStr(int index)
 {
     if(index < 0 || index > totalPacketModules)return NULL;
-    
+
     return packetModules[index].IDStr;
 }
 
@@ -1000,17 +1000,19 @@ void CaptureBacktrack()
             if(module_nds_data->handledIDs[i])total_assembled++;
         }
     prev_total=total_assembled;
-    
+
             if(funusedpkt!=NULL)
             fclose(funusedpkt);
 
             funusedpkt = fopen("unused_packets.bin","rb");
             int length=0;
-            unsigned char *buffer = (unsigned char*)malloc((size_t)GetSnapshotLength());
-            memset(buffer,0,(size_t)GetSnapshotLength());
+            int snaplen = 0xFFFF; //GetSnapshotLength();
+            unsigned char *buffer = (unsigned char*)malloc((size_t)snaplen);
+            printf("Snapshotlen %d\n", snaplen);
+            memset(buffer,0,(size_t)snaplen);
             save_unused_packets=0;//HandlePacket would write the packets we send to it, to this file we are reading, if this wasn't set to zero. Which would obviously cause problems.
             sAsmSDK_Params *params = NULL;
-            
+
                 if(funusedpkt!=NULL)
                 {
 							if(*DEBUG)
@@ -1073,12 +1075,12 @@ int PKTINDX = 0;
 void CaptureAsmResetA(volatile Nds_data *dat, lpAsmGetStatusCallback callback)
 {
     module_nds_data = dat;
-    
+
     if(funusedpkt!=NULL && module_nds_data->multipleIDs)
     {
         fclose(funusedpkt);
         funusedpkt=NULL;
-        
+
         CaptureBacktrack();
 
         total_assembled=0;
@@ -1107,7 +1109,6 @@ void CaptureAsmResetA(volatile Nds_data *dat, lpAsmGetStatusCallback callback)
         }
         else
         {
-            //if(stage<=STAGE_HEADER)
             if(packetModules[currentPacketModule].query_failure() == 1)
             printf("Capture is incomplete.\n");
 
@@ -1128,7 +1129,7 @@ void CaptureAsmResetA(volatile Nds_data *dat, lpAsmGetStatusCallback callback)
     memset((void*)module_nds_data->handledIDs,0,256);
     memset((void*)module_nds_data->found_beacon,0,(10*15) * sizeof(int));
     module_nds_data->FoundGameIDs=0;
-    
+
     GetStatusAsmA(callback, PKTINDX);
 
     ResetAsm((Nds_data*)module_nds_data);
@@ -1138,8 +1139,8 @@ DLLIMPORT void CaptureAsmReset(int *code, lpAsmGetStatusCallback callback)//Need
 {
         #ifndef NDS
 		volatile Nds_data *data = NULL;
-		char *str = NULL;
-		
+		int oldpktmod = currentPacketModule;
+
 		    for(int i=0; i<totalPacketModules; i++)
 		    {
 			    if(packetModules[i].lpdll==NULL)break;
@@ -1148,9 +1149,10 @@ DLLIMPORT void CaptureAsmReset(int *code, lpAsmGetStatusCallback callback)//Need
 			         {
 				        data = packetModules[i].GetNdsData();
 				        if(data==NULL)return;//Should never happen; But if it would, Wmb Asm would get into a infinite loop, and possibly crash eventually.
-                        
+
                         PKTINDX = i;
-                        
+                        currentPacketModule = i;
+
                         if(currentPacketModule != -1 && i==currentPacketModule)
                         {
 				            CaptureAsmResetA(data, callback);
@@ -1161,6 +1163,8 @@ DLLIMPORT void CaptureAsmReset(int *code, lpAsmGetStatusCallback callback)//Need
                         }
                      }
 		    }
+
+		currentPacketModule = oldpktmod;
 	    #endif
 }
 
@@ -1170,7 +1174,7 @@ DLLIMPORT char *GetStatusAsm(int *error_code)
     {
         return packetModules[currentPacketModule].get_status(error_code);
     }
-    
+
     return NULL;
 }
 
@@ -1178,13 +1182,13 @@ void GetStatusAsmA(lpAsmGetStatusCallback callback, int index)
 {
     int *error = (int*)malloc(sizeof(int));
     *error = 0;
-    
+
     if(packetModules[index].query_failure() != 3)//If these capture/transfer actually has packets for this plugin's protocol, get any errors, then trigger the callback with a pointer to the error's string.
     {
         char *str = packetModules[index].get_status(error);
         callback( str );
     }
-    
+
     free(error);
 }
 
@@ -1204,7 +1208,7 @@ DLLIMPORT unsigned char GetPrecentageCompleteAsm()
     int i=0;
 
     if(currentPacketModule == -1)return 0;//Prevent access violations and other problems.
-    
+
         if(packetModules[currentPacketModule].query_failure() == 2)
         {
 
@@ -1230,7 +1234,6 @@ DLLIMPORT unsigned char GetPrecentageCompleteAsm()
 int TheTime=0;
 DLLIMPORT bool HandlePacket(sAsmSDK_Params *params)
 {
-     //THE main assenbly function. All the host program of this module needs to do is load this module, call some functions at certain times, and call this function for each packet it reads/captures, and the assembler takes care of the rest.
 
      unsigned char *data;
 
@@ -1250,7 +1253,7 @@ DLLIMPORT bool HandlePacket(sAsmSDK_Params *params)
      {
             if(data==NULL)data = params->pkt_data;
             if(params->has_avs)params->length-=64;
-            
+
              Handle802_11(data,params->length);
 
                     #ifndef NDS
@@ -1277,7 +1280,7 @@ DLLIMPORT bool HandlePacket(sAsmSDK_Params *params)
 
      for(int ii=0; ii<totalPacketModules; ii++)
 	 {
-       
+
 	   if(packetModules[ii].GetNdsData!=NULL)
 	   {
             dat = packetModules[ii].GetNdsData();
@@ -1287,7 +1290,7 @@ DLLIMPORT bool HandlePacket(sAsmSDK_Params *params)
 
      if(module_nds_data->trigger_assembly)
      {
-        
+
 
                             char out[256];
                             char output[256];
@@ -1454,9 +1457,9 @@ DLLIMPORT bool HandlePacket(sAsmSDK_Params *params)
 
                                module_nds_data->trigger_assembly = 0;
 
-        
+
 	}
-	
+
      }
     }
 
@@ -1505,10 +1508,10 @@ bool AssembleNds(char *output)
      memset(&ndshdr,0,sizeof(TNDSHeader));
      memset(&banner,0,sizeof(TNDSBanner));
      memcpy((void*)&ndshdr,(void*)&module_nds_data->header,sizeof(TNDSHeader));
-     
+
      unsigned char *ptr;
      ptr = (unsigned char*)&module_nds_data->advert;
-     
+
      if(module_nds_data->use_advert)
      {
             memcpy((void*)&module_nds_data->advert, (void*)&module_nds_data->adverts[(int)module_nds_data->gameID], sizeof(ds_advert));
@@ -1517,14 +1520,14 @@ bool AssembleNds(char *output)
      FILE *fdump = fopen("advertM.bin","wb");
      fwrite((void*)&module_nds_data->advert, 1, sizeof(ds_advert), fdump);
      fclose(fdump);
-     
+
      if(module_nds_data->banner==NULL)
      {
-        
+
         memcpy((void*)banner.palette, (void*)ad->icon_pallete,32);
         memcpy((void*)banner.icon, (void*)ad->icon,512);
         memset((void*)banner.titles,0,6*(128*2));
-        
+
         int tempi=0;
         for(int i=0; i<48; i++)
         {
@@ -1532,46 +1535,46 @@ bool AssembleNds(char *output)
             {
             break;
             }
-            
+
             tempi+=2;
         }
-     
+
         memcpy((void*)&gdtemp[0], (void*)&module_nds_data->advert.game_name[0],(size_t)tempi);//Copy the game name into the banner discription, add a newline character after that, then copy in the actual discription.
         gdtemp[tempi] = '\n';
         tempi+=2;
-        
-        
+
+
         memcpy((void*)&gdtemp[tempi], (void*)&module_nds_data->advert.game_description[0],96*2);
-        
+
         for(int i=0; i<96; i++)
         {
             if(module_nds_data->advert.game_description[i]==0)
             {
             break;
             }
-            
+
             tempi+=2;
         }
-        
+
         if(tempi>0 && tempi<256)
         memset(&gdtemp[tempi],0,256-tempi);//One capture had a discription from another demo, after it's own discription. This gets rid of the extra one.
-        
+
         memcpy(&banner.titles[0][0],gdtemp,192*2);
         memcpy(&banner.titles[1][0],gdtemp,192*2);
         memcpy(&banner.titles[2][0],gdtemp,192*2);
         memcpy(&banner.titles[3][0],gdtemp,192*2);
         memcpy(&banner.titles[4][0],gdtemp,192*2);
         memcpy(&banner.titles[5][0],gdtemp,192*2);
-        
+
         banner.version = 1;
         banner.crc = CalcCRC16(banner.icon, 2080);
-        
+
      }
      else
      {
         memcpy(&banner, (void*)&module_nds_data->banner, sizeof(TNDSBanner));
      }
-        
+
      nds=fopen(output,"w+b");
      if(nds==NULL)
      {
@@ -1583,12 +1586,12 @@ bool AssembleNds(char *output)
      {
         fwrite((void*)module_nds_data->saved_data, 1, (size_t)module_nds_data->build_raw, nds);
         fclose(nds);
-        
+
         module_nds_data->beacon_thing=0;
         module_nds_data->multipleIDs=0;
         module_nds_data->handledIDs[(int)module_nds_data->gameID] = 1;
         prev_total=0;
-        
+
         return 1;
      }
 
@@ -1667,7 +1670,7 @@ bool AssembleNds(char *output)
      if(module_nds_data->arm7e > module_nds_data->arm7s)
      {
         fwrite((void*)&module_nds_data->saved_data[module_nds_data->arm7s],1,module_nds_data->arm7e - module_nds_data->arm7s,nds);
-     
+
         #ifdef DUMPARMBINARIES
         fdump = fopen("arm7.bin", "wb");
         fwrite((void*)&module_nds_data->saved_data[module_nds_data->arm7s],1,module_nds_data->arm7e - module_nds_data->arm7s,fdump);

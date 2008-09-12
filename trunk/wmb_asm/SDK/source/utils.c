@@ -70,7 +70,7 @@ void ConvertEndian(void* input, void* output, int input_length)
             exit(1);
             #endif
      }
-     
+
      memset(out,0,(size_t)input_length);
      memset(in,0,(size_t)input_length);
      memcpy(in,input,(size_t)input_length);
@@ -86,7 +86,7 @@ void ConvertEndian(void* input, void* output, int input_length)
      }
 
      memcpy(output,out,(size_t)input_length);
-     
+
      free(out);
      free(in);
 }
@@ -104,16 +104,16 @@ void ChangeFilename(char *in, char *out, char *filename)
      while(pos<=0 || found)
      {
                   if(pos==0){found=0;break;}
-                  
-                  
-                  
+
+
+
                   if(in[pos]=='/' || in[pos]=='\\')
                   {
                         pos++;
                         found=0;
                         break;
                   }
-                  
+
                   pos--;
      }
 
@@ -152,7 +152,7 @@ bool CheckFrameControl(struct iee80211_framehead2 *framehead, int type, int subt
     fprintf(*SDK_Log, "CONFIG DAT %p CONFIG %p\n", SDK_CONFIG->nds_data, sdk_nds_data);
     fflushdebug(*SDK_Log);
     }*/
-    
+
      if(FH_FC_TYPE(framehead->frame_control) == type &&
         FH_FC_SUBTYPE(framehead->frame_control) == subtype)
         {
@@ -283,7 +283,7 @@ void UpdateAvert(volatile struct Nds_data *dat)
 unsigned char *IsValidAVS(u_char *pkt_data)
 {
      struct AVS_header *avs = NULL;
-     
+
      if(!PCAP_CheckAVS)
      {
      return pkt_data;
@@ -344,7 +344,7 @@ unsigned char *IsValidAVS(u_char *pkt_data)
 void ConvertAVSEndian(struct AVS_header *avs)
 {
      CheckEndianA(&avs->header_length,4);
-     
+
      ConvertEndian(&avs->header_length,&avs->header_length,4);
      ConvertEndian(&avs->MAC_timestamp,&avs->MAC_timestamp,8);
      ConvertEndian(&avs->host_timestamp,&avs->host_timestamp,8);
@@ -362,7 +362,7 @@ void ConvertAVSEndian(struct AVS_header *avs)
 //********************************CHECK DATA PACKETS************************************
 bool CheckDataPackets(int seq)
 {
-     
+
      /*int i;
      for(i=0; i<(int)seq; i++)
      {
@@ -374,13 +374,13 @@ bool CheckDataPackets(int seq)
             {
                 printf("ACK!\n");
             }
-            
+
             printf("CDP %p\n",*sdk_nds_data);
             if(*sdk_nds_data!=NULL)
             printf("%p\n",*sdk_nds_data->data_sizes);
-            
+
             printf("%p\n",SDK_CONFIG);
-            
+
             if(*sdk_nds_data->data_sizes[i]==0)
             {
 					if(*SDK_DEBUG)
@@ -388,11 +388,11 @@ bool CheckDataPackets(int seq)
 						fprintfdebug(*SDK_Log,"_____DATA SIZES FAILED %d\n",i);
 						fflushdebug(*SDK_Log);
                     }
-				
+
                 return 0;//If we missed any packets, don't begin assembly
             }
      }*/
-     
+
      return 1;
 }
 
@@ -478,7 +478,7 @@ void crc16_update(unsigned short *uCrc16, const unsigned char *pBuffer, unsigned
 
 	for(i = 0; i < uBufSize; i++)
 		*uCrc16 = (*uCrc16 >> 8) ^ crc16tab[(*uCrc16 ^ *pBuffer++) & 0xFF];
-		
+
 }
 
 void crc16_final(unsigned short *uCrc16)
@@ -497,7 +497,7 @@ unsigned short CalcCRC16(unsigned char *data, unsigned int length)
 	{
 		crc = (crc >> 8) ^ crc16tab[(crc ^ data[i]) & 0xFF];
 	}
-	
+
 	return crc;
 }
 
@@ -564,14 +564,14 @@ struct EthernetHeader *CheckGetEthernet(unsigned char *data, int length, unsigne
             return NULL;
         }
     }
-    
+
     return header;
 }
 
 unsigned char *GetEthernet(unsigned char *data, int length, unsigned short type)
 {
     if(CheckGetEthernet(data, length, type)==NULL)return NULL;
-    
+
     return data + sizeof(struct EthernetHeader);
 }
 
@@ -589,21 +589,21 @@ u16 ip_sum_calc(u16 len_ip_header, u16 *buff)
 u16 word16;
 u32 sum=0;
 u16 i;
-    
+
 	// make 16 bit words out of every two adjacent 8 bit words in the packet
 	// and add them up
 	for (i=0;i<len_ip_header;i=i+2){
 		word16 =((buff[i]<<8)&0xFF00)+(buff[i+1]&0xFF);
-		sum = sum + (u32) word16;	
+		sum = sum + (u32) word16;
 	}
-	
+
 	// take only 16 bits out of the 32 bit sum and add up the carries
 	while (sum>>16)
 	  sum = (sum & 0xFFFF)+(sum >> 16);
 
 	// one's complement the result
 	sum = ~sum;
-	
+
 return ((u16) sum);
 }
 
@@ -612,54 +612,54 @@ struct IPHeader *CheckGetIP(unsigned char *data, int length)
     struct IPHeader *header = NULL;
     unsigned int version, ip_len;
     if(length < sizeof(struct IPHeader) || data==NULL)return NULL;
-    
+
     header = (struct IPHeader*)data;
-    
+
     version = header->version;
     ip_len = header->length * 4;
-    
+
     if(version!=4)return NULL;
     if(ip_len!=20)return NULL;
     if(header->protocol!=0x06)return NULL;//Ignore IP packets that aren't using TCP for the protocol
-    
+
     ConvertEndian(&header->header_checksum,&header->header_checksum,sizeof(unsigned short));
-    
+
     unsigned short pkt_checksum = header->header_checksum;
     header->header_checksum = 0;
     unsigned int checksum = 0;
-    
+
     unsigned short *dat_chk = (unsigned short*)data;
     int i;
-	
+
     for(i=0; i<ip_len/2; i++)
     {
         ConvertEndian(dat_chk,dat_chk,sizeof(unsigned short));
-        
+
         checksum += ((unsigned int)*dat_chk);
-        
+
         ConvertEndian(dat_chk,dat_chk,sizeof(unsigned short));
-        
+
         dat_chk++;
     }
 
     while (checksum>>16)
 	  checksum = (checksum & 0xFFFF)+(checksum >> 16);//Carry stuff... I don't really know/understand how this works... I got this off Internet.
-    
+
     header->header_checksum = pkt_checksum;
     checksum += (unsigned int)header->header_checksum;
-    
+
     if(checksum!=0x0000FFFF)
         return NULL;//Checksum check failed
-    
+
     return header;
 }
 
 unsigned char *GetIP(unsigned char *data, int length)
 {
     if(data==NULL)return NULL;
-    
+
     if(CheckGetIP(data, length)==NULL)return NULL;
-    
+
     return data + sizeof(struct IPHeader);
 }
 
@@ -668,16 +668,16 @@ struct TCPHeader *GetTCP(struct IPHeader *iphdr, unsigned char *data, int length
     struct TCPHeader *header = (struct TCPHeader*)data;
     struct TCPseudoHeader phdr;
     memset(&phdr, 0, sizeof(struct TCPseudoHeader));
-    
+
     if(payload)*payload = (unsigned char*)(((int)data) + ((int)header->header_length * 4));
-    
+
     ConvertEndian(&header->checksum,&header->checksum,sizeof(unsigned short));
-    
+
     phdr.src = iphdr->src;
     phdr.dst = iphdr->dst;
     phdr.protocol = (unsigned char)iphdr->protocol;
     phdr.tcp_length = (unsigned short)length;
-    
+
     unsigned short pkt_checksum = header->checksum;
     header->checksum = 0;
     unsigned int checksum = 0;
@@ -693,9 +693,9 @@ struct TCPHeader *GetTCP(struct IPHeader *iphdr, unsigned char *data, int length
     {
         len = (length-1)/2;
     }
-    
+
     dat_chk = (unsigned short*)&phdr;
-    
+
     for(i=0; i<6; i++)
     {
         if(i!=5)
@@ -705,37 +705,37 @@ struct TCPHeader *GetTCP(struct IPHeader *iphdr, unsigned char *data, int length
 
         if(i!=5)
         ConvertEndian(dat_chk,dat_chk,sizeof(unsigned short));
-        
+
         dat_chk++;
     }
-    
+
     dat_chk = (unsigned short*)data;
-    
+
     for(i=0; i<len; i++)
     {
         ConvertEndian(dat_chk,dat_chk,sizeof(unsigned short));
-        
+
         checksum += ((unsigned int)*dat_chk);
-        
+
         ConvertEndian(dat_chk,dat_chk,sizeof(unsigned short));
-        
+
         dat_chk++;
     }
-    
+
     if(length%2!=0)
     {
         checksum += (0xFF & *dat_chk)<<8;
     }
-    
+
     while (checksum>>16)
 	  checksum = (checksum & 0xFFFF)+(checksum >> 16);
-    
+
     header->checksum = pkt_checksum;
     checksum += (unsigned int)header->checksum;
-    
+
     if(checksum!=0x0000FFFF)
         return NULL;//Checksum check failed
-    
+
     ConvertEndian(&header->src_port, &header->src_port, sizeof(unsigned short));
     ConvertEndian(&header->dest_port, &header->dest_port, sizeof(unsigned short));
     ConvertEndian(&header->sequence_number, &header->sequence_number, sizeof(unsigned int));
@@ -744,7 +744,7 @@ struct TCPHeader *GetTCP(struct IPHeader *iphdr, unsigned char *data, int length
     ConvertEndian(&header->urgent_pointer, &header->urgent_pointer, sizeof(unsigned short));
     if((header->header_length*4)>=24)
     ConvertEndian(&header->options, &header->options, sizeof(unsigned int));
-    
+
     return header;
 }
 
@@ -759,7 +759,7 @@ int GetFileLength(FILE* _pfile)
 
 	return l_iEnd;
 }
- 
+
 
 //******************************ExecuteApp***********************************************
 #ifdef WIN32
@@ -768,7 +768,8 @@ void ExecuteApp(char *appname, char *cmdline)
     STARTUPINFO si;
      PROCESS_INFORMATION pi;
 
-     char *acstr;
+     char *acstr = (char*)malloc(256);
+     memset(acstr, 0, 256);
 
      ZeroMemory(&si,sizeof(si));
      si.cb=sizeof(si);
@@ -792,19 +793,23 @@ void ExecuteApp(char *appname, char *cmdline)
      {
             if(*SDK_DEBUG)
             {
-                sprintf(acstr,"CreateProcess Failed: %d",GetLastError());
+                sprintf(acstr,"CreateProcess Failed: %d",(int)GetLastError());
                 fprintfdebug(*SDK_Log,"%s\n",acstr);
             }
-            
+
             if(GetLastError() == ERROR_FILE_NOT_FOUND)
             printf("Failed to execute application ndsrsa, because the file was not found.\n");
-            
+
+            free(acstr);
+
           return;
      }
 
      WaitForSingleObject(pi.hProcess,INFINITE);
      CloseHandle(pi.hProcess);
      CloseHandle(pi.hThread);
+
+     free(acstr);
 }
 
 #endif

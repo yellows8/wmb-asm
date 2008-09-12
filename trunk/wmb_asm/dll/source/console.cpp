@@ -1,7 +1,7 @@
 #ifndef BUILDING_DLL
 #define BUILDING_DLL
 #endif
-#include "..\include\wmb_asm.h"
+#include "..\..\SDK\include\wmb_asm_sdk_client.h"
 
 #ifdef NDS
 void InitConsoleNDS();

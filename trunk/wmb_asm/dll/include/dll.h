@@ -22,7 +22,8 @@ DEALINGS IN THE SOFTWARE.
 #ifndef DLLIMPORT
     #ifdef BUILDING_DLL
         # define DLLIMPORT __declspec (dllexport)
-    #else /* Not BUILDING_DLL */
+    #endif
+    #ifndef BUILDING_DLL /* Not BUILDING_DLL */
         # define DLLIMPORT __declspec (dllimport)
     #endif /* Not BUILDING_DLL */
 #endif
