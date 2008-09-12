@@ -39,6 +39,7 @@ void InitConsoleStuff();//Used for initializing on consoles.(NDS and such)
 bool Stop=1;//If true at the end, display "Press any key to continue"(PC only)
 bool ShowTime=1;//If true at the end, display how long the assembly took, in seconds.
 bool Debug=0;//If true, write out a debug log.
+int cmd_mode = 0;
 
 sAsmSDK_Config *Config = NULL;
 
@@ -280,6 +281,7 @@ void HandleOptions(int i, char *argv[], bool *checkrsa, char *outdir, bool *use_
             if(strcmp(argv[i],"-notime")==0)ShowTime=0;//If the option -notime is detected in the parameters, don't display how long assembly took.
             if(strcmp(argv[i],"-debug")==0)Debug=1;//If the option -debug is detected, write out a debug log.
             if(strcmp(argv[i],"-nodebug")==0)Debug=0;//Similar to the previous option, except don't write a debug log.(Default)
+            if(strcmp(argv[i],"-selmode")==0)cmd_mode = 1;//The user wants to have a list of modes and packet modules displayed, so the user can pick from one of the modes and packet modules.
 }
 
 unsigned char conv_hdr[] = {0xD4, 0xC3, 0xB2, 0xA1, 0x02, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0x69, 0x00, 0x00, 0x00};
@@ -333,6 +335,53 @@ int ReadDump(int argc, char *argv[])
         return 0;
     }
     
+    if(cmd_mode == 1)
+    {
+        int cur_selection = 0;
+        char keycode = 0;
+        printf("Select an Wmb Asm Mode:\n\n");
+        
+        printf("     Assemble\n");
+        printf("     Host\n");
+        printf("     Client\n");
+        
+        printf("             \n");
+        
+        while(1)
+        {
+            //printf("\x1b[%dALine->", cur_selection);
+            //printf("\x1b[%dBLine_", cur_selection);
+            
+            if(cur_selection==0)printf("->   Assemble\n");
+            if(cur_selection==1)printf("->   Host\n");
+            if(cur_selection==2)printf("->   Client\n");
+            
+            #ifndef NDS
+                scanf("%c", &keycode);
+            #endif
+            
+            #ifdef NDS
+                scanKeys();
+                if(keysDown() & KEY_DOWN)keycode = 's';
+                if(keysDown() & KEY_UP)keycode = 'w';
+                if(keysDown() & KEY_A)keycode = 'c';
+                swiWaitForVBlank();
+            #endif
+            
+            if(keycode == 's')cur_selection++;
+            if(keycode == 'w')cur_selection--;
+            if(keycode == 'c')break;
+            
+            if(cur_selection>2)cur_selection = 0;
+            if(cur_selection<0)cur_selection = 2;
+        }
+        
+        FreeDirectory(files_list);
+        ExitAsm();
+        
+        return 1;
+    }
+    
 	   while(cur_file!=NULL)//Go through all the files ScanDirectory found.
 	   {
 	       if(cur_file->filename==NULL)break;//The last item in the list is empty, meaning filename is NULL too.(The last file is in the item before this)
@@ -384,8 +433,6 @@ int ReadDump(int argc, char *argv[])
             return 0;
             
             }
-
-        //}
         
         CaptureAsmReset(&code, &ErrorCallback);
 
@@ -447,7 +494,6 @@ int ReadCaptureLoop(char *cap, int argc, char *argv[], bool checkrsa, char *outd
         //Send the packet to the assembler to process & assemble.
         if(!HandlePacket(params))
         {
-            printf("O_O\n");
             free(params);
             return 0;
         }

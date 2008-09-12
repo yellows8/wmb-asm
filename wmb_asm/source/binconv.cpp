@@ -118,49 +118,49 @@ struct TNDSHeader {
 void ConvertBin(char *filename)
 {
     printf("Converting %s...\n",filename);
-    
+
     FILE *fbin, *fnds;
     unsigned char *input_buffer, *output_buffer;
     int length;
     char str[256];
     memset(str, 0, 256);
-    
+
     fbin = fopen(filename, "rb");
-    
+
     if(fbin==NULL)
     {
         printf("Failed to open file %s\n",filename);
         return;
     }
-    
+
     strncpy(str, filename, strlen(filename) - 4);
     strcat(str, ".nds");
-    
+
     length = GetFileLength(fbin);//Nintendo Channel .bin files for demos, have a special header 0x1C8 bytes long. Remove that, and you got an .nds.
     input_buffer = (unsigned char*)malloc(length);
     memset(input_buffer, 0, length);
     fread(input_buffer, 1, length, fbin);
-    
+
     fclose(fbin);
-    
+
     output_buffer = ConvertBinBuff(input_buffer, length);
     if(output_buffer==NULL)
     {
         printf("Failed to convert the file.\n");
         return;
     }
-    
+
     fnds = fopen(str, "wb");
     if(fnds==NULL)
     {
         printf("Failed to open file %s\n", str);
         return;
     }
-    
+
     fwrite(output_buffer, 1, length - 0x1C8, fnds);
-    
+
     fclose(fnds);
-    
+
     printf("Successfully converted the file to %s!\n",str);
 }
 
@@ -169,47 +169,47 @@ unsigned char *ConvertBinBuff(unsigned char *data, int length)
     unsigned char *nds = (unsigned char*)malloc(length - 0x1C8);
     NCBin_Header *header = (NCBin_Header*)data;
     unsigned char mgc_str[5] = {0x00, 0x00, 0x02, 0x00, 0x00};
-    
+
     if(memcmp(data, mgc_str, 5)!=0)return NULL;//This is not a Nintendo Channel .bin ds demo.
-    
+
     memset(nds, 0, length - 0x1C8);
     memcpy(nds, &data[0x1C8], length - 0x1C8);
-    
+
     TNDSHeader *nds_header = (TNDSHeader*)nds;
     unsigned int *bannerOffset = &nds_header->bannerOffset;
     TNDSBanner *banner = (TNDSBanner*)&nds[*bannerOffset];
     unsigned short description[128];
     memset(description, 0, 128 * 2);
-    int end = 0;
+    //int end = 0;
     int offset = 0;
-    
+
     memset(banner->titles, 0, 1536);
-    
+
     for(int i=0; i<49; i++)
     {
         if(header->game_title[i]==0)break;//If we found the null terminating character, break, write the newline character, then handle the description.
-        
+
         description[offset] = header->game_title[i];
-        
+
         ConvertEndian(&description[offset], &description[offset], 2);//The bytes in the UTF characters are byte swapped, this fixes that.
-        
+
         offset++;
     }
-    
+
     description[offset] = 0x000A;
     offset++;
-    
+
     for(int i=0; i<97; i++)
     {
         if(header->game_description[i]==0)break;//If we found the null terminating character, break, write the newline character, then handle the description.
-        
+
         description[offset] = header->game_description[i];
 
         ConvertEndian(&description[offset], &description[offset], 2);
 
         offset++;
     }
-    
+
     /*description[offset] = 0xFFFF;
     offset++;
 
@@ -221,16 +221,16 @@ unsigned char *ConvertBinBuff(unsigned char *data, int length)
 
         offset++;
     }*/
-    
+
     memcpy(&banner->titles[0][0], description, 256);
     memcpy(&banner->titles[1][0], description, 256);
     memcpy(&banner->titles[2][0], description, 256);
     memcpy(&banner->titles[3][0], description, 256);
     memcpy(&banner->titles[4][0], description, 256);
     memcpy(&banner->titles[5][0], description, 256);
-    
+
     banner->crc = calccrc16(banner->icon, 2080);
-    
+
     return nds;
 }
 
@@ -373,9 +373,9 @@ int main(int argc, char *argv[])
         for(int i=1; i<=argc-1; i++)
             ConvertBin(argv[i]);
     }
-    
+
     system("PAUSE");
-    
+
     return 0;
 }
 

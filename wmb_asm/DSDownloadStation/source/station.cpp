@@ -117,7 +117,7 @@ struct MenuItem
     char subtitle[0x80];
     char controls[0x402];
     char id[8];
-    unsigned char zeroes[2]; 
+    unsigned char zeroes[2];
 } __attribute__((__packed__));
 
 DLClient DLClients[15];
@@ -172,7 +172,7 @@ DLLIMPORT int AsmPlug_GetPriority()
 
 DLLIMPORT char *AsmPlug_GetStatus(int *error_code)
 {
-    
+
     if(!IsSpot)
     {
         if(dlstation_stage==STAGEDL_MENU_REQ)
@@ -180,13 +180,13 @@ DLLIMPORT char *AsmPlug_GetStatus(int *error_code)
             *error_code = STAGEDL_MENU_REQ;
             return (char*)"02: DS DL Station: Failed to find the Menu Request packet.\n";
         }
-        
+
         if(dlstation_stage==STAGEDL_MENU_DL)
         {
             *error_code = STAGEDL_MENU_DL;
             return (char*)"03: DS DL Station: Failed to find all of the Menu packets.\n";
         }
-        
+
         if(dlstation_stage==STAGEDL_DATA)
         {
             *error_code = STAGEDL_DATA;
@@ -204,40 +204,40 @@ DLLIMPORT int AsmPlug_QueryFailure()
     {
         if(dlstation_stage==STAGEDL_MENU_REQ)return 3;
     }
-        
+
     return 0;
 }
 
 DLLIMPORT int AsmPlug_Handle802_11(unsigned char *data, int length)
 {
-     
+
      if(!IsSpot)
      {
         int ret = 0;
-        
+
         ret = HandleDL_AssocResponse(data, length);
         if(ret)return ret;
-        
+
         ret = HandleDL_Deauth(data, length);
         if(ret)return ret;
-        
+
         ret = HandleWMB_Data(data, length);
-        if(ret)return 0;//This plugin doesn't use WMB data packets, for there actual data - only kicking clients in the DLClients list when they ack/reply to WMB data packets. This plugin must return 0, not 1, for these WMB packets, otherwise this plugin would interfer with the WMB plugin. 
-        
+        if(ret)return 0;//This plugin doesn't use WMB data packets, for there actual data - only kicking clients in the DLClients list when they ack/reply to WMB data packets. This plugin must return 0, not 1, for these WMB packets, otherwise this plugin would interfer with the WMB plugin.
+
         ret = HandleWMB_DataAck(data, length);
         if(ret)return 0;
-        
+
         ret = HandleDL_PacketRequest(data, length);
         if(ret)return 1;
-        
+
         ret = HandleSP_MenuDownload(data, length);
         if(ret)return 1;
-        
+
         if(dlstation_stage==STAGEDL_MENU_DL)return HandleDL_MenuDownload(data, length);
         if(dlstation_stage==STAGEDL_HEADER)return HandleDL_Header(data, length);
         if(dlstation_stage==STAGEDL_DATA)return HandleDL_Data(data, length);
      }
-     
+
      return 0;
 }
 
@@ -245,48 +245,48 @@ DLLIMPORT bool AsmPlug_Init(sAsmSDK_Config *config)
 {
     AsmPlugin_Init(config, &dlstation_nds_data);
     dlstation_nds_data->use_advert = 1;
-    
+
 	#ifndef NDS
     ResetAsm = config->ResetAsm;
     #endif
 	DLSTATIONDEBUG = config->DEBUG;
     DLSTATIONLog = config->Log;
     DLSTATIONCONFIG = config;
-    
+
     if(lzo_init()!=LZO_E_OK)
     {
         printf("Failed to initialize LZO library!\n");
         return 0;
     }
-    
+
     menu_data = (unsigned char*)malloc(30 * 1000);//1000 because there doesn't seem to be any total-menu packets, or total packet length dat sent to the clients in the DLStation protocol - only the seq with ffff tells when the last menu packet was sent.
     found_menu = (int*)malloc(sizeof(int) * 1000);
     menu_sizes = (int*)malloc(sizeof(int) * 1000);
-    
+
     if(menu_data==NULL || found_menu==NULL || menu_sizes==NULL)
     {
         printf("Failed to allocate memory!\n");
         return 0;
     }
-    
+
     DLSTATIONLog = &DLSTATIONloG;
     DLSTATIONloG = fopen("dlstation_debug.txt","w");
-    
+
     return 1;
 }
 
 DLLIMPORT bool AsmPlug_DeInit()
 {
     AsmPlugin_DeInit(&dlstation_nds_data);
-    
+
     RemoveClients();
     RemoveWMBHosts();
-    
+
     free(menu_data);
     free(found_menu);
-    
+
     fclose(DLSTATIONloG);
-    
+
     return 1;
 }
 
@@ -299,17 +299,17 @@ DLLIMPORT void AsmPlug_Reset()
 {
     IsSpot = 0;
     dlstation_stage=STAGEDL_MENU_REQ;
-    
+
     RemoveClients();
     RemoveWMBHosts();
-    
+
     memset(menu_data, 0, 30 * 1000);
     memset(found_menu, 0, sizeof(int) * 1000);
     memset(menu_sizes, 0, sizeof(int) * 1000);
     assembled_menu = 0;
 
     memset(gameIDs, 0, 15 * 8);
-    
+
     memset(dlstation_host_mac,0,6);
 }
 
@@ -317,7 +317,7 @@ DLLIMPORT int AsmPlug_GetModeStatus(int mode)//Queries whether or not the specif
 {
     if(mode == MODE_ASM)return 1;
     if(mode != MODE_ASM)return 0;
-	
+
 	return 0;
 }
 
@@ -336,7 +336,7 @@ void AddClient(DLClient client)
 {
     bool found = 0;
     client.has_data = 1;
-    
+
     for(int i=0; i<15; i++)
     {
         if(DLClients[i].has_data)
@@ -345,7 +345,7 @@ void AddClient(DLClient client)
         }
     }
     if(found)return;
-    
+
     if(!DLClients[client.clientID - 1].has_data)
     {
         memcpy(&DLClients[client.clientID - 1], &client, sizeof(DLClient));
@@ -355,7 +355,7 @@ void AddClient(DLClient client)
 void RemoveClient(int index)
 {
     if(index<0 || index>14)return;
-    
+
     memset(&DLClients[index], 0, sizeof(DLClient));
     DLClients[index].gameID = -1;
 }
@@ -371,15 +371,15 @@ int AddWMBHost(WMBHost host)
     int found = -1;
     int index = 0;
     host.has_data = 1;
-    
+
     for(int i=0; i<256; i++)
     {
         if(!WMBHosts[i].has_data)continue;
-        
+
         if(memcmp(WMBHosts[i].mac, host.mac, 6)==0)found = i;
     }
     if(found>=0)return found;
-    
+
     for(int i=0; i<15; i++)
     {
         if(!WMBHosts[i].has_data)
@@ -389,25 +389,25 @@ int AddWMBHost(WMBHost host)
             break;
         }
     }
-    
+
     return index;
 }
 
 int GetClient(unsigned char *mac)
 {
     int index = -1;
-    
+
     for(int i=0; i<16; i++)
     {
         if(!DLClients[i].has_data)continue;
-        
+
         if(memcmp(DLClients[i].mac, mac, 6)==0)
         {
             index = i;
             break;
         }
     }
-    
+
     return index;
 }
 
@@ -418,7 +418,7 @@ int GetWMBHost(unsigned char *mac)
     for(int i=0; i<15; i++)
     {
         if(!WMBHosts[i].has_data)continue;
-        
+
         if(memcmp(WMBHosts[i].mac, mac, 6)==0)
         {
             index = i;
@@ -445,7 +445,7 @@ void RemoveWMBHosts()
 int LookupGameID(char *id)
 {
     int index = -1;
-    
+
     for(int i=0; i<16; i++)
     {
         if(memcmp(id, gameIDs[i], 8)==0)
@@ -454,12 +454,12 @@ int LookupGameID(char *id)
             break;
         }
     }
-    
+
     if(index != -1)
     {
         if(dlstation_nds_data->handledIDs[index])return -1;//We don't need to assemle the same demo twice.
     }
-    
+
     return index;
 }
 
@@ -468,20 +468,20 @@ int HandleDL_AssocResponse(unsigned char *data, int length)
     iee80211_framehead2 *fh = (iee80211_framehead2*)data;
     DLClient client;
     memset(&client,0, sizeof(DLClient));
-    
+
     if (((FH_FC_TYPE(fh->frame_control) == 0) && (FH_FC_SUBTYPE(fh->frame_control) == 1)))
     {
         client.clientID = data[0x1C];
         memcpy(client.mac, fh->mac1, 6);
         AddClient(client);
-        
+
         return 1;
     }
     else
     {
-        
+
     }
-    
+
     return 0;
 }
 
@@ -489,14 +489,14 @@ int HandleDL_Deauth(unsigned char *data, int length)
 {
     iee80211_framehead2 *fh = (iee80211_framehead2*)data;
     int index = 0;
-    
+
     if (((FH_FC_TYPE(fh->frame_control) == 0) && (FH_FC_SUBTYPE(fh->frame_control) == 12)))
     {
         index = GetClient(fh->mac2);
         if(index != -1)
         {
             RemoveClient(index);
-            
+
         }
 
         return 1;
@@ -505,7 +505,7 @@ int HandleDL_Deauth(unsigned char *data, int length)
     {
 
     }
-    
+
     return 0;
 }
 
@@ -516,17 +516,17 @@ int HandleWMB_Data(unsigned char *data, int length)
     unsigned char pos = 0;
     WMBHost host;
     int host_index = 0;
-    
+
     if(CheckFrame(data, dat->mac3, 0x04, &size, &pos))
     {
         memcpy(&host.mac, dat->mac3, 6);
         host_index = AddWMBHost(host);
         WMBHosts[host_index].sent_data = 1;
         WMBHosts[host_index].data_seq = ReadSeq(&dat->sequence_control);
-        
+
         return 1;
     }
-    
+
     return 0;
 }
 
@@ -538,7 +538,7 @@ int HandleWMB_DataAck(unsigned char *data, int length)
     unsigned char mgc2[3] = {0x00, 0x00, 0x00};
     int index = 0;
     bool found = 0;
-    
+
     if(CheckFrameControl(frm, 2, 1))
     {
         if(CheckFlow(frm->mac3, 10))
@@ -548,7 +548,7 @@ int HandleWMB_DataAck(unsigned char *data, int length)
                 for(int i=0; i<15; i++)
                 {
                     if(!DLClients[i].has_data)continue;
-                    
+
                     if(memcmp(frm->mac2, DLClients[i].mac, 6))
                     {
                         index = i;
@@ -556,7 +556,7 @@ int HandleWMB_DataAck(unsigned char *data, int length)
                         break;
                     }
                 }
-                
+
                 if(found)
                 {
                     fprintf(*DLSTATIONLog, "KICKING CLIENT FOR ACKNOWLEDGING WMB DATA, CLIENT ID %d MAC %x:%x:%x:%x:%x:%x NUM %d\n", index, frm->mac2[0], frm->mac2[1], frm->mac2[2], frm->mac2[3], frm->mac2[4], frm->mac2[5], GetPacketNum());
@@ -566,7 +566,7 @@ int HandleWMB_DataAck(unsigned char *data, int length)
             }
         }
     }
-    
+
     return 0;
 }
 
@@ -578,7 +578,7 @@ unsigned char *CheckDLFrame(unsigned char *data, int length, unsigned char type,
     iee80211_framehead2 *frm = (iee80211_framehead2*)data;
     unsigned char fcs_mgc[2] = {0x02, 0x00};
     unsigned short *id;
-    
+
     if(CheckFrameControl(frm, 2, 2))
     {
         if(CheckFlow(frm->mac1, 0x00))
@@ -586,46 +586,46 @@ unsigned char *CheckDLFrame(unsigned char *data, int length, unsigned char type,
             if(memcmp(dat, mgc_num, 4)==0)
             {
                 dat+=4;
-                
+
                 if(dat[1]==type)
                 {
                     sz = (int)dat[0];
                     sz *= 2;
                     sz -= 2;//Remove what seems to be the sequence number for the next data packet, from the total length.
-                    
+
                     *size = sz;
-                    
+
                     dat+=2;
-                    
+
                     Seq = (unsigned short*)dat;
                     *seq = *Seq;
-                    
+
                     dat+=2;
-                    
+
                     if(type==0x1f)
                     {
                         id = (unsigned short*)&dat[sz+2];
                         *clientID = *id;
                     }
-                    
+
                     if(memcmp(&data[length-6], fcs_mgc, 2)==0)
                     {
                         unsigned int checksum = CalcCRC32(data, length - 4);
                         unsigned int *chk = (unsigned int*)&data[length-4];
-                        
+
                         if(checksum!=*chk)
                         {
                             fprintf(*DLSTATIONLog, "CHECKSUM FAIL %d %d NUM %d\n",checksum,*chk, GetPacketNum());
                             return NULL;
                         }
                     }
-                    
+
                     return dat;
                 }
             }
         }
     }
-    
+
     return NULL;
 }
 
@@ -636,7 +636,7 @@ int HandleDL_PacketRequest(unsigned char *data, int length)
     char *req = (char*)malloc(256);
     int index = 0;
     memset(req, 0, 256);
-    
+
     if(CheckFrameControl(frm, 2, 1))
     {
         if(CheckFlow(frm->mac3, 0x10))
@@ -644,7 +644,7 @@ int HandleDL_PacketRequest(unsigned char *data, int length)
             if(dat[0]==0x04 && dat[2]!=0xFF && dat[2]!=0x09 && dat[2]!=0x08 && dat[2]!=0x07 && dat[2]!=0x00 && dat[1]!=0x81)//Check if this is a packet request packet, and make sure this is not a WMB ack packet.
             {
                 memcpy(req, &dat[2], 8);
-                
+
                 index = GetClient(frm->mac2);
                 if(index != -1)
                 {
@@ -655,11 +655,11 @@ int HandleDL_PacketRequest(unsigned char *data, int length)
                     free(req);
                     return 3;//Do not continue; We don't know what this client's clientID is.
                 }
-                
+
                 if(strstr(req, "menu"))
                 {
                     fprintf(*DLSTATIONLog, "DLSTATION: FOUND MENU REQ %s NUM %d\n", req, GetPacketNum());
-                    
+
                     if(dlstation_stage==STAGEDL_MENU_REQ)
                     {
                         fprintf(*DLSTATIONLog, "ENTERING MENU PACKET STAGE\n");
@@ -670,36 +670,36 @@ int HandleDL_PacketRequest(unsigned char *data, int length)
                 else
                 {
                     fprintf(*DLSTATIONLog, "DLSTATION: FOUND DL REQ %s NUM %d\n", req, GetPacketNum());
-                    
+
                     if(assembled_menu)
                     {
                         DLClients[index].gameID = LookupGameID(req);
                         fprintf(*DLSTATIONLog, "DLSTATION: CLIENTID %d GAMEID SET TO %d MAC %x:%x:%x:%x:%x:%x NUM %d\n", index, DLClients[index].gameID, frm->mac2[0], frm->mac2[1], frm->mac2[2], frm->mac2[3], frm->mac2[4], frm->mac2[5], GetPacketNum());
-                        
+
                         if(dlstation_stage==STAGEDL_DL_REQ && DLClients[index].gameID != -1)
                         {
                             MenuItem *item = (MenuItem*)(((int)menu_data + 4) + (sizeof(MenuItem) * DLClients[index].gameID));
                             printf("DLSTATION: Found download request for %s. Download title: %s\n", req, item->title);
-                            
+
                             fprintf(*DLSTATIONLog, "FOUND DL REQUEST CLIENTID %d GAMEINDEX %d GAMEID %s\n", index, DLClients[index].gameID, req);
                             fprintf(*DLSTATIONLog, "ENTERING HEADER STAGE\n");
-                            
+
                             dlstation_nds_data->gameID = (volatile unsigned char)DLClients[index].gameID;
                             dlstation_nds_data->clientID = index;
                             dlstation_stage = STAGEDL_HEADER;
                         }
                     }
                 }
-                
+
                 free(req);
-                
+
                 return 1;
             }
         }
     }
-    
+
     free(req);
-    
+
     return 0;
 }
 
@@ -712,12 +712,12 @@ int HandleSP_MenuDownload(unsigned char *data, int length)
     int size = 0;
     unsigned short *seq = 0;
     unsigned char *buffer;
-    int lzo_ret = 0;
-    lzo_uint out_len = 0;
+    //int lzo_ret = 0;
+    //lzo_uint out_len = 0;
     FILE *dump;
     char str[256];
     memset(str, 0, 256);
-    
+
     if(CheckFrameControl(frm, 2, 2))
     {
         if(CheckFlow(frm->mac1, 0x00))
@@ -725,35 +725,35 @@ int HandleSP_MenuDownload(unsigned char *data, int length)
             dat = &data[0x18];
             if(memcmp(dat, sp_mgc_num, 4)!=0)return 0;
             dat+=4;
-            
+
             size = (int)*dat;
             size *= 2;
             //size-=32;
             size++;
-            
+
             if(size<=0)return 3;
-            
+
             dat+=1;
             seq = (unsigned short*)dat;
             dat+=2;
-            
+
             buffer = (unsigned char*)malloc(100000);
             memset(buffer, 0, 100000);
-            
+
             fprintf(*DLSTATIONLog, "Nintendo Spot: Copying menu seq %d sz %d Num %d\n", (int)*seq, size, GetPacketNum());
             memcpy(buffer, dat, size);
             //lzo_ret = lzo1x_decompress(dat,size,buffer,&out_len,NULL);
             //if(lzo_ret!=LZO_E_OK)printf("Menu decompression failed: error %d\n",lzo_ret);
-            
+
             sprintf(str, "SpotMenu\\menu_%d.bin",(int)*seq);
             dump = fopen(str, "wb");
             fwrite(buffer, 1, size, dump);
             fclose(dump);
-            
+
             free(buffer);
         }
     }
-    
+
     return 0;
 }
 
@@ -773,14 +773,14 @@ int HandleDL_MenuDownload(unsigned char *data, int length)
     MenuItem *item = NULL;
     int gameID = 0;
     char *str = NULL;
-    
+
     if(assembled_menu)return 3;
-    
+
     dat = CheckDLFrame(data, length, 0x1e, &size, &seq, &clientID);
     if(dat)
     {
         if(seq!=0xffff)
-        {   
+        {
             if(!found_menu[(int)seq])
             {
                 if(seq!=0)
@@ -792,12 +792,12 @@ int HandleDL_MenuDownload(unsigned char *data, int length)
                             cur_pos+=0x10;
                     }
                 }
-                
+
                 found_menu[(int)seq] = 1;
                 menu_sizes[(int)seq] = size;
-                
+
                 memcpy(&menu_data[cur_pos], dat, (size_t)size);
-                
+
                 fprintf(*DLSTATIONLog, "FOUND MENU PKT SEQ %d SZ %d CID %d CURPOS %d NUM %d\n",(int)seq, size, (int)clientID, cur_pos, GetPacketNum());
             }
         }
@@ -808,41 +808,41 @@ int HandleDL_MenuDownload(unsigned char *data, int length)
             for(int i=1; i<1000; i++)//This is supposed to find the end of the menu data in the menu_data buffer, but this might be broken, I'm not sure. There's a bunch of zeroes at the end of my dump.
             {
                 if((!found_menu[i-1] && found_menu[i]))return 3;
-                
+
                 if(found_menu[i])cur_pos += menu_sizes[i];
                 if(!found_menu[i])cur_pos += 0x10;
-                
+
                 if(!found_menu[i+1] && found_menu[i-1] && found_menu[i])break;
                 if(!found_menu[i] && found_menu[i-1])break;
             }
-            
+
             buffer = (unsigned char*)malloc(cur_pos * 10);
             memset(buffer, 0, cur_pos);
-            
+
             if(memcmp(menu_data, lzo_mgc_num, 8)!=0)return 3;
             lz_size = (unsigned int*)&menu_data[0x0C];
             lzon_size = *lz_size;
             ConvertEndian(&lzon_size, &lzon_size, sizeof(unsigned int));
-            
+
             lzo_ret = lzo1x_decompress(menu_data + 0x10,lzon_size,buffer,&out_len,NULL);
             if(lzo_ret!=LZO_E_OK)printf("Menu decompression failed: error %d\n",lzo_ret);
-            
+
             memset(menu_data, 0, cur_pos);
             memcpy(menu_data, buffer, out_len);
             free(buffer);
             cur_pos = out_len;
-            
+
             item = (MenuItem*)((int)menu_data + 4);
-            
+
             fprintf(*DLSTATIONLog, "PROCESSING MENU...\n");
-            
+
             item_sizes = (int)out_len - 4;
-            
+
             str = (char*)malloc(256);
             memset(str, 0, 256);
-            
+
             dlstation_nds_data->FoundGameIDs = 1;
-            
+
             while(item_sizes>0)
             {
                 strcpy(&gameIDs[gameID][0], item->id);
@@ -851,37 +851,37 @@ int HandleDL_MenuDownload(unsigned char *data, int length)
                 memset(str, 0, 256);
                 memcpy((void*)&dlstation_nds_data->adverts[gameID].icon, (void*)&item->icon, 512);
                 memcpy((void*)&dlstation_nds_data->adverts[gameID].icon_pallete, (void*)&item->palette, sizeof(unsigned short) * 16);
-                
+
                 for(int i=0; i<48; i++)
                 {
                     if(item->title[i]==0)break;
-                    
+
                     dlstation_nds_data->adverts[gameID].game_name[i] = (unsigned short)item->title[i];
                 }
-                
+
                 for(int i=0; i<96; i++)
                 {
                     if(item->subtitle[i]==0)break;
 
                     dlstation_nds_data->adverts[gameID].game_description[i] = (unsigned short)item->subtitle[i];
                 }
-                
+
                 dlstation_nds_data->foundIDs[gameID] = 1;
-                
+
                 item = (MenuItem*)((int)item + (int)sizeof(MenuItem));
                 item_sizes-=sizeof(MenuItem);
                 gameID++;
             }
-            
+
             free(str);
-            
+
             dlstation_stage = STAGEDL_DL_REQ;
             fprintf(*DLSTATIONLog, "FOUND ALL MENU PACKETS!\n");
             fprintf(*DLSTATIONLog, "ENTERING DL REQUEST STAGE!\n");
-            
+
             assembled_menu = 1;
         }
-    
+
         return 1;
     }
 
@@ -891,12 +891,12 @@ int HandleDL_MenuDownload(unsigned char *data, int length)
 //This function returns 1 if the clientID, from the header/data packets, has the same gameID, as in the value in the gameID variable.
 bool LookupClientsGameID(unsigned short clientID, unsigned char gameID)
 {
-    
+
     for(int i=0; i<6; i++)
     {
-        
+
         if(clientID > 8 * (i+1))continue;
-        
+
         if(clientID != ((8 * i) + 6))//If this isn't the clientID for two IDs combined...
         {
             if(clientID == ((8 * i) + 2))
@@ -910,7 +910,7 @@ bool LookupClientsGameID(unsigned short clientID, unsigned char gameID)
                     return 0;
                 }
             }
-            
+
             if(clientID == ((8 * i) + 4))
             {
                 if(DLClients[(int)clientID - 2].gameID == gameID)
@@ -922,7 +922,7 @@ bool LookupClientsGameID(unsigned short clientID, unsigned char gameID)
                     return 0;
                 }
             }
-            
+
             if(clientID == ((8 * i) + 8))
             {
                 if(DLClients[(int)clientID - 5].gameID == gameID)
@@ -937,19 +937,19 @@ bool LookupClientsGameID(unsigned short clientID, unsigned char gameID)
         }
         else
         {
-            
+
                 if(DLClients[((2 * i))].gameID == gameID)
                 {
                     return 1;
                 }
-                
+
                 if(DLClients[((2 * i) + 1)].gameID == gameID)
                 {
                     return 1;
                 }
         }
     }
-    
+
     return 0;
 }
 
@@ -964,22 +964,22 @@ int HandleDL_Header(unsigned char *data, int length)
     if(dat)
     {
         if(seq!=0)return 3;//This is not the LZO header packet, ignore it.
-        
+
         if(!LookupClientsGameID(clientID, dlstation_nds_data->gameID))
             return 3;
-        
+
         fprintf(*DLSTATIONLog, "FOUND HEADER SZ %d CID %d NUM %d\n",size, (int)clientID, GetPacketNum());
 
         if(memcmp(dat, lzo_mgc_num, 8)!=0)return 3;
         dat+=8;
-        
+
         memcpy(&de_data_size, dat, sizeof(unsigned int));
         memcpy(&data_size, &dat[0x04], sizeof(unsigned int));
         ConvertEndian(&de_data_size, &de_data_size, sizeof(unsigned int));
         ConvertEndian(&data_size, &data_size, sizeof(unsigned int));
         fprintf(*DLSTATIONLog, "LZO   COMPRESSED DATA SIZE %d\n", (int)data_size);
         fprintf(*DLSTATIONLog, "LZO DECOMPRESSED DATA SIZE %d\n", (int)de_data_size);
-        
+
         dlstation_nds_data->saved_data = (unsigned char*)malloc(data_size);
         dlstation_nds_data->data_sizes = (int*)malloc(sizeof(int) * 32440);
         if(dlstation_nds_data->saved_data==NULL || dlstation_nds_data->data_sizes==NULL)
@@ -989,15 +989,15 @@ int HandleDL_Header(unsigned char *data, int length)
         }
         memset((void*)dlstation_nds_data->saved_data, 0, data_size);
         memset((void*)dlstation_nds_data->data_sizes, 0, sizeof(int) * 32440);
-        
+
         dat-=8;
-        
+
         length-=50;
         memcpy((void*)&dlstation_nds_data->saved_data[0], dat, (size_t)length);
         dlstation_nds_data->data_sizes[0] = length;
         dlstation_nds_data->pkt_size = length;
         high_pos = length;
-        
+
         dlstation_stage = STAGEDL_DATA;
 
         return 1;
@@ -1017,91 +1017,91 @@ int HandleDL_Data(unsigned char *data, int length)
     int end_temp = 0;
     int lzo_ret = 0;
     lzo_uint out_len = 0;
-    
+
     dat = CheckDLFrame(data, length, 0x1f, &size, &seq, &clientID);
     if(dat)
     {
         if(seq==0)return 3;//This is the LZO header packet, ignore it. Or, this is the end-of-data packet, ignore it to prevent crashes.
-        
+
         if(!LookupClientsGameID(clientID, dlstation_nds_data->gameID))
             return 3;
-        
+
         //fprintf(*Log, "ACK SEQ %d ", (int)seq);
         //fprintf(*Log, "%d\n", (int)nds_data->data_sizes[(int)seq]);
-        
+
         if(seq!=0xFFFF)
         {
-            
+
             for(int i=1; i<(int)seq; i++)
             {
-                
+
                 temp+=dlstation_nds_data->data_sizes[i+1];
                 //end_temp+=nds_data->data_sizes[i+1];
-                
+
                 if(dlstation_nds_data->data_sizes[i+1]==0)temp+=dlstation_nds_data->pkt_size;
             }
-            
+
             if(!dlstation_nds_data->data_sizes[seq])
             {
                 length-=50;
-                
+
                 fprintf(*DLSTATIONLog, "FOUND DATA PKT SEQ %d SZ %d CID %d TEMP %d ENDTEMP %d NUM %d\n",(int)seq, size, (int)clientID, temp, end_temp, GetPacketNum());
                 memcpy((void*)&dlstation_nds_data->saved_data[temp], dat, (size_t)length);
                 dlstation_nds_data->data_sizes[(int)seq] = length;
             }
-            
+
             temp+=dlstation_nds_data->data_sizes[(int)seq];
-            
+
             if(temp>high_pos)high_pos = temp;
             if((int)seq>high_seq)high_seq = (int)seq;
             if((int)seq>highest_contigous_seq)
             {
                 bool found = 0;
-                
+
                 for(int i=1; i<(int)seq; i++)
                 {
                     if(!dlstation_nds_data->data_sizes[i])found = 1;
                 }
-                
+
                 if(!found)highest_contigous_seq = (int)seq;
             }
-            
+
         }
         else
         {
             if(high_seq==highest_contigous_seq)
             end_temp = high_pos;
         }
-        
+
         if(end_temp > 0)
         {
             buffer = (unsigned char*)dlstation_nds_data->saved_data;
             data_size = end_temp;
-            
+
             fprintf(*DLSTATIONLog, "FOUND ALL DATA PACKETS!\n");
             fprintf(*DLSTATIONLog, "DECOMPRESSING DATA DECOM SIZE %d!\n", data_size);
-            
+
             dlstation_nds_data->saved_data = (unsigned char*)malloc(de_data_size);
             if(dlstation_nds_data->saved_data==NULL)return 3;
             memset((void*)dlstation_nds_data->saved_data, 0, de_data_size);
-            
+
             lzo_ret = lzo1x_decompress((unsigned char*)buffer + 0x10, data_size - 0x10, (unsigned char*)dlstation_nds_data->saved_data, &out_len, NULL);
             if(lzo_ret!=LZO_E_OK)printf("Menu decompression failed: error %d\n",lzo_ret);
-            
+
             free(buffer);
-            
+
             data_size = out_len;
-            
+
             //Extract the header and rsa signature from the saved data buffer, then clear the memory that they were stored in, in the saved data buffer.
             memcpy((void*)&dlstation_nds_data->header, (void*)dlstation_nds_data->saved_data, sizeof(TNDSHeader));
             memcpy((void*)&dlstation_nds_data->rsa.signature, (void*)&dlstation_nds_data->saved_data[(data_size - 136)], 136);
-            
+
             dlstation_nds_data->trigger_assembly = 1;
             dlstation_nds_data->build_raw = data_size;
         }
-        
+
         return 1;
     }
-    
+
     return 0;
 }
