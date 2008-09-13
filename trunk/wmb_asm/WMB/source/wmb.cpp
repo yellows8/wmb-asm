@@ -202,11 +202,9 @@ DLLIMPORT bool AsmPlug_Init(sAsmSDK_Config *config)
 	#ifndef NDS
     ResetAsm = config->ResetAsm;
     #endif
-	//DEBUG = config->DEBUG;
-    //Log = config->Log;
-    WMBDEBUG = (bool*)malloc(1);
-    *WMBDEBUG = 1;
+    WMBDEBUG = config->DEBUG;
     WMBLog = &wlog;
+    if(*WMBDEBUG)
     wlog = fopen("wmb_log.txt","w");
     WMBCONFIG = config;
 
@@ -217,7 +215,7 @@ DLLIMPORT bool AsmPlug_DeInit()
 {
     AsmPlugin_DeInit(&wmb_nds_data);
 
-    free(WMBDEBUG);
+    if(*WMBDEBUG)
     fclose(wlog);
 
     return 1;
@@ -272,6 +270,12 @@ void WMBBeaconGrab(unsigned char *data)
                         pos += ds->advert_sequence_number * 98;
 
                         memcpy((void*)&wmb_nds_data->beacon_data[ (980 * (int)ds->gameID) + pos], ds->data, (size_t)ds->data_size);
+
+                        if(*WMBDEBUG)
+                        {
+                            fprintfdebug(*WMBLog,"COPYING BEACON DSSEQ %d GAMEID %d\n",(int)ds->advert_sequence_number, ds->gameID);
+                            fflushdebug(*WMBLog);
+                        }
      }
 
     //Block end
@@ -352,7 +356,7 @@ void WMBBeaconGrab(unsigned char *data)
                     UpdateAvert(wmb_nds_data);
 
                     sprintf(str, "advertdump/advert%d_%d.bin", Rand, i);
-                    fdump = fopen(str,"wb");
+                    fdump = fopen(str, "wb");
                     if(fdump!=NULL)
                     {
                         fwrite((void*)&wmb_nds_data->advert, 1, sizeof(ds_advert), fdump);
@@ -361,6 +365,16 @@ void WMBBeaconGrab(unsigned char *data)
 
                     wmb_nds_data->gameID = (volatile int)oldid;
                 }
+
+                sprintf(str, "advertdump/advert%d.bin", Rand);
+                fdump = fopen(str, "wb");
+                if(fdump!=NULL)
+                {
+                    fwrite((void*)&wmb_nds_data->beacon_data, 980, 15, fdump);
+                    fclose(fdump);
+                }
+
+
             }
 
             wmb_stage=SDK_STAGE_AUTH;
@@ -793,12 +807,12 @@ int WMBProcessData(unsigned char *data, int length)
 
 		if(*WMBDEBUG)
 		{
-			fprintfdebug(*WMBLog,"FOUND ALL DATA PACKETS\n");
-			fprintfdebug(*WMBLog,"ENTERING ASSEMBLE STAGE\n");
+			fprintfdebug(*WMBLog, "FOUND ALL DATA PACKETS GAMEID %d\n", wmb_nds_data->gameID);
+			fprintfdebug(*WMBLog, "ENTERING ASSEMBLE STAGE\n");
 			fflushdebug(*WMBLog);
         }
 
-	 //if(nds_data->multipleIDs)
+
         UpdateAvert(wmb_nds_data);
 
      wmb_nds_data->trigger_assembly = 1;
