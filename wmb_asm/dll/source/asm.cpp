@@ -1008,7 +1008,6 @@ void CaptureBacktrack()
             int length=0;
             int snaplen = 0xFFFF; //GetSnapshotLength();
             unsigned char *buffer = (unsigned char*)malloc((size_t)snaplen);
-            printf("Snapshotlen %d\n", snaplen);
             memset(buffer,0,(size_t)snaplen);
             save_unused_packets=0;//HandlePacket would write the packets we send to it, to this file we are reading, if this wasn't set to zero. Which would obviously cause problems.
             sAsmSDK_Params *params = NULL;
