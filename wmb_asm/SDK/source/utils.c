@@ -268,15 +268,7 @@ unsigned char *nintendoWMBBeacon( unsigned char *frame, int frame_size) {
 
 void UpdateAvert(volatile struct Nds_data *dat)
 {
-    int pos, dsize;
-    int i;
-	for(i=0; i<9; i++)
-    {
-        pos=i*98;
-        if(i!=8)dsize=98;
-        if(i==8)dsize=72;
-        memcpy((void*) &((unsigned char*)&dat->advert)[pos], (void*)&dat->beacon_data[(980*(int)dat->gameID)+pos],dsize);
-    }
+    memcpy((void*)&dat->advert, (void*)&dat->beacon_data[ (980 * (int)dat->gameID) ], sizeof(struct ds_advert));
 }
 
 //*********************AVS*******************************************************

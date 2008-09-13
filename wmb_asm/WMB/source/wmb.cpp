@@ -256,41 +256,32 @@ void WMBBeaconGrab(unsigned char *data)
 {
      ds_element *ds = (ds_element*)Nin_ie;
      //Block start. This block is based on code from masscat's WMB client.
-     int *ptr = (int*)&wmb_nds_data->found_beacon[(int)ds->advert_sequence_number + ((int)ds->gameID * 10)];
+     int *ptr = (int*)&wmb_nds_data->found_beacon[ (int)ds->advert_sequence_number + ( (int)ds->gameID * 10 ) ];
 
      *ptr+=1;
 
 		if(*WMBDEBUG)
 		{
-			fprintfdebug(*WMBLog,"PROCESSING BEACON DSSEQ %d\n",(int)ds->advert_sequence_number);
+			fprintfdebug(*WMBLog,"PROCESSING BEACON DSSEQ %d GAMEID %d\n",(int)ds->advert_sequence_number, ds->gameID);
 			fflushdebug(*WMBLog);
-
-			//printf("A\n");
 		}
 
      if(*ptr<=1)
      {
-                        int pos=0;
-                        for(int i=0; i<(int)ds->advert_sequence_number; i++)
-                        {
-                            if(i!=8)pos+=98;
-                            if(i==8)pos+=98;
-                        }
+                        int pos = 0;
+                        pos += ds->advert_sequence_number * 98;
 
-                        memcpy((void*)&wmb_nds_data->beacon_data[(980*(int)ds->gameID)+pos],ds->data,(size_t)ds->data_size);
-                        //memcpy((void*)((int)&wmb_nds_data->advert + pos), ds->data, (size_t)ds->data_size);
+                        memcpy((void*)&wmb_nds_data->beacon_data[ (980 * (int)ds->gameID) + pos], ds->data, (size_t)ds->data_size);
      }
 
     //Block end
-
-    //printf("B\n");
 
      bool got_all=1;
 
      if(!wmb_nds_data->multipleIDs)
      {
         //This code is based on code from masscat's WMB client.
-        for(int i=0; i<9; i++)
+        for(int i=0; i<8; i++)
         {
              if(!wmb_nds_data->found_beacon[i + ((int)ds->gameID * 10)])got_all=0;
         }
@@ -311,39 +302,18 @@ void WMBBeaconGrab(unsigned char *data)
 
      if(got_all)
      {
-
-            //printf("a\n");
-
-            int pos, dsize;
-
                 if(!wmb_nds_data->multipleIDs)
                 {
-                    //printf("b\n");
-                    for(int i=0; i<9; i++)
-                    {
-                        pos=i*98;
-                        if(i!=8)dsize=98;
-                        if(i==8)dsize=72;
-
-                        memcpy((void*)&((unsigned char*)&wmb_nds_data->advert)[pos],(void*)&wmb_nds_data->beacon_data[(980*(int)wmb_nds_data->FirstBeaconID)+pos],dsize);
-                    }
-
-                    //printf("c\n");
+                    memcpy((void*)&wmb_nds_data->advert, (void*)&wmb_nds_data->beacon_data[ (980 * (int)wmb_nds_data->FirstBeaconID) ], sizeof(ds_advert));
                 }
-
-                //printf("D\n");
-
-
 
             if(wmb_nds_data->finished_first_assembly)
             {
 
               if(!wmb_nds_data->multipleIDs)
               {
-                    //printf("E\n");
                 if(memcmp((void*)wmb_nds_data->oldadvert.icon_pallete, (void*)wmb_nds_data->advert.icon_pallete,32)==0)
                 {
-
                     ResetAsm((Nds_data*)wmb_nds_data);
                     return;
                 }
@@ -352,38 +322,59 @@ void WMBBeaconGrab(unsigned char *data)
                     memcpy((void*)&wmb_nds_data->oldadvert,(void*)&wmb_nds_data->advert,sizeof(ds_advert));
                     //memset(&wmb_nds_data->advert,0,sizeof(ds_advert));
                 }
-                //printf("F\n");
               }
 
             }
             else
             {
-            //printf("G\n");
-            if(!wmb_nds_data->multipleIDs)
-            memcpy((void*)&wmb_nds_data->oldadvert,(void*)&wmb_nds_data->advert,sizeof(ds_advert));
+                if(!wmb_nds_data->multipleIDs)
+                memcpy((void*)&wmb_nds_data->oldadvert,(void*)&wmb_nds_data->advert,sizeof(ds_advert));
 
-            //printf("H\n");
             }
 
-            FILE *fdump = fopen("advertW.bin","wb");
+            char str[256];
+            memset(str, 0, 256);
+            sprintf(str, "advertW.bin");
+            FILE *fdump = fopen(str,"wb");
             fwrite((void*)&wmb_nds_data->advert, 1, sizeof(ds_advert), fdump);
             fclose(fdump);
 
-                           wmb_stage=SDK_STAGE_AUTH;
-								if(*WMBDEBUG)
-								{
-									fprintfdebug(*WMBLog,"FOUND ALL BEACONS!\n");
-									fprintfdebug(*WMBLog,"ENTERING ASSOC STAGE\n");
-									fprintfdebug(*WMBLog,"HOST MAC ");
-											for(int i=0; i<5; i++)
-												fprintfdebug(*WMBLog,"%x:",wmb_host_mac[i]);
-									fprintfdebug(*WMBLog,"%x\n",wmb_host_mac[5]);
-									fflushdebug(*WMBLog);
-								}
+            if(*WMBDEBUG)
+            {
+                int Rand = rand() % 1000;
+                int oldid = (int)wmb_nds_data->gameID;
 
-        //printf("I\n");
+                for(int i=0; i<15; i++)
+                {
+                    if(!wmb_nds_data->foundIDs[i])continue;
 
+                    wmb_nds_data->gameID = i;
+                    UpdateAvert(wmb_nds_data);
 
+                    sprintf(str, "advertdump/advert%d_%d.bin", Rand, i);
+                    fdump = fopen(str,"wb");
+                    if(fdump!=NULL)
+                    {
+                        fwrite((void*)&wmb_nds_data->advert, 1, sizeof(ds_advert), fdump);
+                        fclose(fdump);
+                    }
+
+                    wmb_nds_data->gameID = (volatile int)oldid;
+                }
+            }
+
+            wmb_stage=SDK_STAGE_AUTH;
+            if(*WMBDEBUG)
+            {
+                fprintfdebug(*WMBLog,"FOUND ALL BEACONS!\n");
+                fprintfdebug(*WMBLog,"ENTERING ASSOC STAGE\n");
+                fprintfdebug(*WMBLog,"HOST MAC ");
+                    for(int i=0; i<5; i++)
+                    fprintfdebug(*WMBLog,"%x:",wmb_host_mac[i]);
+
+                fprintfdebug(*WMBLog,"%x\n",wmb_host_mac[5]);
+                fflushdebug(*WMBLog);
+            }
      }
 }
 
@@ -850,20 +841,8 @@ int WMBProcessBeacons(unsigned char *data, int length)
 
                        if(memcmp(Beacon->srcmac,Beacon->bssmac,6)==0)
                        {
-                       //If the src MAC and BSSID are the same...
-                       //It passed the Beacon frame test, time to test the Managment frame!
-                       //ConvertEndian(&Beacon->interval,&Beacon->interval,2);
-                       //printf("A\n");
-                       unsigned char *temp = (unsigned char*)&Beacon->capability;
-                       //unsigned char *temp2 = (unsigned char*)&cap;
-                       temp[1]=0;
-
-                       //unsigned char *Temp = (unsigned char*)Beacon->tagparms;
-                       //unsigned char *Temp2 = (unsigned char*)tagparms;
-
-
-                            //if(memcmp(&Beacon->interval,&interval,2)==0)
-                            //{
+                            //If the src MAC and BSSID are the same...
+                            //It passed the Beacon frame test, time to test the Managment frame!
                                 if(memcmp(&Beacon->capability,&cap,2)==0)
                                 {
 
