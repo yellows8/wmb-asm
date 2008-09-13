@@ -108,21 +108,21 @@ int main(int argc, char *argv[])
                      printf("-nodebug Don't write to a debug log file.(Default)\n");
                      printf("Example: wmb_asm.exe -rsa -nds_dirbinaries capture1.cap capture2.cap captures more_captures...\n");
                      printf("With that, the RSA-siganture would be checked if ndsrsa.exe is in the current directory,\noutput would be written to the binaries directory,\ncapture1.cap, capture2.cap would be used,\nand captures and more_captures directories would be scanned for captures.\n");
-                     
+
                      system("PAUSE");
           }
           else
-          { 
-                
+          {
+
                 printf("%s\n",APPNAME);
                 time_t start, end;
                 start=time(NULL);
-                
+
                 char *error_buffer = (char*)malloc(256);
                 Config = (sAsmSDK_Config*)malloc(sizeof(sAsmSDK_Config));
                 memset(error_buffer, 0, 256);
                 memset(Config, 0, sizeof(sAsmSDK_Config));
-                
+
                     //Try to use the assembly module in the dll directory first, then try the working directory.
                     if(!LoadAsmDLL("dll/wmb_asm", Config, error_buffer))//LoadAsmDLL takes care of the extension
                     {
@@ -134,11 +134,11 @@ int main(int argc, char *argv[])
                             return 0;
                         }
                     }
-          
+
                     #ifndef NDS
                         InitDLLFunctions(Config);
                     #endif
-          
+
                             if(!ReadDump(argc,argv))
                             {
                                     if(!CloseAsmDLL(error_buffer))
@@ -155,16 +155,16 @@ int main(int argc, char *argv[])
                             }
                             else
                             {
-                                
+
                                 end=time(NULL);
-                                
+
                                 if(ShowTime)
                                     printf("Assembly took %d seconds.\n",((int)end-(int)start));
-                                
+
                                 if(Stop)
                                     system("PAUSE");
                             }
-          
+
                 if(!CloseAsmDLL(error_buffer))
                 {
                     printf("Error: %s\n",error_buffer);
@@ -172,9 +172,9 @@ int main(int argc, char *argv[])
                 }
             free(error_buffer);
             free(Config);
-          
+
           }
-          
+
     return 0;
 }
 
@@ -209,7 +209,7 @@ void HandleOptions(int i, char *argv[], bool *checkrsa, char *outdir, bool *use_
                     outdir[len]='/';
                     outdir[len+1]=0;
                 }
-                    
+
                     DIR *dir = opendir(outdir);
                     if(dir!=NULL)//Check if the directory exists.
                     {
@@ -233,7 +233,7 @@ void HandleOptions(int i, char *argv[], bool *checkrsa, char *outdir, bool *use_
                         }
                     }
             }
-            
+
             if(strncmp(argv[i],"-copy_dir",9)==0)//Similar to the -nds_dirDir option. Except this time,
             //the output is copied to this directory. So it would be written to one directory first, then copy it to Dir directory.
             {
@@ -271,9 +271,9 @@ void HandleOptions(int i, char *argv[], bool *checkrsa, char *outdir, bool *use_
                         }
                     }
             }
-            
+
             if(strcmp(argv[i],"-nds_curdir")==0){strcpy(outdir,"");*use_capdir=0;}//If option -nds_curdir is detected, write the output to the working directory.
-            
+
             if(strcmp(argv[i],"-run")==0)*run=1;//If the option -run is detected in the parameters, execute the output as if it was double-clicked in Windows Explorer.(That is, double-clicking the file. Windows only. )
             if(strcmp(argv[i],"-stop")==0)Stop=1;//If the option -stop is detected in the parameters, display "Press any key to continue..." at the end.(default)
             if(strcmp(argv[i],"-nostop")==0)Stop=0;//If the option -nostop is detected in the parameters, don't display "Press any key to continue..." at the end, if assembly was successful.
@@ -283,8 +283,6 @@ void HandleOptions(int i, char *argv[], bool *checkrsa, char *outdir, bool *use_
             if(strcmp(argv[i],"-nodebug")==0)Debug=0;//Similar to the previous option, except don't write a debug log.(Default)
             if(strcmp(argv[i],"-selmode")==0)cmd_mode = 1;//The user wants to have a list of modes and packet modules displayed, so the user can pick from one of the modes and packet modules.
 }
-
-unsigned char conv_hdr[] = {0xD4, 0xC3, 0xB2, 0xA1, 0x02, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0x69, 0x00, 0x00, 0x00};
 
 int ReadDump(int argc, char *argv[])
 {
@@ -300,7 +298,7 @@ int ReadDump(int argc, char *argv[])
     FILE_LIST *files_list = (FILE_LIST*)malloc(sizeof(FILE_LIST));//List that will contain the filenames of the captures
     FILE_LIST *cur_file;
     memset(files_list,0,sizeof(FILE_LIST));
-    
+
     cur_file=files_list;
     for(int i=1; i<=argc-1; i++)//Go through all of the parameters, excluding the first one which contains the application's filename, in search of options, captures, and directories containing captures.
     {
@@ -328,38 +326,38 @@ int ReadDump(int argc, char *argv[])
             }
         }
     }
-    
+
     if(!InitAsm(&AsmSuccessCallback, Debug, Config))//Initialize the assembler
     {
         printf("Failed to initialize the Wmb Asm Module! Stop!\n");
         return 0;
     }
-    
+
     if(cmd_mode == 1)
     {
         int cur_selection = 0;
         char keycode = 0;
         printf("Select an Wmb Asm Mode:\n\n");
-        
+
         printf("     Assemble\n");
         printf("     Host\n");
         printf("     Client\n");
-        
+
         printf("             \n");
-        
+
         while(1)
         {
             //printf("\x1b[%dALine->", cur_selection);
             //printf("\x1b[%dBLine_", cur_selection);
-            
+
             if(cur_selection==0)printf("->   Assemble\n");
             if(cur_selection==1)printf("->   Host\n");
             if(cur_selection==2)printf("->   Client\n");
-            
+
             #ifndef NDS
                 scanf("%c", &keycode);
             #endif
-            
+
             #ifdef NDS
                 scanKeys();
                 if(keysDown() & KEY_DOWN)keycode = 's';
@@ -367,62 +365,62 @@ int ReadDump(int argc, char *argv[])
                 if(keysDown() & KEY_A)keycode = 'c';
                 swiWaitForVBlank();
             #endif
-            
+
             if(keycode == 's')cur_selection++;
             if(keycode == 'w')cur_selection--;
             if(keycode == 'c')break;
-            
+
             if(cur_selection>2)cur_selection = 0;
             if(cur_selection<0)cur_selection = 2;
         }
-        
+
         FreeDirectory(files_list);
         ExitAsm();
-        
+
         return 1;
     }
-    
+
 	   while(cur_file!=NULL)//Go through all the files ScanDirectory found.
 	   {
 	       if(cur_file->filename==NULL)break;//The last item in the list is empty, meaning filename is NULL too.(The last file is in the item before this)
-	       
+
 	       /*if(strstr(cur_file->filename,".bin"))//Erm, Nintendo Channel .bin converting with directories is broken, as the directory scanning code can only find one type of file currently.
            {
                ConvertBin(cur_file->filename);
            }
            else
            {*/
-	       
+
 	           if(use_capdir)//If we're using the captures directory for the outputs' directories, process the output directory name for each capture.
 	           {
-                    
+
                     int pos=strlen(cur_file->filename);//Get the length of the capture
                     bool found=1;
-                    
+
                         while(pos<=0 || found)
                         {
                             if(pos==0){found=0;break;}//If we reached the start of the filename, write the output to the working directory.
-                            
-                            
-                            
+
+
+
                                 if(cur_file->filename[pos]=='/' || cur_file->filename[pos]=='\\')//We found the slash for the directory. Stop, and increment the pos var.
                                 {
                                     pos++;
-                                    
+
                                     found=0;
                                     break;
                                 }
-                            
+
                             pos--;
                         }
                     strncpy(outdir,(const char*)cur_file->filename,(size_t)pos);//Copy in the capture's directory name into the output directory name
                }
-	       
+
 	       int code = 0;
 	       //Read and assemble the capture.
            if(!ReadCaptureLoop(cur_file->filename,argc,argv,checkrsa,outdir,run,copydir,use_copydir))
            {
-		   
+
 	       CaptureAsmReset(&code, &ErrorCallback);
 
             free(outdir);//Free the output directory and copy to directory
@@ -431,14 +429,14 @@ int ReadDump(int argc, char *argv[])
     ExitAsm();//Deinitialize the assembler
 
             return 0;
-            
+
             }
-        
+
         CaptureAsmReset(&code, &ErrorCallback);
 
            cur_file=cur_file->next;//Begin processing the next capture/file
       }
-      
+
     free(outdir);//Free the output directory and copy to directory
     free(copydir);
     FreeDirectory(files_list);//Free the file list
@@ -450,14 +448,14 @@ int ReadDump(int argc, char *argv[])
 int ReadCaptureLoop(char *cap, int argc, char *argv[], bool checkrsa, char *outdir, bool run, char *copydir, bool use_copydir)
 {
     if(cap==NULL)return -1;//If the pointer to the capture's filename is NULL, abort.(Abort reading only this capture)
-    
+
     pcap_t *fp=NULL;//Standard libpcap capture reading code. However, this program isn't using libpcap. It's using my own code for this, but with the exact same interface as libpcap.(The capture reading code is contained in the assembler module)
 	char *errbuf = (char*)malloc(PCAP_ERRBUF_SIZE);
 	spcap_pkthdr *header;
 	const u_char *pkt_data;
 	int res;
     memset(errbuf, 0, PCAP_ERRBUF_SIZE);
-    
+
     /* Open the capture file */
 	if ((fp = pcap_open_offline(cap,			// name of the file
 						 errbuf					// error buffer
@@ -487,10 +485,10 @@ int ReadCaptureLoop(char *cap, int argc, char *argv[], bool checkrsa, char *outd
 	/* Retrieve the packets from the file */
 	while((res = pcap_next_ex(fp, &header, &pkt_data)) >= 0)
 	{
-        
+
         params->length = header->caplen;
         params->pkt_data = (u_char*)pkt_data;
-        
+
         //Send the packet to the assembler to process & assemble.
         if(!HandlePacket(params))
         {
@@ -502,21 +500,21 @@ int ReadCaptureLoop(char *cap, int argc, char *argv[], bool checkrsa, char *outd
 	if (res == -1)
 	{
 		printf("Error reading the packets: %s\n", pcap_geterr(fp));
-		
+
 		pcap_close(fp);
 	   //free(fp);//Gdb debugger included with wxDev-Cpp hangs on this call...(And on the free call in pcap_close in my capture reading code)
-        
+
 	    free(params);
 	    free(errbuf);
-	    
+
 	    return 0;
 	}
 
 	pcap_close(fp);
 	//free(fp);//Gdb debugger included with wxDev-Cpp hangs on this call...(And on the free call in pcap_close in my capture reading code)
-	
+
 	free(params);
 	free(errbuf);
-	
+
 	return 1;
 }

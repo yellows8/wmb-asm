@@ -810,9 +810,6 @@ DLLIMPORT bool InitAsm(SuccessCallback callback, bool debug, sAsmSDK_Config *con
     DEBUG = config->DEBUG;
     Log = config->Log;
     module_nds_data = *config->nds_data;
-    //*config = *config;
-    *config->Log = *config->Log;
-    if(config->DEBUG==NULL)printf("ACK!\n");
 
     *DEBUG = debug;
 
