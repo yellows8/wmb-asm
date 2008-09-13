@@ -101,6 +101,12 @@ DLLIMPORT int AsmPlug_GetPriority()
 
 DLLIMPORT char *AsmPlug_GetStatus(int *error_code)
 {
+    if(*WMBDEBUG)
+    {
+        fprintfdebug(*WMBLog, "GETSTATUS\n");
+        fflushdebug(*WMBLog);
+    }
+
     if(wmb_stage==SDK_STAGE_BEACON && !wmb_nds_data->finished_first_assembly)
     {
         *error_code=SDK_STAGE_BEACON;
@@ -127,6 +133,7 @@ DLLIMPORT char *AsmPlug_GetStatus(int *error_code)
         char *str;
         int missed=0;
         int found=0;
+        int sz1 = 0, sz2 = 0;
         str=(char*)malloc(256);
         memset(str, 0, 256);
         *error_code=SDK_STAGE_DATA;
@@ -140,17 +147,33 @@ DLLIMPORT char *AsmPlug_GetStatus(int *error_code)
                         if(wmb_nds_data->data_sizes[i]==0)
                         {
                             missed++;
+
+                            if(*WMBDEBUG)
+                            {
+                                fprintfdebug(*WMBLog, "MISSED PKT SEQ %d POS %d\n", i, sz1);
+                                fflushdebug(*WMBLog);
+                            }
                         }
                         else
                         {
                             found++;
+                            sz2+=wmb_nds_data->data_sizes[i];
                         }
+
+                        sz1+=wmb_nds_data->data_sizes[i];
+                        if(wmb_nds_data->data_sizes[i]==0)
+                        sz1+=wmb_nds_data->pkt_size;
                     }
                 }
 
                 sprintf(str,"05: Failed to find all the necessary data. Missed %d packets, got %d out of %d packets. %d percent done.\n",missed,found,wmb_nds_data->arm7e_seq,(int)GetPrecentageCompleteAsm());
             }
 
+        if(*WMBDEBUG)
+        {
+            fprintfdebug(*WMBLog, "ERROR: %s\nALL SZ %d FOUND SZ %d TOTAL BINARIES SIZES %d\n", str, sz1, sz2, wmb_nds_data->total_binaries_size);
+            fflushdebug(*WMBLog);
+        }
         return str;
     }
 
@@ -318,7 +341,7 @@ void WMBBeaconGrab(unsigned char *data)
               {
                 if(memcmp((void*)wmb_nds_data->oldadvert.icon_pallete, (void*)wmb_nds_data->advert.icon_pallete,32)==0)
                 {
-                    ResetAsm((Nds_data*)wmb_nds_data);
+                    ResetAsm(wmb_nds_data);
                     return;
                 }
                 else
@@ -462,7 +485,7 @@ int WMBProcessRSA(unsigned char *data, int length)
                             {
                                 if(memcmp((void*)&wmb_nds_data->rsa,(void*)&rsa,sizeof(nds_rsaframe))==0)
                                 {
-                                        ResetAsm((Nds_data*)wmb_nds_data);
+                                        ResetAsm(wmb_nds_data);
                                         return -1;
                                 }
                             }
@@ -569,11 +592,11 @@ int WMBProcessHeader(unsigned char *data, int length)
      {
             memcpy(&temp_header,dat,250);
             memcpy(&temp_header.gbaLogo[58],header_filler,sizeof(header_filler));
-            //DS Download Station's, and maybe other things, don't send their whole header.
+            //Some binaries' headers are incomplete - smaller than normal.
      }
 
     if(wmb_nds_data->multipleIDs)
-     printf("Found game with ID %d, assembling now.\n",(int)ID);
+     printf("WMB: Found game with ID %d, assembling now.\n",(int)ID);
 
 		if(*WMBDEBUG)
 		{
@@ -589,7 +612,7 @@ int WMBProcessHeader(unsigned char *data, int length)
         if(memcmp((void*)&wmb_nds_data->header, (void*)&temp_header,sizeof(TNDSHeader))==0)
         {
 
-            ResetAsm((Nds_data*)wmb_nds_data);
+            ResetAsm(wmb_nds_data);
             return -1;
         }
     }
@@ -613,14 +636,14 @@ int WMBProcessHeader(unsigned char *data, int length)
 
 		if(*WMBDEBUG)
 		{
-			fprintfdebug(*WMBLog,"ARM7S %d ARM7E %d\n",wmb_nds_data->arm7s_seq,wmb_nds_data->arm7e_seq);
+			fprintfdebug(*WMBLog, "ARM7S %d ARM7E %d\n",wmb_nds_data->arm7s_seq,wmb_nds_data->arm7e_seq);
         }
 
      wmb_stage=SDK_STAGE_DATA;
 
 		if(*WMBDEBUG)
 		{
-			fprintfdebug(*WMBLog,"ENTERING DATA STAGE\n");
+			fprintfdebug(*WMBLog, "ENTERING DATA STAGE\n");
 		}
 
      char str[20];
@@ -633,7 +656,7 @@ int WMBProcessHeader(unsigned char *data, int length)
 			fflushdebug(*WMBLog);
         }
 
-     printf("FOUND GAME NAME: %s\n\n",str);
+     printf("WMB: FOUND GAME NAME: %s\n\n",str);
 
      return 1;
 
@@ -697,7 +720,7 @@ int WMBProcessData(unsigned char *data, int length)
         {
                                 if(*WMBDEBUG)
                                 {
-                                    fprintfdebug(*WMBLog,"DROPPED DATA PKT SEQ %d PREV SEQ %d\n",fh_seq,last_seq);
+                                    fprintfdebug(*WMBLog, "DROPPED DATA PKT SEQ %d PREV SEQ %d\n",fh_seq,last_seq);
                                     fflushdebug(*WMBLog);
                                 }
                               return 0;

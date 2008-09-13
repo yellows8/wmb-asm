@@ -41,24 +41,24 @@ DEALINGS IN THE SOFTWARE.
 #endif
 
 #ifdef BUILDING_SDK
-    
+
     #ifndef BUILDING_DLL
         #undef DLLIMPORT
         #define DLLIMPORT
         #undef USING_DLL
     #endif
-    
+
     #ifdef BUILDING_DLL
         #undef DLLIMPORT
         #define DLLIMPORT __declspec (dllexport)
     #endif
-    
+
     #ifdef BUILDING_DLL
         #ifndef USING_DLL
             #define USING_DLL
         #endif
     #endif
-    
+
 #endif
 
 #ifndef BUILDING_SDK
@@ -67,24 +67,24 @@ DEALINGS IN THE SOFTWARE.
             #undef DLLIMPORT
             #define DLLIMPORT __declspec (dllimport)
         #endif
-        
+
         #ifdef ASM_SDK_MODULE
             #undef DLLIMPORT
             #define DLLIMPORT __declspec (dllexport)
         #endif
     #endif
-    
+
     #ifndef USING_DLL
         #undef DLLIMPORT
         #define DLLIMPORT
     #endif
-    
+
 #endif
 
 #ifdef BUILDING_SDK
-        
+
         #ifndef DLL_LOAD
-            
+
             #ifndef USING_DLL
                 #define USING_DLL
             #endif
@@ -259,7 +259,7 @@ typedef struct PacketModule;
         DLLIMPORT char *GetStatusAsm(int *error_code);
         DLLIMPORT bool QueryAssembleStatus(int *error_code);
         DLLIMPORT unsigned char GetPrecentageCompleteAsm();
-        
+
         DLLIMPORT int SwitchMode(int mode);
         DLLIMPORT int SelectPacketModule(int index);
         DLLIMPORT PacketModule *GetPacketModules();
@@ -272,20 +272,20 @@ typedef struct PacketModule;
     #ifdef NDS
 	   #ifdef ASM_SDK_PLUGIN
 		DLLIMPORT unsigned char GetPrecentageCompleteAsm();
-	    
+
 		extern lpGetPacketNumber GetPacketNum;
 	   #endif
-	
+
 	   #ifdef ASM_SDK_CLIENT
 		#ifdef DLLMAIN
 			lpGetPacketNumber GetPacketNum = NULL;
 		#endif
 	   #endif
-	
+
 	#endif
 
                 #ifndef NDS
-                    
+
                     typedef bool (*lpHandlePacket)(struct sAsmSDK_Params *params);
                     typedef bool (*lpInitAsm)(SuccessCallback callback, bool debug, struct sAsmSDK_Config *config);
                     typedef void (*lpExitAsm)(void);
@@ -293,21 +293,21 @@ typedef struct PacketModule;
                     typedef char* (*lpGetStatusAsm)(int *error_code);
                     typedef char* (*lpQueryAssembleStatus)(int *error_code);
                     typedef unsigned char (*lpGetPrecentageCompleteAsm)(void);
-                    
+
                     typedef char *(*lpGetModuleVersionStr)();
                     typedef int (*lpGetModuleVersionInt)(int);
-                    
+
                     typedef int (*lpSwitchMode)(int mode);
                     typedef int (*lpSelectPacketModule)(int index);
                     typedef struct PacketModule *(*lpGetPacketModules)();
                     typedef int (*lpGetTotalPacketModules)();
                     typedef int (*lpGetPacketModuleID)(int index);
                     typedef char *(*lpGetPacketModuleIDStr)(int index);
-                    
+
                         #ifndef BUILDING_SDK
-                            
+
                             #ifndef ASM_SDK_MODULE
-                                
+
                                 #ifdef DLLMAIN
                                     lpHandlePacket HandlePacket=NULL;
                                     lpInitAsm InitAsm=NULL;
@@ -316,21 +316,21 @@ typedef struct PacketModule;
                                     lpGetStatusAsm GetStatusAsm=NULL;
                                     lpQueryAssembleStatus QueryAssembleStatus=NULL;
                                     lpGetPrecentageCompleteAsm GetPrecentageCompleteAsm=NULL;
-                                    
+
                                     lpGetModuleVersionStr GetModuleVersionStr=NULL;
                                     lpGetModuleVersionInt GetModuleVersionInt=NULL;
-                                    
+
                                     lpGetPacketNumber GetPacketNum = NULL;
-                                    
+
                                     lpSwitchMode SwitchMode = NULL;
                                     lpSelectPacketModule SelectPacketModule = NULL;
                                     lpGetPacketModules GetPacketModules = NULL;
                                     lpGetTotalPacketModules GetTotalPacketModules = NULL;
                                     lpGetPacketModuleID GetPacketModuleID = NULL;
                                     lpGetPacketModuleIDStr GetPacketModuleIDStr = NULL;
-                                    
+
                                 #endif
-                                
+
                                 #ifndef DLLMAIN
                                     extern lpHandlePacket HandlePacket;//So source code outside of the one that loads the module, can use the module's functions.
                                     extern lpInitAsm InitAsm;
@@ -339,21 +339,21 @@ typedef struct PacketModule;
                                     extern lpGetStatusAsm GetStatusAsm;
                                     extern lpQueryAssembleStatus QueryAssembleStatus;
                                     extern lpGetPrecentageCompleteAsm GetPrecentageCompleteAsm;
-                                    
+
                                     extern lpGetModuleVersionStr GetModuleVersionStr;
                                     extern lpGetModuleVersionInt GetModuleVersionInt;
-                                    
+
                                     extern lpGetPacketNumber GetPacketNum;
-                                    
+
                                     extern lpSwitchMode SwitchMode;
                                     extern lpSelectPacketModule SelectPacketModule;
                                     extern lpGetPacketModules GetPacketModules;
                                     extern lpGetTotalPacketModules GetTotalPacketModules;
                                     extern lpGetPacketModuleID GetPacketModuleID;
                                     extern lpGetPacketModuleIDStr GetPacketModuleIDStr;
-                                    
+
                                 #endif
-                            
+
                             #endif
 
                         #endif
@@ -578,50 +578,51 @@ struct Nds_data
        volatile bool skipseq;
        volatile bool FoundGameIDs;
        volatile unsigned char clientID;
-       
+
        volatile bool trigger_assembly;//Set by 1 by the packet module plugins when it's time to assembly and write
        //the .nds. This is reset when assembly is done.
        volatile bool use_advert;//This is only used when multipleIDs is true. When this variable is 0, advert will be used directly for assembly, with beacon_data being copyed into it first, however when 1, the adverts array will be used during assembly, instead of copying in data from the beacon_data array.
        int build_raw;//When doing assembly, when this is <=0, continue as normal. However, when this is larger than one, the Wmb Asm Module will just calculate the filename of the .nds, and directly write the contents of the saved_data buffer. The size of the .nds to write, from the buffer, is the value of this build_raw variable.
+       int PacketModIndex;//The index of the packet module, for this plugin.
 };
 
 	#ifdef ASM_SDK_PLUGIN
 	#ifdef NDS
-		DLLIMPORT void ResetAsm(Nds_data *nds_data);
+		DLLIMPORT void ResetAsm(volatile Nds_data *nds_data);
 	#endif
 	#endif
 
     #ifndef NDS
         #ifdef USING_DLL
-            DLLIMPORT void ResetAsm(struct Nds_data *nds_data);
+            DLLIMPORT void ResetAsm(volatile struct Nds_data *nds_data);
         #endif
-        
-        typedef void (*lpResetAsm)(struct Nds_data *nds_data);
-        
+
+        typedef void (*lpResetAsm)(volatile struct Nds_data *nds_data);
+
         #ifndef BUILDING_SDK
-            
+
             #ifndef ASM_SDK_MODULE
-                
+
                 #ifdef DLLMAIN
                     lpResetAsm ResetAsm=NULL;
                 #endif
-                
+
                 #ifndef DLLMAIN
                      extern lpResetAsm ResetAsm;
                 #endif
-                
+
             #endif
-            
+
         #endif
-        
+
     #endif
-    
+
         struct sAsmSDK_Config
         {
             volatile struct Nds_data **nds_data;
             bool *DEBUG;
             FILE **Log;
-            
+
 			#ifndef NDS
 				lpHandlePacket HandlePacket;
 				lpInitAsm InitAsm;
@@ -631,10 +632,10 @@ struct Nds_data
 				lpGetStatusAsm GetStatusAsm;
 				lpQueryAssembleStatus QueryAssembleStatus;
 				lpGetPrecentageCompleteAsm GetPrecentageCompleteAsm;
-				
+
 				lpGetModuleVersionStr GetModuleVersionStr;
 				lpGetModuleVersionInt GetModuleVersionInt;
-				
+
 				lpSwitchMode SwitchMode;
                 lpSelectPacketModule SelectPacketModule;
                 lpGetPacketModules GetPacketModules;
@@ -642,13 +643,13 @@ struct Nds_data
                 lpGetPacketModuleID GetPacketModuleID;
                 lpGetPacketModuleIDStr GetPacketModuleIDStr;
 			#endif
-			
+
 				lpGetPacketNumber GetPacketNumber;
-			
+
         };
-    
-    
-    
+
+
+
 
         #ifdef WIN32
             typedef HMODULE LPDLL;
@@ -671,21 +672,21 @@ struct Nds_data
     #endif
 
         #ifdef ASM_SDK_CLIENT
-		
+
 			#ifdef __cplusplus
 				extern "C" {
 			#endif
-		
+
             bool LoadAsmDLL(const char *filename, sAsmSDK_Config *config, char *error_buffer);
             bool CloseAsmDLL(char *error_buffer);
-            
+
                 #ifdef DLLMAIN
-                
+
                     int getpacketnumber()
                     {
                         return GetPacketNumber();
                     }
-                
+
                     //LoadAsmDLL loads the Asm module, and puts addresses/function-pointers of
                     //the module functions into the sAsmSDK_Config struct passed to it.
                     //This function copys the function addresses from the config struct into to an easily accessed and called
@@ -701,10 +702,10 @@ struct Nds_data
                         GetStatusAsm = config->GetStatusAsm;
                         QueryAssembleStatus = config->QueryAssembleStatus;
                         GetPrecentageCompleteAsm = config->GetPrecentageCompleteAsm;
-                        
+
                         GetModuleVersionStr = config->GetModuleVersionStr;
                         GetModuleVersionInt = config->GetModuleVersionInt;
-                        
+
                         SwitchMode = config->SwitchMode;
                         SelectPacketModule = config->SelectPacketModule;
                         GetPacketModules = config->GetPacketModules;
@@ -712,32 +713,32 @@ struct Nds_data
                         GetPacketModuleID = config->GetPacketModuleID;
                         GetPacketModuleIDStr = config->GetPacketModuleIDStr;
                         #endif
-						
+
                         config->GetPacketNumber = &getpacketnumber;
                     }
                 #endif
-            
+
 			#ifdef __cplusplus
 				}
 			#endif
-			
+
         #endif
-        
+
         #define MODE_ASM 0
         #define MODE_CLIENT 1
         #define MODE_HOST 2
-        
+
         #ifndef BUILDING_SDK
         #ifdef ASM_SDK_PLUGIN
-            
+
             #define ASMPLUG_PRI_LOW -1//Plugin priorities. The plugins with the highest priority are dealt with first, then the ones with the lower priority, and so on. The plugins with the highest pritority with have the Handle802_11 function called first, then that function will be called after the current/highest, for the lower priority, and so on.
             #define ASMPLUG_PRI_NORMAL 0//You can use priorites higher or lower than the ones defined here in the SDK, it's not restricted to only these defines. But you'll need to either make a new define, or just return the prioritiy directly from AsmPlug_GetPriority.
             #define ASMPLUG_PRI_HIGH 1
-            
+
 			#ifdef __cplusplus
 				extern "C" {
 			#endif
-			
+
             bool CheckFrame(unsigned char *data, unsigned char *host_mac, unsigned char command, unsigned short *size, unsigned char *pos);
             bool CheckFlow(unsigned char *mac,unsigned char flow);
             unsigned int CalcCRC32(unsigned char *data, unsigned int length);
@@ -749,45 +750,45 @@ struct Nds_data
             unsigned short computeBeaconChecksum(unsigned short *data, int length);
             unsigned char GetGameID(unsigned char *data);
             bool CompareMAC(unsigned char *a, unsigned char *b);
-            
+
             inline void AsmPlugin_Init(sAsmSDK_Config *config, volatile Nds_data **dat)
             {
                 if(dat==NULL)return;
-                
+
                 *dat = (volatile Nds_data*)malloc(sizeof(Nds_data));
                 memset((void*)*dat, 0, sizeof(Nds_data));
-                
+
 				#ifndef NDS
                 GetPrecentageCompleteAsm = config->GetPrecentageCompleteAsm;
 				#endif
                 GetPacketNum = config->GetPacketNumber;
             }
-            
+
             inline void AsmPlugin_DeInit(volatile Nds_data **dat)
             {
                 if(dat==NULL)return;
                 if(*dat==NULL)return;
-                
+
                 free((void*)*dat);
             }
-			
+
             void UpdateAvert(volatile Nds_data *dat);
-			
+
 			#ifdef __cplusplus
 				}
 			#endif
-            
+
         #endif
         #endif
-        
+
             #ifdef NDS
                 #undef BUILDING_DLL
             #endif
 
     #ifdef BUILDING_SDK
-	
+
         #include "wmb_asm_sdk_internal.h"
-        
+
         #ifdef DLLIMPORT
             #undef DLLIMPORT
             #define DLLIMPORT

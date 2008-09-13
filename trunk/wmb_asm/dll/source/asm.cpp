@@ -168,6 +168,8 @@ bool PktModInit()
 			{
 				if(!packetModules[i].Init(CONFIG))
 				    return 0;
+
+                packetModules[i].GetNdsData()->PacketModIndex = i;
             }
 		}
 
@@ -435,6 +437,7 @@ bool InitPktModules()
 	#endif
 
     #ifndef NDS
+    printf("Loading plugins...\n");
 
         files_list = (FILE_LIST*)malloc(sizeof(FILE_LIST));
         memset(files_list, 0, sizeof(FILE_LIST));
@@ -503,7 +506,6 @@ bool InitPktModules()
     remove("module_log.txt");//Since we made it this far, there was no errors, so we can safely remove this file without saved errors being deleted.
 
     printf("Done.\n");
-
     #endif
 
     if(!PktModInit())
@@ -868,6 +870,7 @@ DLLIMPORT void ResetAsm(volatile Nds_data *dat)
                                bool multipleIDs = module_nds_data->multipleIDs;
                                bool handledIDs[256];
                                bool FoundGameIDs = 0;
+                               int pktindex = module_nds_data->PacketModIndex;
 
 	                           if(module_nds_data->finished_first_assembly)
 	                           {
@@ -884,6 +887,7 @@ DLLIMPORT void ResetAsm(volatile Nds_data *dat)
 
 	                           memset((void*)module_nds_data,0,sizeof(Nds_data));
 	                           module_nds_data->finished_first_assembly=first;
+                               module_nds_data->PacketModIndex = pktindex;
 	                           if(module_nds_data->finished_first_assembly)
 	                           {
                                     memcpy((void*)&module_nds_data->header, (void*)&temp_header,sizeof(TNDSHeader));
@@ -898,7 +902,7 @@ DLLIMPORT void ResetAsm(volatile Nds_data *dat)
                                }
 
                                currentPacketModule = -1;
-                               PktModReset();
+                               packetModules[module_nds_data->PacketModIndex].reset();
 }
 
 DLLIMPORT void ExitAsm()

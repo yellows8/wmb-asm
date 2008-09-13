@@ -313,6 +313,12 @@ DLLIMPORT void AsmPlug_Reset()
     memset(gameIDs, 0, 15 * 8);
 
     memset(dlstation_host_mac,0,6);
+
+    if(*DLSTATIONDEBUG)
+    {
+        fprintf(*DLSTATIONLog, "ASM RESET\n");
+        fflush(*DLSTATIONLog);
+    }
 }
 
 DLLIMPORT int AsmPlug_GetModeStatus(int mode)//Queries whether or not the specified mode is available in this packet module.
@@ -1155,7 +1161,11 @@ int HandleDL_Data(unsigned char *data, int length)
             }
 
             dlstation_nds_data->saved_data = (unsigned char*)malloc(de_data_size);
-            if(dlstation_nds_data->saved_data==NULL)return 3;
+            if(dlstation_nds_data->saved_data==NULL)
+            {
+                printf("Memory allocation failed.\n");
+                return 3;
+            }
             memset((void*)dlstation_nds_data->saved_data, 0, de_data_size);
 
             lzo_ret = lzo1x_decompress((unsigned char*)buffer + 0x10, data_size - 0x10, (unsigned char*)dlstation_nds_data->saved_data, &out_len, NULL);
@@ -1179,6 +1189,13 @@ int HandleDL_Data(unsigned char *data, int length)
 
             dlstation_nds_data->trigger_assembly = 1;
             dlstation_nds_data->build_raw = data_size;
+
+            if(*DLSTATIONDEBUG)
+            {
+                fprintf(*DLSTATIONLog, "DECOMPRESSED DATA!\n");
+                fprintf(*DLSTATIONLog, "ENTERING ASSEMBLY STAGE!\n");
+                fflush(*DLSTATIONLog);
+            }
         }
 
         return 1;
