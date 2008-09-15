@@ -667,13 +667,10 @@ int WMBProcessHeader(unsigned char *data, int length)
 
 int WMBProcessData(unsigned char *data, int length)
 {
-     //unsigned short arm7s,arm7e;
      unsigned short size = 0;
      unsigned char pos = 0;
      unsigned short *Seq, seq;
      unsigned char *dat=NULL;
-     //unsigned short ts=0;
-     //int k=0;
      Seq=NULL;
      seq=0;
 
@@ -739,9 +736,14 @@ int WMBProcessData(unsigned char *data, int length)
 
             if(wmb_nds_data->data_sizes[(int)seq-1]!=0)
             {
-            //printf("KA NA\n");
-            //printf("CONFIG %p NDS %p\n", CONFIG, nds_data);
-            //if(!CheckDataPackets((int)seq))return 1;
+            /*printf("KA NA\n");
+            printf("CONFIG %p NDS %p\n", WMBCONFIG, wmb_nds_data);
+            if(!CheckDataPackets((int)seq))return 1;*/
+
+            for(int i=0; i<(int)seq; i++)
+            {
+                if(wmb_nds_data->data_sizes[i]==0)return -1;
+            }
 
             if(wmb_nds_data->arm7e==0)return -1;
             }
@@ -756,6 +758,8 @@ int WMBProcessData(unsigned char *data, int length)
 
      wmb_nds_data->cur_pos = temp;
 
+     //if(wmb_nds_data->data_sizes[(int)seq-1]<=0)
+     //{
      wmb_nds_data->data_sizes[(int)seq-1] = size;
 
      memcpy((void*)&wmb_nds_data->saved_data[wmb_nds_data->cur_pos],dat,(size_t)(size));
@@ -769,6 +773,7 @@ int WMBProcessData(unsigned char *data, int length)
 			fprintfdebug(*WMBLog,"\n");
 			fflushdebug(*WMBLog);
         }
+     //}
 
     wmb_nds_data->cur_pos+=size;
 
@@ -777,7 +782,7 @@ int WMBProcessData(unsigned char *data, int length)
      if(wmb_nds_data->cur_pos>=(int)wmb_nds_data->header.arm9binarySize && wmb_nds_data->arm7s == 0)
      {
 
-            if(wmb_nds_data->cur_pos!=(int)wmb_nds_data->header.arm9binarySize)
+            //if(wmb_nds_data->cur_pos!=(int)wmb_nds_data->header.arm9binarySize)
             wmb_nds_data->cur_pos=(int)wmb_nds_data->header.arm9binarySize;
 
             wmb_nds_data->arm7s = wmb_nds_data->cur_pos;
@@ -799,7 +804,6 @@ int WMBProcessData(unsigned char *data, int length)
             if(wmb_nds_data->cur_pos!=wmb_nds_data->total_binaries_size)
             wmb_nds_data->cur_pos=wmb_nds_data->total_binaries_size;
 
-            //wmb_nds_data->cur_pos-= (wmb_nds_data->pkt_size*3);
             wmb_nds_data->arm7e = wmb_nds_data->cur_pos;
             wmb_nds_data->arm7e_seq = (int)seq-1;
 
@@ -822,11 +826,12 @@ int WMBProcessData(unsigned char *data, int length)
      {
             if(wmb_nds_data->data_sizes[i]==0)
             {
-                return 0;//If we missed any packets, don't begin assembly
+                return 3;//If we missed any packets, don't begin assembly
             }
      }
 
-     wmb_nds_data->arm7e = wmb_nds_data->total_binaries_size;//Sometimes there problems if we don't set this here...
+     //wmb_nds_data->arm7s = wmb_nds_data->header.arm9binarySize + 22;
+     wmb_nds_data->arm7e = wmb_nds_data->total_binaries_size;//Sometimes there's problems if we don't set this here...
 
 		if(*WMBDEBUG)
 		{
