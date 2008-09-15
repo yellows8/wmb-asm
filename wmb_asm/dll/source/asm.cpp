@@ -1078,10 +1078,15 @@ void CaptureAsmResetA(volatile Nds_data *dat, lpAsmGetStatusCallback callback)
 
     if(funusedpkt!=NULL && module_nds_data->multipleIDs)
     {
-        fclose(funusedpkt);
-        funusedpkt=NULL;
-
-        CaptureBacktrack();
+        if(funusedpkt)
+        {
+            fclose(funusedpkt);
+            funusedpkt=NULL;
+            CaptureBacktrack();
+            #ifndef NDS
+            funusedpkt = fopen("unused_packets.bin","wb");
+            #endif
+        }
 
         total_assembled=0;
         for(int i=0; i<15; i++)
@@ -1124,6 +1129,17 @@ void CaptureAsmResetA(volatile Nds_data *dat, lpAsmGetStatusCallback callback)
 			#ifndef NDS
 				funusedpkt = fopen("unused_packets.bin","wb");
 			#endif
+    }
+
+    if(funusedpkt)
+    {
+        fclose(funusedpkt);
+        funusedpkt=NULL;
+        CaptureBacktrack();
+
+        #ifndef NDS
+            funusedpkt = fopen("unused_packets.bin","wb");
+        #endif
     }
 
     memset((void*)module_nds_data->handledIDs,0,256);
@@ -1257,7 +1273,7 @@ DLLIMPORT bool HandlePacket(sAsmSDK_Params *params)
              Handle802_11(data,params->length);
 
                     #ifndef NDS
-					if(save_unused_packets && module_nds_data->multipleIDs)
+					if(save_unused_packets)
                     {
                         if(funusedpkt==NULL)
                         {

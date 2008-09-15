@@ -245,7 +245,12 @@ typedef void (*lpAsmGetStatusCallback)(char *str);
 
 typedef int (*lpGetPacketNumber)();
 
-typedef struct PacketModule;
+#ifndef ASM_SDK_MODULE
+struct PacketModule
+{
+    unsigned char filler[64];//The plugins are not supposed to access these directly, only through exported Wmb Asm Module functions.(A typedef struct PacketModule line was not used because GCC throws warnings about an incomplete type.)
+};
+#endif
 
     #ifdef ASM_SDK_CLIENT
 	#ifdef NDS
@@ -644,7 +649,7 @@ struct Nds_data
                 lpGetPacketModuleIDStr GetPacketModuleIDStr;
 			#endif
 
-				lpGetPacketNumber GetPacketNumber;
+				lpGetPacketNumber getpacketnumber;
 
         };
 
@@ -714,7 +719,7 @@ struct Nds_data
                         GetPacketModuleIDStr = config->GetPacketModuleIDStr;
                         #endif
 
-                        config->GetPacketNumber = &getpacketnumber;
+                        config->getpacketnumber = &getpacketnumber;
                     }
                 #endif
 
@@ -761,7 +766,7 @@ struct Nds_data
 				#ifndef NDS
                 GetPrecentageCompleteAsm = config->GetPrecentageCompleteAsm;
 				#endif
-                GetPacketNum = config->GetPacketNumber;
+                GetPacketNum = config->getpacketnumber;
             }
 
             inline void AsmPlugin_DeInit(volatile Nds_data **dat)
