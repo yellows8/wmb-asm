@@ -4,12 +4,6 @@ This command-line program assembles libpcap .cap files of DS WMB Download Play c
 
 Setup instructions: http://code.google.com/p/wmb-asm/wiki/Setup
 
-Right now, this tool is made for compiled for Windows only.
-However, other platforms are supported, but it needs to be compiled
-for the other platforms. The general public needs to wait for
-devs to compile & host those binaries, before you can use it on
-those platforms.(I can host these myself, if they want)
-
 The following is what appears when you start the program without passing any parameters to it:
 
 wmb_asm.exe v2.0b r2 by yellowstar built on [Time and date the software was compiled will be displayed here]
@@ -57,7 +51,7 @@ Download it, then copy ndsrsa.exe to this directory. Wmb_asm will now check the 
 use assembleRSA.bat.
 
 Compiling
-This program was built with the GNU compiler, but others should work, but some changes might be needed for other compilers.
+This program was built with GCC, but others should work, but some changes might be needed for other compilers.
 Makefile.win is the Makefile for compiling for PC/Windows. You'll probably need to edit this to make it compile on other platforms.
 Makefile is the Makefile for compiling on DS. You can obtain the source code from SVN, from the Google Code project page.
 Only source/console.cpp, main.cpp, and binconv.cpp are intended for Wmb Asm PC, the rest are intended for Wmb Asm DS.

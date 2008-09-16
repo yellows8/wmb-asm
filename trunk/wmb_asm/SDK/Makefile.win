@@ -1,18 +1,18 @@
 # Project: wmb_asm_sdk
 # Compiler: Default GCC compiler
 # Compiler Type: MingW 3
-# Makefile created by wxDev-C++ 6.10.2 on 09/09/08 17:38
+# Makefile originally created by wxDev-C++ 6.10.2
 
 CPP       = g++.exe
 CC        = gcc.exe
 WINDRES   = windres.exe
 OBJ       = Objects/MingW/dirscan.o Objects/MingW/dll_load.o Objects/MingW/ndsdirent.o Objects/MingW/pcap.o Objects/MingW/utils.o Objects/MingW/win32dirent.o Objects/MingW/wmb_asm_sdk_private.res
 LINKOBJ   = Objects/MingW/dirscan.o Objects/MingW/dll_load.o Objects/MingW/ndsdirent.o Objects/MingW/pcap.o Objects/MingW/utils.o Objects/MingW/win32dirent.o Objects/MingW/wmb_asm_sdk_private.res
-LIBS      = -L"C:/Dev-Cpp/Lib" -L"C:/idasdk/libgcc.w32"  -g3 
-INCS      = -I"include" -I"C:/idasdk/include"
-CXXINCS   = -I"C:/Dev-Cpp/lib/gcc/mingw32/3.4.2/include" -I"C:/Dev-Cpp/include/c++/3.4.2/backward" -I"C:/Dev-Cpp/include/c++/3.4.2/mingw32" -I"C:/Dev-Cpp/include/c++/3.4.2" -I"C:/Dev-Cpp/include" -I"C:/Dev-Cpp/" -I"C:/Dev-Cpp/include/common/wx/msw" -I"C:/Dev-Cpp/include/common/wx/generic" -I"C:/Dev-Cpp/include/common/wx/fl" -I"C:/Dev-Cpp/include/common/wx/gizmos" -I"C:/Dev-Cpp/include/common/wx/html" -I"C:/Dev-Cpp/include/common/wx/mmedia" -I"C:/Dev-Cpp/include/common/wx/net" -I"C:/Dev-Cpp/include/common/wx/ogl" -I"C:/Dev-Cpp/include/common/wx/plot" -I"C:/Dev-Cpp/include/common/wx/protocol" -I"C:/Dev-Cpp/include/common/wx/stc" -I"C:/Dev-Cpp/include/common/wx/svg" -I"C:/Dev-Cpp/include/common/wx/xml" -I"C:/Dev-Cpp/include/common/wx/xrc" -I"C:/Dev-Cpp/include/common/wx" -I"C:/Dev-Cpp/include/common" -I"C:/idasdk/include"
+LIBS      = -L"C:/MinGW/lib" -g3 
+INCS      = -I"include"
+CXXINCS   = -I"C:/MinGW/lib/gcc/mingw32/3.4.5/include" -I"C:/MinGW/include/c++/3.4.5/backward" -I"C:/MinGW/include/c++/3.4.5/mingw32/bits" -I"C:/MinGW/include/c++/3.4.5" -I"C:/MinGW/include" -I"C:/MinGW/"
 RCINCS    = --include-dir "C:/Dev-Cpp/include/common"
-BIN       = lib/WmbAsmSDK.a
+BIN       = lib/libWmbAsmSDK.a
 DEFINES   = 
 CXXFLAGS  = $(CXXINCS) $(DEFINES)   -O3 -g3
 CFLAGS    = $(INCS) $(DEFINES)   -O3 -g3
