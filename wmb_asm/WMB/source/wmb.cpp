@@ -204,8 +204,7 @@ DLLIMPORT bool AsmPlug_Init(sAsmSDK_Config *config)
     #endif
 	//DEBUG = config->DEBUG;
     //Log = config->Log;
-    WMBDEBUG = (bool*)malloc(1);
-    *WMBDEBUG = 1;
+    WMBDEBUG = config->DEBUG;
     WMBLog = &wlog;
     wlog = fopen("wmb_log.txt","w");
     WMBCONFIG = config;
