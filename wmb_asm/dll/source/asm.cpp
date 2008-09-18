@@ -1525,14 +1525,6 @@ bool AssembleNds(char *output)
      memset(&banner,0,sizeof(TNDSBanner));
      memcpy((void*)&ndshdr,(void*)&module_nds_data->header,sizeof(TNDSHeader));
 
-     unsigned char *ptr;
-     ptr = (unsigned char*)&module_nds_data->advert;
-
-     if(module_nds_data->use_advert)
-     {
-            memcpy((void*)&module_nds_data->advert, (void*)&module_nds_data->adverts[(int)module_nds_data->gameID], sizeof(ds_advert));
-     }
-
      FILE *fdump = fopen("advertM.bin","wb");
      fwrite((void*)&module_nds_data->advert, 1, sizeof(ds_advert), fdump);
      fclose(fdump);
@@ -1559,7 +1551,6 @@ bool AssembleNds(char *output)
         gdtemp[tempi] = '\n';
         tempi+=2;
 
-
         memcpy((void*)&gdtemp[tempi], (void*)&module_nds_data->advert.game_description[0],96*2);
 
         for(int i=0; i<96; i++)
@@ -1584,7 +1575,6 @@ bool AssembleNds(char *output)
 
         banner.version = 1;
         banner.crc = CalcCRC16(banner.icon, 2080);
-
      }
      else
      {
@@ -1618,7 +1608,7 @@ bool AssembleNds(char *output)
      temp3 = module_nds_data->header.logoCRC16;
      temp4 = module_nds_data->header.headerCRC16;
 
-            if(module_nds_data->header.bannerOffset==0)//Some demos don't set this fields properly. Fix these for the first header, then use the original header for the second header, so RSA isn't invalidated.
+            if(module_nds_data->header.bannerOffset < module_nds_data->header.arm7romSource + module_nds_data->header.arm7binarySize)//Some demos don't set this fields properly. Fix these for the first header, then use the original header for the second header, so RSA isn't invalidated.
             {
                 module_nds_data->header.bannerOffset = (unsigned int)((int)(((int)module_nds_data->header.arm7romSource) + ((int)module_nds_data->header.arm7binarySize)) + 660);
             }
@@ -1648,7 +1638,6 @@ bool AssembleNds(char *output)
      ndshdr.headerCRC16 = CalcCRC16((unsigned char*)&ndshdr,0x15E);
      fwrite(&ndshdr,1,sizeof(TNDSHeader),nds);
      fwrite(download_play,1,32,nds);
-
      //memcpy(&ndshdr,&nds_data.header,sizeof(TNDSHeader));
      ndshdr.bannerOffset = temp1;
      ndshdr.romSize = temp2;
@@ -1700,16 +1689,17 @@ bool AssembleNds(char *output)
                 return 0;
             }
 
+    fflush(nds);
      sz=((int)module_nds_data->header.bannerOffset-((int)ftell(nds)));
 
-     if(sz>0)
+     if((int)module_nds_data->header.bannerOffset>=(int)ftell(nds))
      {
 
         Temp = new unsigned char[sz];
 
         memset(Temp,0,sz);
 
-        //This following block is based on code from the sachen program.
+        //This following block is based on code from Frz's sachen program.
         if(module_nds_data->pkt_size!=250)
         {
             if (( ((module_nds_data->header.bannerOffset - 0x200) > (module_nds_data->header.arm7romSource + module_nds_data->header.arm7binarySize)) ))
@@ -1724,6 +1714,11 @@ bool AssembleNds(char *output)
 
      delete[] Temp;
      }
+
+    int savepos = ftell(nds);
+    fseek(nds, 0x68, SEEK_SET);
+    fwrite(&savepos, 1, sizeof(int), nds);
+    fseek(nds, savepos, SEEK_SET);
 
      fwrite(&banner,1,sizeof(TNDSBanner),nds);
 
