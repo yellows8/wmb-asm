@@ -339,7 +339,7 @@ void WMBBeaconGrab(unsigned char *data)
                 if(memcmp((void*)wmb_nds_data->oldadvert.icon_pallete, (void*)wmb_nds_data->advert.icon_pallete,32)==0)
                 {
 
-                    ResetAsm((Nds_data*)wmb_nds_data);
+                    ResetAsm(wmb_nds_data);
                     return;
                 }
                 else
@@ -452,7 +452,7 @@ int WMBProcessRSA(unsigned char *data, int length)
                             {
                                 if(memcmp((void*)&wmb_nds_data->rsa,(void*)&rsa,sizeof(nds_rsaframe))==0)
                                 {
-                                        ResetAsm((Nds_data*)wmb_nds_data);
+                                        ResetAsm(wmb_nds_data);
                                         return -1;
                                 }
                             }
@@ -559,11 +559,11 @@ int WMBProcessHeader(unsigned char *data, int length)
      {
             memcpy(&temp_header,dat,250);
             memcpy(&temp_header.gbaLogo[58],header_filler,sizeof(header_filler));
-            //DS Download Station's, and maybe other things, don't send their whole header.
+            //Some binaries' headers are incomplete - smaller than normal.
      }
 
     if(wmb_nds_data->multipleIDs)
-     printf("Found game with ID %d, assembling now.\n",(int)ID);
+     printf("WMB: Found game with ID %d, assembling now.\n",(int)ID);
 
 		if(*WMBDEBUG)
 		{
@@ -579,7 +579,7 @@ int WMBProcessHeader(unsigned char *data, int length)
         if(memcmp((void*)&wmb_nds_data->header, (void*)&temp_header,sizeof(TNDSHeader))==0)
         {
 
-            ResetAsm((Nds_data*)wmb_nds_data);
+            ResetAsm(wmb_nds_data);
             return -1;
         }
     }
@@ -603,14 +603,14 @@ int WMBProcessHeader(unsigned char *data, int length)
 
 		if(*WMBDEBUG)
 		{
-			fprintfdebug(*WMBLog,"ARM7S %d ARM7E %d\n",wmb_nds_data->arm7s_seq,wmb_nds_data->arm7e_seq);
+			fprintfdebug(*WMBLog, "ARM7S %d ARM7E %d\n", wmb_nds_data->arm7s_seq, wmb_nds_data->arm7e_seq);
         }
 
      wmb_stage=SDK_STAGE_DATA;
 
 		if(*WMBDEBUG)
 		{
-			fprintfdebug(*WMBLog,"ENTERING DATA STAGE\n");
+			fprintfdebug(*WMBLog, "ENTERING DATA STAGE\n");
 		}
 
      char str[20];
@@ -619,11 +619,11 @@ int WMBProcessHeader(unsigned char *data, int length)
 
 		if(*WMBDEBUG)
 		{
-			fprintfdebug(*WMBLog,"FOUND HEADER SZ %d GAME NAME %s\n",size,str);
+			fprintfdebug(*WMBLog, "FOUND HEADER SZ %d GAME NAME %s\n", size, str);
 			fflushdebug(*WMBLog);
         }
 
-     printf("FOUND GAME NAME: %s\n\n",str);
+     printf("FOUND GAME NAME: %s\n\n", str);
 
      return 1;
 
@@ -671,9 +671,8 @@ int WMBProcessData(unsigned char *data, int length)
      dat++;
      Seq = (unsigned short*)dat;
      seq=*Seq;
-     //ConvertEndian(&seq,&seq,2);//Ummm... NdsTech Wiki says this is litte-endian... And PCs are big-endian...
-     //And yet, the seq is wrong with this call, correct without this call... Strange...
-     if(seq==0)return -1;//Official WMB host sends the header many times, ignore the duplicates
+     //ConvertEndian(&seq,&seq,2);
+     if(seq==0)return -1;//Ignore the header, which is resent many times by official hosts.
      dat+=2;
 
     int fh_seq=ReadSeq(&fh->sequence_control);
@@ -687,7 +686,7 @@ int WMBProcessData(unsigned char *data, int length)
         {
                                 if(*WMBDEBUG)
                                 {
-                                    fprintfdebug(*WMBLog,"DROPPED DATA PKT SEQ %d PREV SEQ %d\n",fh_seq,last_seq);
+                                    fprintfdebug(*WMBLog, "DROPPED DATA PKT SEQ %d PREV SEQ %d\n", fh_seq, last_seq);
                                     fflushdebug(*WMBLog);
                                 }
                               return 0;
@@ -695,6 +694,7 @@ int WMBProcessData(unsigned char *data, int length)
         last_seq=fh_seq;
     }
 
+     if(seq-1>7980)return -1;//Rare, but it happened with one multi-game capture.
      if(size==102)wmb_nds_data->pkt_size=250;
      if(wmb_nds_data->pkt_size==250)seq--;
      if(size==102 && seq==0)return -1;
@@ -703,6 +703,16 @@ int WMBProcessData(unsigned char *data, int length)
 
      if(size==102)
      wmb_nds_data->data_sizes[(int)seq-1]=1;
+
+    if(*WMBDEBUG)
+		{
+			fprintfdebug(*WMBLog,"PROCESSING THE DATA SIZE %d SEQ %d DZ %d",(int)size,(int)*Seq,(int)seq-1);
+				#ifdef _H_CUSTOM_PCAP
+					fprintfdebug(*WMBLog," PKTNUM %d",GetPacketNum());
+				#endif
+			fprintfdebug(*WMBLog,"\n");
+			fflushdebug(*WMBLog);
+        }
 
             if(wmb_nds_data->data_sizes[(int)seq-1]!=0)
             {
