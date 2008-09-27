@@ -1078,11 +1078,30 @@ void CaptureAsmResetA(volatile Nds_data *dat, lpAsmGetStatusCallback callback)
 
     if(funusedpkt!=NULL && module_nds_data->multipleIDs)
     {
-        if(funusedpkt)
+        bool got_all=1;
+        for(int i=0; i<15; i++)
+        {
+            if(!module_nds_data->handledIDs[i] && module_nds_data->foundIDs[i])got_all = 0;
+        }
+
+        if(funusedpkt && !got_all)
         {
             fclose(funusedpkt);
             funusedpkt=NULL;
             CaptureBacktrack();
+
+            got_all=1;
+            for(int i=0; i<15; i++)
+            {
+                if(!module_nds_data->handledIDs[i] && module_nds_data->foundIDs[i])got_all = 0;
+            }
+
+            if(!got_all)
+            {
+                ResetAsm(module_nds_data);
+                CaptureBacktrack();//If some binaries still weren't assembled, try again, as sometimes not all binaries are assembled at all.
+            }
+
             #ifndef NDS
             funusedpkt = fopen("unused_packets.bin","wb");
             #endif
@@ -1094,7 +1113,7 @@ void CaptureAsmResetA(volatile Nds_data *dat, lpAsmGetStatusCallback callback)
             if(module_nds_data->handledIDs[i])total_assembled++;
         }
 
-        bool got_all=1;
+        got_all = 1;
         int total_asm=0, total=0;
         for(int i=0; i<15; i++)
         {
@@ -1125,10 +1144,6 @@ void CaptureAsmResetA(volatile Nds_data *dat, lpAsmGetStatusCallback callback)
 
 				if(*DEBUG)
 					fflushdebug(*Log);
-
-			#ifndef NDS
-				funusedpkt = fopen("unused_packets.bin","wb");
-			#endif
     }
 
     if(funusedpkt)
@@ -1148,7 +1163,7 @@ void CaptureAsmResetA(volatile Nds_data *dat, lpAsmGetStatusCallback callback)
 
     GetStatusAsmA(callback, PKTINDX);
 
-    ResetAsm((Nds_data*)module_nds_data);
+    ResetAsm(module_nds_data);
 }
 
 DLLIMPORT void CaptureAsmReset(int *code, lpAsmGetStatusCallback callback)//Needs to be called after reading the whole capture.
@@ -1263,12 +1278,28 @@ DLLIMPORT bool HandlePacket(sAsmSDK_Params *params)
 
     SetPacketHasAVS(params->has_avs);
 
+    #ifdef NDS
+        if(*DEBUG)
+        {
+            fprintf(*Log, "PROCESSING PACKET\n");//Wmb Asm DS crashes quickly, this is for finding how many packets are processed before the crash.
+            fflush(*Log);
+        }
+    #endif
+
      //Is the AVS WLAN Capture header valid?
      data=IsValidAVS(params->pkt_data);
      if(data)
      {
             if(data==NULL)data = params->pkt_data;
             if(params->has_avs)params->length-=64;
+
+            #ifdef NDS
+                if(*DEBUG)
+                {
+                    fprintf(*Log, "HANDLING PACKET\n");
+                    fflush(*Log);
+                }
+            #endif
 
              Handle802_11(data,params->length);
 
