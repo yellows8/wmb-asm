@@ -81,11 +81,13 @@ int main(int argc, char *argv[])
           char *fixed_argv[2];
 		  fixed_argv[0] = (char*)malloc(256);
 		  fixed_argv[1] = (char*)malloc(256);
+		  fixed_argv[2] = (char*)malloc(256);
 		  strcpy(fixed_argv[0],"/wmb_asm.nds");
-          strcpy(fixed_argv[1],"/capture.cap");//captures directory in the root of the homebew card filesystem.
+		  strcpy(fixed_argv[1], "-debug");
+          strcpy(fixed_argv[2],"/captures/captures/capture.cap");//captures directory in the root of the homebew card filesystem.
 
 		  InitConsoleStuff();//Initialize DS-specific things. Such as the console, FAT/filesystem, and other things.
-		  argc=2; argv = fixed_argv;
+		  argc=3; argv = fixed_argv;
 		  #endif
 
           if(argc==1)
@@ -495,6 +497,14 @@ int ReadCaptureLoop(char *cap, int argc, char *argv[], bool checkrsa, char *outd
             free(params);
             return 0;
         }
+
+        #ifdef NDS
+        scanKeys();
+        if(keysDown() & KEY_A)
+        {
+            printf("I'm still alive\n");//Wmb Asm DS crashes/freezes quickly, this is for checking if it doesn't freeze anymore.
+        }
+        #endif
     }
 
 	if (res == -1)

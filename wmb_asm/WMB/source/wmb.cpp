@@ -29,6 +29,9 @@ DEALINGS IN THE SOFTWARE.
 #undef DLLIMPORT
 #define DLLIMPORT __declspec (dllexport)
 
+#undef fflushdebug
+#define fflushdebug(f) fclose(f); f = fopen("wmb_log.txt", "a");
+
 unsigned char BroadcastMAC[6]={0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
 
 int WMBProcessBeacons(unsigned char *data, int length);
@@ -847,6 +850,14 @@ int WMBProcessBeacons(unsigned char *data, int length)
      //BEACON_TAGPARM3
      unsigned char *nin_ie=NULL;
 
+     #ifdef NDS
+        if(*WMBDEBUG)
+        {
+            fprintfdebug(*WMBLog,"PROCESSING WMB PACKET\n");//Wmb Asm DS crashes quickly, this is for determining how many packets Wmb Asm DS processes before crashing.
+            fflushdebug(*WMBLog);
+        }
+     #endif
+
      if(CheckFrameControl(framehead,0,8))//frame control type/subtype for beacons
      {
                       if(memcmp(Beacon->destmac,BroadcastMAC,6)==0)
@@ -887,11 +898,12 @@ int WMBProcessBeacons(unsigned char *data, int length)
 
                                          if(checksum!=ds->checksum)
                                          {
-											/*if(*WMBDEBUG)
+											if(*WMBDEBUG)
 											{
-												fprintfdebug(*WMBLog,"BEACON SEQ %d FAILED CRC16 CHECK %d!\n",(int)ds->advert_sequence_number, GetPacketNum());
-												fflushdebug(*WMBLog);
-                                            }*/
+											    printf("BEACON SEQ %d FAILED CRC16 CHECK %d!\n", (int)ds->advert_sequence_number, GetPacketNum());
+												//fprintfdebug(*WMBLog,"BEACON SEQ %d FAILED CRC16 CHECK %d!\n", (int)ds->advert_sequence_number, GetPacketNum());
+												//fflushdebug(*WMBLog);
+                                            }
                                          return 0;
                                          }
                                         //printf("D\n");
