@@ -25,10 +25,6 @@ DEALINGS IN THE SOFTWARE.
 
 #include "..\include\wmb_asm_sdk.h"
 
-#ifndef NDS
-//extern "C" {
-#endif
-
 unsigned char normal_mac[5] = {0x03,0x09,0xBF,0x00,0x00};
 
 void ConvertAVSEndian(struct AVS_header *avs);
@@ -804,8 +800,4 @@ void ExecuteApp(char *appname, char *cmdline)
      free(acstr);
 }
 
-#endif
-
-#ifndef NDS
-//}
 #endif

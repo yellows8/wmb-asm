@@ -707,16 +707,6 @@ int WMBProcessData(unsigned char *data, int length)
      if(size==102)
      wmb_nds_data->data_sizes[(int)seq-1]=1;
 
-    if(*WMBDEBUG)
-		{
-			fprintfdebug(*WMBLog,"PROCESSING THE DATA SIZE %d SEQ %d DZ %d",(int)size,(int)*Seq,(int)seq-1);
-				#ifdef _H_CUSTOM_PCAP
-					fprintfdebug(*WMBLog," PKTNUM %d",GetPacketNum());
-				#endif
-			fprintfdebug(*WMBLog,"\n");
-			fflushdebug(*WMBLog);
-        }
-
             if(wmb_nds_data->data_sizes[(int)seq-1]!=0)
             {
             //printf("KA NA\n");
@@ -850,14 +840,6 @@ int WMBProcessBeacons(unsigned char *data, int length)
      //BEACON_TAGPARM3
      unsigned char *nin_ie=NULL;
 
-     #ifdef NDS
-        if(*WMBDEBUG)
-        {
-            fprintfdebug(*WMBLog,"PROCESSING WMB PACKET\n");//Wmb Asm DS crashes quickly, this is for determining how many packets Wmb Asm DS processes before crashing.
-            fflushdebug(*WMBLog);
-        }
-     #endif
-
      if(CheckFrameControl(framehead,0,8))//frame control type/subtype for beacons
      {
                       if(memcmp(Beacon->destmac,BroadcastMAC,6)==0)
@@ -867,22 +849,12 @@ int WMBProcessBeacons(unsigned char *data, int length)
                        if(memcmp(Beacon->srcmac,Beacon->bssmac,6)==0)
                        {
                        //If the src MAC and BSSID are the same...
-                       //It passed the Beacon frame test, time to test the Managment frame!
-                       //ConvertEndian(&Beacon->interval,&Beacon->interval,2);
-                       //printf("A\n");
+                       //It passed the Beacon frame test, time to test the Managment frame.
                        unsigned char *temp = (unsigned char*)&Beacon->capability;
-                       //unsigned char *temp2 = (unsigned char*)&cap;
                        temp[1]=0;
 
-                       //unsigned char *Temp = (unsigned char*)Beacon->tagparms;
-                       //unsigned char *Temp2 = (unsigned char*)tagparms;
-
-
-                            //if(memcmp(&Beacon->interval,&interval,2)==0)
-                            //{
                                 if(memcmp(&Beacon->capability,&cap,2)==0)
                                 {
-
                                     if(memcmp(Beacon->tagparms,&tagparms,4)==0 ||
                                     memcmp(Beacon->tagparms,&tagparms2,4)==0 ||
                                     memcmp(Beacon->tagparms,&tagparms3,4)==0)
@@ -895,21 +867,18 @@ int WMBProcessBeacons(unsigned char *data, int length)
                                          Nin_ie=nin_ie;
 
                                          unsigned short checksum = computeBeaconChecksum((unsigned short *) (unsigned int)(((unsigned int)&ds->data[0])-4), (ds->data_size+4)/2);
-
                                          if(checksum!=ds->checksum)
                                          {
 											if(*WMBDEBUG)
 											{
-											    printf("BEACON SEQ %d FAILED CRC16 CHECK %d!\n", (int)ds->advert_sequence_number, GetPacketNum());
-												//fprintfdebug(*WMBLog,"BEACON SEQ %d FAILED CRC16 CHECK %d!\n", (int)ds->advert_sequence_number, GetPacketNum());
-												//fflushdebug(*WMBLog);
+												fprintfdebug(*WMBLog,"BEACON SEQ %d FAILED CRC16 CHECK %d!\n", (int)ds->advert_sequence_number, GetPacketNum());
+												fflushdebug(*WMBLog);
                                             }
-                                         return 0;
+                                         //return 0;
                                          }
-                                        //printf("D\n");
+
                                          if(ds->data_size==0x01)return -1;//This beacon isn't part of the advert
                                          if(ds->advert_len==0xf3)return -1;//Fake WMB beacon, with screwed data through the beacon, sent by Nintendo Spot.
-
                                          wmb_nds_data->foundIDs[(int)ds->gameID]=1;
                                          if(!wmb_nds_data->gotID && ds->sequence_number!=8)
                                          {
@@ -922,12 +891,10 @@ int WMBProcessBeacons(unsigned char *data, int length)
 														fflushdebug(*WMBLog);
                                                     }
                                          }
-
                                          //printf("E\n");
 
                                          if(ds->sequence_number<8 && ds->sequence_number>0)wmb_nds_data->prev_nonadvert = ds->non_advert;
                                          if(ds->sequence_number==0 && wmb_nds_data->prev_nonadvert!=ds->non_advert)wmb_nds_data->multipleIDs=1;
-
                                          //printf("F\n");
 
                                          if(ds->sequence_number==8 && wmb_nds_data->multipleIDs && wmb_nds_data->FirstBeaconID==ds->gameID)
@@ -966,25 +933,20 @@ int WMBProcessBeacons(unsigned char *data, int length)
                                                 }
                                          }
 
-                                         //printf("G\n");
-
                                         memcpy(wmb_host_mac,Beacon->srcmac,6);
 
                                         wmb_nds_data->beacon_checksum[(int)ds->advert_sequence_number] = checksum;
 
-                                        //printf("H\n");
-
 											if(*WMBDEBUG)
 											{
+
 												fprintfdebug(*WMBLog,"FOUND BEACON DSSEQ %d AD %d BC %d CON %d LEN %d DS %d BC %d LEN %d ID %d NONAD %d PKTNUM %d\n",
 												(int)ds->sequence_number,(int)ds->advert_sequence_number,
 												ReadSeq(&Beacon->seq), (int)ds->connected_clients, (int)ds->advert_len,
 												(int)ds->data_size,(int)ds->advert_len,(int)ds->advert_len,(int)ds->gameID,(int)ds->non_advert, GetPacketNum());
 												fflushdebug(*WMBLog);
                                             }
-
                                         WMBBeaconGrab(data);
-
 
                                         return 1;
 
