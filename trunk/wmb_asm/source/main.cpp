@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
 		  #ifdef NDS//The DS can use argc/argv, however, there isn't any loaders/homebrew cards
 		  //available that use it. So fake values for this must be used, since this program
 		  //uses argc/argv.
-          char *fixed_argv[2];
+          char *fixed_argv[3];
 		  fixed_argv[0] = (char*)malloc(256);
 		  fixed_argv[1] = (char*)malloc(256);
 		  fixed_argv[2] = (char*)malloc(256);
@@ -137,9 +137,9 @@ int main(int argc, char *argv[])
                         }
                     }
 
-                    #ifndef NDS
+                    //#ifndef NDS
                         InitDLLFunctions(Config);
-                    #endif
+                    //#endif
 
                             if(!ReadDump(argc,argv))
                             {
@@ -497,14 +497,6 @@ int ReadCaptureLoop(char *cap, int argc, char *argv[], bool checkrsa, char *outd
             free(params);
             return 0;
         }
-
-        #ifdef NDS
-        scanKeys();
-        if(keysDown() & KEY_A)
-        {
-            printf("I'm still alive\n");//Wmb Asm DS crashes/freezes quickly, this is for checking if it doesn't freeze anymore.
-        }
-        #endif
     }
 
 	if (res == -1)
