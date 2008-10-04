@@ -1278,28 +1278,12 @@ DLLIMPORT bool HandlePacket(sAsmSDK_Params *params)
 
     SetPacketHasAVS(params->has_avs);
 
-    #ifdef NDS
-        if(*DEBUG)
-        {
-            fprintf(*Log, "PROCESSING PACKET\n");//Wmb Asm DS crashes quickly, this is for finding how many packets are processed before the crash.
-            fflush(*Log);
-        }
-    #endif
-
      //Is the AVS WLAN Capture header valid?
      data=IsValidAVS(params->pkt_data);
      if(data)
      {
             if(data==NULL)data = params->pkt_data;
             if(params->has_avs)params->length-=64;
-
-            #ifdef NDS
-                if(*DEBUG)
-                {
-                    fprintf(*Log, "HANDLING PACKET\n");
-                    fflush(*Log);
-                }
-            #endif
 
              Handle802_11(data,params->length);
 

@@ -448,7 +448,7 @@ int WMBProcessRSA(unsigned char *data, int length)
 					return -1;
                 }
 
-        dat=&data[(int)pos];
+        dat=&data[(int)pos+2];
         memcpy(&rsa,dat,(size_t)size);
 
                             if(wmb_nds_data->finished_first_assembly)
@@ -502,11 +502,9 @@ int WMBProcessHeader(unsigned char *data, int length)
 
      if(CheckFrame(data, wmb_host_mac, 0x04, &size, &pos))
      {
-
-
         if(size!=352 && size!=250)return 1;
 
-        dat=&data[(int)pos-2];
+        dat=&data[(int)pos];
 
         unsigned char ID = *dat;
         if(wmb_nds_data->multipleIDs)
@@ -641,6 +639,7 @@ int WMBProcessData(unsigned char *data, int length)
      unsigned short size = 0;
      unsigned char pos = 0;
      unsigned short *Seq, seq;
+     unsigned char temp, *seq_ptr = (unsigned char*)&seq;
      unsigned char *dat=NULL;
      //unsigned short ts=0;
      //int k=0;
@@ -655,9 +654,10 @@ int WMBProcessData(unsigned char *data, int length)
 	if(CheckFrame(data, wmb_host_mac, 0x04, &size, &pos))
 	{
 
-    dat=&data[(int)pos-2];
+    dat=&data[(int)pos];
     //unsigned char ID = GetGameID(data);
     unsigned char ID = *dat;
+
         if(ID!=wmb_nds_data->gameID && wmb_nds_data->multipleIDs)
         {
                 if(*WMBDEBUG)
@@ -674,8 +674,19 @@ int WMBProcessData(unsigned char *data, int length)
      dat++;
      Seq = (unsigned short*)dat;
      seq=*Seq;
-     //ConvertEndian(&seq,&seq,2);
+     #ifdef NDS
+     temp = seq_ptr[0];//Byte-swap/swap endians. Not sure why this is needed...
+     seq_ptr[0] = seq_ptr[1];
+     seq_ptr[1] = temp;
+     #endif
      if(seq==0)return -1;//Ignore the header, which is resent many times by official hosts.
+
+     /*if(*WMBDEBUG)
+     {
+        fprintfdebug(*WMBLog, "%x %x\n", *dat, *(dat+1));
+        fflushdebug(*WMBLog);
+     }*/
+
      dat+=2;
 
     int fh_seq=ReadSeq(&fh->sequence_control);
