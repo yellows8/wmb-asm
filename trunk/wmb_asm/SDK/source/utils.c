@@ -180,36 +180,36 @@ unsigned char host_client_mgc[4] = {0x06,0x01,0x02,0x00};
 bool CheckFrame(unsigned char *data, unsigned char *host_mac, unsigned char command, unsigned short *size, unsigned char *pos)
 {
      struct iee80211_framehead *fh = (struct iee80211_framehead*)data;
-     unsigned char *dat = &data[24];
      unsigned char rsize=0;
      unsigned short Size=0;
+     int data_pos = 24;
 
      if (((FH_FC_TYPE(fh->frame_control) == 2) && (FH_FC_SUBTYPE(fh->frame_control) == 2)) && CompareMAC(host_mac, fh->mac2))
      {
           if(CheckFlow(fh->mac1,0))
           {
 
-                                   if(memcmp(dat,host_client_mgc,4)==0)
+                                   if(memcmp(&data[data_pos],host_client_mgc,4)==0)
                                    {
-                                   dat+=4;
+                                   data_pos+=4;
 
-                                   rsize=*dat;
+                                   rsize=data[data_pos];
                                    Size = ((unsigned short)(rsize<<1));
 
-                                   dat++;
+                                   data_pos++;
 
-                                     if(*dat==0x11)//Command packet, ignore non-command packets
+                                     if(data[data_pos]==0x11)//Command packet, ignore non-command packets
                                      {
-                                     dat++;
-                                       if(*dat==command)
+                                     data_pos++;
+                                       if(data[data_pos]==command)
                                        {
                                        if(command==0x04 || command==0x00)
                                        Size-=6;
 
-                                       dat++;
+                                       data_pos++;
 
                                        if(pos)
-                                       *pos=(unsigned char)((int)dat - (int)data)+2;
+                                       *pos=(unsigned char)data_pos;
                                        if(size)*size=Size;
 
                                        return 1;
