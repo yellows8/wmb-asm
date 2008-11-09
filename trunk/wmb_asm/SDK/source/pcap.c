@@ -42,22 +42,22 @@ DLLIMPORT struct pcap_t *pcap_open_offline(const char *filename, char *errbuf)
     if(cap==NULL)return NULL;
     memset(&capheader,0,sizeof(struct pcap_file_header));
     PacketNumber=1;
-    
+
     cap->file = fopen(filename,"rb");
     if(cap->file==NULL)
     {
         free(cap);
         return NULL;
     }
-    
+
     if(fread(&capheader,1,sizeof(struct pcap_file_header),cap->file)!=sizeof(struct pcap_file_header))
     {
         return NULL;
     }
-    
+
     if(capheader.magic!=magic)cap->swap=1;//If the magic number is not the same as our magic number, endians in everything needed swapped.
     if(capheader.magic==magic)cap->swap=0;
-    
+
     if(cap->swap)
     {
         ConvertEndian(&capheader.majorVersion,&capheader.majorVersion,sizeof(unsigned short));
@@ -67,7 +67,7 @@ DLLIMPORT struct pcap_t *pcap_open_offline(const char *filename, char *errbuf)
         ConvertEndian(&capheader.snapshotLength,&capheader.snapshotLength,sizeof(unsigned int));
         ConvertEndian(&capheader.linkLayerType,&capheader.linkLayerType,sizeof(unsigned int));
     }
-    
+
     if(capheader.majorVersion!=PCAP_VERSION_MAJOR || capheader.minorVersion!=PCAP_VERSION_MINOR)
     {
         //Unsupported version
@@ -75,8 +75,8 @@ DLLIMPORT struct pcap_t *pcap_open_offline(const char *filename, char *errbuf)
         free(cap);
         return NULL;
     }
-    
-    if(capheader.linkLayerType!=163 && capheader.linkLayerType!=1)
+
+    if(capheader.linkLayerType!=163 && capheader.linkLayerType!=105 && capheader.linkLayerType!=1)
     {
         //Unsupported link type; This implemention only supports 802.11, with AVS, or
         //Ethernet/Wireless, IP, TCP.
@@ -84,17 +84,17 @@ DLLIMPORT struct pcap_t *pcap_open_offline(const char *filename, char *errbuf)
         free(cap);
         return NULL;
     }
-    
+
     if(capheader.linkLayerType==163)PCAP_CheckAVS = 1;
-    if(capheader.linkLayerType==1)PCAP_CheckAVS = 0;
-    
+    if(capheader.linkLayerType==1 || capheader.linkLayerType==105)PCAP_CheckAVS = 0;
+
     memset(&cap->header,0,sizeof(struct pcap_file_header));
     cap->pktdata = (unsigned char*)malloc(capheader.snapshotLength);
     if(cap->pktdata==NULL)return NULL;
     memset(cap->pktdata,0,capheader.snapshotLength);
-    
+
     cap->error_buffer = errbuf;
-    
+
     return cap;
 }
 
@@ -102,14 +102,14 @@ DLLIMPORT int pcap_next_ex(struct pcap_t *fcap, struct spcap_pkthdr **hdr, const
 {
     if(fcap==NULL){strcpy(PCAP_ERROR_BUFFER,"FILE POINTER NULL");return -1;}
     if(fcap->file==NULL){strcpy(PCAP_ERROR_BUFFER,"CAPTURE FILE NOT OPENED");return -1;}
-    
+
     trunc:
-    
+
     if(feof(fcap->file)!=0)return -2;//Reached end of capture
-    
+
     if(fread(&pktheader,1,sizeof(struct spcap_pkthdr),fcap->file)!=sizeof(struct spcap_pkthdr))
     return -2;
-    
+
     if(fcap->swap)
     {
         ConvertEndian(&pktheader.tv_sec,&pktheader.tv_sec,sizeof(long));
@@ -117,22 +117,22 @@ DLLIMPORT int pcap_next_ex(struct pcap_t *fcap, struct spcap_pkthdr **hdr, const
         ConvertEndian(&pktheader.caplen,&pktheader.caplen,sizeof(long));
         ConvertEndian(&pktheader.len,&pktheader.len,sizeof(long));
     }
-    
+
     PacketNumber++;
-    
+
     if(pktheader.caplen!=pktheader.len)
     {
         //Truncated packet. Skip it.
         fseek(fcap->file,(long)pktheader.caplen,SEEK_CUR);
         goto trunc;
     }
-    
+
     if(fread(fcap->pktdata,1,pktheader.caplen,fcap->file)!=(size_t)pktheader.caplen)
     return -2;
-    
+
     *hdr = &pktheader;
     *pktdata = fcap->pktdata;
-    
+
     return 0;
 }
 
@@ -140,7 +140,7 @@ DLLIMPORT void pcap_close(struct pcap_t *fcap)
 {
     if(fcap==NULL)return;
     if(fcap->file==NULL)return;
-    
+
     fclose(fcap->file);
     free(fcap->pktdata);
     //free(cap);//<-------- Hangs when debugging with gdb and wxDev-Cpp, no clue why

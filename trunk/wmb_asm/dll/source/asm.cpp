@@ -814,6 +814,7 @@ DLLIMPORT bool InitAsm(SuccessCallback callback, bool debug, sAsmSDK_Config *con
     module_nds_data = *config->nds_data;
 
     *DEBUG = debug;
+    *Log = NULL;
 
     CONFIG = config;
 
@@ -835,6 +836,7 @@ DLLIMPORT bool InitAsm(SuccessCallback callback, bool debug, sAsmSDK_Config *con
 
 DLLIMPORT void ResetAsm(volatile Nds_data *dat)
 {
+
                         if(dat!=NULL)module_nds_data = dat;
                         if(dat==NULL)
                         {
@@ -903,6 +905,7 @@ DLLIMPORT void ResetAsm(volatile Nds_data *dat)
 
                                currentPacketModule = -1;
                                packetModules[module_nds_data->PacketModIndex].reset();
+
 }
 
 DLLIMPORT void ExitAsm()
@@ -927,6 +930,7 @@ DLLIMPORT void ExitAsm()
                 if(*DEBUG)
 			    {
 					fclosedebug(*Log);
+					free(Log);
                 }
 
             free(DEBUG);
@@ -1516,6 +1520,8 @@ int TheTime1=0;
 bool FoundIT=0;
 bool AssembleNds(char *output)
 {
+
+
      int temp=0;
      ds_advert *ad = (ds_advert*)&module_nds_data->advert;
      //unsigned char *Ad = (unsigned char*)ad;
@@ -1540,9 +1546,9 @@ bool AssembleNds(char *output)
      memset(&banner,0,sizeof(TNDSBanner));
      memcpy((void*)&ndshdr,(void*)&module_nds_data->header,sizeof(TNDSHeader));
 
-     FILE *fdump = fopen("advertM.bin","wb");
+     /*FILE *fdump = fopen("advertM.bin","wb");
      fwrite((void*)&module_nds_data->advert, 1, sizeof(ds_advert), fdump);
-     fclose(fdump);
+     fclose(fdump);*/
 
      if(module_nds_data->banner==NULL)
      {
@@ -1801,6 +1807,8 @@ bool AssembleNds(char *output)
 			fprintfdebug(*Log,"ASSEMBLY SUCCESSFUL\n");
 			fflushdebug(*Log);
 		}
+
+
 
      return 1;
 }

@@ -109,7 +109,9 @@ export LIBPATHS	:=	$(foreach dir,$(LIBDIRS),-L$(dir)/lib)
 $(BUILD):
 	@[ -d $@ ] || mkdir -p $@
 	@make BUILDDIR=`cd $(BUILD) && pwd` --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
+	@cp $(TARGET).nds $(HBDRIVE):/apps/$(TARGET).nds 
 
+# The above line will attempt to automatically copy wmb_asm.nds to your flash card. You will need to create an HBDRIVE envirment or makefile variable, for your flash card's drive letter, or change the variable name used here to something else. Also, you'll need to change apps/ to the directory where you want wmb_asm.nds to be copied. If you want to disable this automatic copying, add a # before the @ on the above line.
 #---------------------------------------------------------------------------------
 clean:
 	@echo clean ...
