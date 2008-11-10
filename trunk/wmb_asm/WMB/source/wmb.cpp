@@ -872,7 +872,10 @@ int WMBProcessBeacons(unsigned char *data, int length)
 												fprintfdebug(*WMBLog,"BEACON SEQ %d FAILED CRC16 CHECK %d!\n", (int)ds->advert_sequence_number, GetPacketNum());
 												fflushdebug(*WMBLog);
                                             }
-                                         return 0;
+
+                                         #ifndef NDS
+                                         return 0;//The checksum verification always fails on NDS...
+                                         #endif
                                          }
 
                                          if(ds->data_size==0x01)return -1;//This beacon isn't part of the advert
