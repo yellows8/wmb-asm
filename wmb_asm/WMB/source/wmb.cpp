@@ -207,7 +207,7 @@ DLLIMPORT bool AsmPlug_Init(sAsmSDK_Config *config)
     #endif
     WMBDEBUG = config->DEBUG;
     WMBLog = &wlog;
-    wlog = fopen("wmb_log.txt","w");
+    wlog = fopen("wmb_log.txt", "w");
     WMBCONFIG = config;
 
     return 1;
@@ -312,7 +312,7 @@ void WMBBeaconGrab(unsigned char *data)
                         if(i!=8)dsize=98;
                         if(i==8)dsize=72;
 
-                        memcpy((void*)&((unsigned char*)&wmb_nds_data->advert)[pos],(void*)&wmb_nds_data->beacon_data[(980*(int)wmb_nds_data->FirstBeaconID)+pos],dsize);
+                        memcpy((void*)&((unsigned char*)&wmb_nds_data->advert)[pos], (void*)&wmb_nds_data->beacon_data[(980*(int)wmb_nds_data->FirstBeaconID)+pos], dsize);
                     }
 
                     //printf("%d %d\n", wmb_nds_data->gameID, (int)wmb_nds_data->FirstBeaconID);
@@ -624,11 +624,7 @@ int WMBProcessData(unsigned char *data, int length)
      unsigned short size = 0;
      unsigned char pos = 0;
      unsigned short *Seq, seq;
-     #ifdef NDS
-     unsigned char bstemp, *seq_ptr = (unsigned char*)&seq;
-     #endif
      unsigned char *dat=NULL;
-     Seq=NULL;
      seq=0;
 
 	bool prev_init=wmb_nds_data->data_init;
@@ -638,6 +634,9 @@ int WMBProcessData(unsigned char *data, int length)
 
 	if(CheckFrame(data, wmb_host_mac, 0x04, &size, &pos))
 	{
+
+    Seq=(unsigned short*)malloc(sizeof(unsigned short));
+    *Seq = 0;
 
     dat=&data[(int)pos];
     unsigned char ID = *dat;
@@ -656,14 +655,19 @@ int WMBProcessData(unsigned char *data, int length)
      if(*dat!=0)return -1;
 
      dat++;
-     Seq = (unsigned short*)dat;
+     memcpy(Seq, dat, sizeof(unsigned short));
      seq=*Seq;
-     #ifdef NDS
+     free(Seq);
+     /*#ifdef NDS
      bstemp = seq_ptr[0];//Byte-swap/swap endians. Not sure why this is needed...
      seq_ptr[0] = seq_ptr[1];
      seq_ptr[1] = bstemp;
-     #endif
-     if(seq==0)return -1;//Ignore the header, which is resent many times by official hosts.
+     #endif*/
+     if(seq==0)
+     {
+         free(Seq);
+         return -1;//Ignore the header, which is resent many times by official hosts.
+     }
 
 
 
@@ -683,15 +687,24 @@ int WMBProcessData(unsigned char *data, int length)
                                     fprintfdebug(*WMBLog, "DROPPED DATA PKT SEQ %d PREV SEQ %d\n", fh_seq, last_seq);
                                     fflushdebug(*WMBLog);
                                 }
+                              free(Seq);
                               return 0;
         }
         last_seq=fh_seq;
     }
 
-     if(seq-1>7980)return -1;//Rare, but it happened with one multi-game capture.
+     if(seq-1>7980)
+     {
+         free(Seq);
+         return -1;//Rare, but it happened with one multi-game capture.
+     }
      if(size==102)wmb_nds_data->pkt_size=250;
      if(wmb_nds_data->pkt_size==250)seq--;
-     if(size==102 && seq==0)return -1;
+     if(size==102 && seq==0)
+     {
+         free(Seq);
+         return -1;
+     }
 
      if(seq==1)wmb_nds_data->pkt_size = size;
 
@@ -711,7 +724,11 @@ int WMBProcessData(unsigned char *data, int length)
 
 
 
-            if(wmb_nds_data->arm7e==0)return -1;
+                if(wmb_nds_data->arm7e==0)
+                {
+                    free(Seq);
+                    return -1;
+                }
             }
 
      int temp=0;
@@ -754,7 +771,6 @@ int WMBProcessData(unsigned char *data, int length)
                  if(*WMBDEBUG)
                  {
                     fprintfdebug(*WMBLog,"ARM7S SET TO %d SEQ %d\n",wmb_nds_data->arm7s,wmb_nds_data->arm7s_seq);
-                    //printf("ARM7S SET TO %d SEQ %d PKTNUM %d\n",wmb_nds_data.arm7s,wmb_nds_data.arm7s_seq,GetPacketNumber());
 			        fflushdebug(*WMBLog);
                  }
      }
@@ -767,14 +783,12 @@ int WMBProcessData(unsigned char *data, int length)
             if(wmb_nds_data->cur_pos!=wmb_nds_data->total_binaries_size)
             wmb_nds_data->cur_pos=wmb_nds_data->total_binaries_size;
 
-            //wmb_nds_data->cur_pos-= (wmb_nds_data->pkt_size*3);
             wmb_nds_data->arm7e = wmb_nds_data->cur_pos;
             wmb_nds_data->arm7e_seq = (int)seq-1;
 
             if(*WMBDEBUG)
             {
                 fprintfdebug(*WMBLog,"ARM7E SET TO %d SEQ %d\n",wmb_nds_data->arm7e,wmb_nds_data->arm7e_seq);
-                //printf("ARM7E SET TO %d SEQ %d PKTNUM %d\n",wmb_nds_data.arm7e,wmb_nds_data.arm7e_seq,GetPacketNumber());
 			    fflushdebug(*WMBLog);
             }
      }
@@ -790,6 +804,7 @@ int WMBProcessData(unsigned char *data, int length)
      {
             if(wmb_nds_data->data_sizes[i]==0)
             {
+                free(Seq);
                 return 0;//If we missed any packets, don't begin assembly
             }
      }
@@ -809,6 +824,8 @@ int WMBProcessData(unsigned char *data, int length)
      wmb_nds_data->trigger_assembly = 1;
 
      }
+
+    free(Seq);
 
      return 1;
 
@@ -837,6 +854,7 @@ int WMBProcessBeacons(unsigned char *data, int length)
      tagparms3[2]=0x82;tagparms3[3]=0x84;
      //BEACON_TAGPARM3
      unsigned char *nin_ie=NULL;
+     unsigned short *checksum_data = NULL;//Temporary buffer where banner data is copied to, to ensure that the data is aligned correctly.(On NDS, checking the checksum directly produces invalid checksums every time.)
 
      if(CheckFrameControl(framehead,0,8))//frame control type/subtype for beacons
      {
@@ -857,19 +875,21 @@ int WMBProcessBeacons(unsigned char *data, int length)
                                     memcmp(Beacon->tagparms,&tagparms2,4)==0 ||
                                     memcmp(Beacon->tagparms,&tagparms3,4)==0)
                                     {
-                                        //printf("B\n");
                                          nin_ie = nintendoWMBBeacon(data,length);
                                          if(nin_ie==NULL)return 0;
-                                         //printf("C\n");
                                          ds = (ds_element*)nin_ie;
                                          Nin_ie=nin_ie;
 
-                                         unsigned short checksum = computeBeaconChecksum((unsigned short *) (unsigned int)(((unsigned int)&ds->data[0])-4), (ds->data_size+4)/2);
+                                         checksum_data = (unsigned short*)malloc((ds->data_size+4)/2);
+                                         memcpy(checksum_data, &ds->advert_sequence_number, (ds->data_size+4)/2);
+
+                                         unsigned short checksum = computeBeaconChecksum(checksum_data, (ds->data_size+4)/2);//(unsigned short *) (unsigned int)(((unsigned int)&ds->data[0])-4)
+                                         free(checksum_data);
                                          if(checksum!=ds->checksum)
                                          {
 											if(*WMBDEBUG)
 											{
-												fprintfdebug(*WMBLog,"BEACON SEQ %d FAILED CRC16 CHECK %d!\n", (int)ds->advert_sequence_number, GetPacketNum());
+												fprintfdebug(*WMBLog,"BEACON SEQ %d FAILED CRC16 %x/%x CHECK PKTNUM %d!\n", (int)ds->advert_sequence_number, checksum, ds->checksum, GetPacketNum());
 												fflushdebug(*WMBLog);
                                             }
 

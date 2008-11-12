@@ -93,6 +93,9 @@ DEALINGS IN THE SOFTWARE.
 
     #ifdef ARM9//We are compiling for Nintendo DS
 		#include <nds.h>
+		#ifndef NDS
+		#define NDS
+		#endif
     #endif
 
         #ifdef NDS
