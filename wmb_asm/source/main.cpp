@@ -513,7 +513,7 @@ int ReadCaptureLoop(char *cap, int argc, char *argv[], bool checkrsa, char *outd
 	}
 
 	pcap_close(fp);
-	//free(fp);//Gdb debugger included with wxDev-Cpp hangs on this call...(And on the free call in pcap_close in my capture reading code)
+	//free(fp);//Gdb hangs on this call...(And on the free call in pcap_close in my capture reading code)
 
 	free(params);
 	free(errbuf);
