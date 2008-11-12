@@ -228,7 +228,8 @@ bool CheckFrame(unsigned char *data, unsigned char *host_mac, unsigned char comm
  * Determine if the frame is a nintendo WMB beacon and returns
  * a pointer to the Nintendo IE if it is.
  */
-unsigned char *nintendoWMBBeacon( unsigned char *frame, int frame_size) {
+unsigned char *nintendoWMBBeacon( unsigned char *frame, int frame_size)
+{
   unsigned char *nin_ie = NULL;
   int i=0x24;
   bool not_found=1;
@@ -255,8 +256,6 @@ unsigned char *nintendoWMBBeacon( unsigned char *frame, int frame_size) {
 
                          if(!not_found)break;
           }
-
-      //}
     }
 
   return nin_ie;
@@ -539,8 +538,6 @@ unsigned short computeBeaconChecksum(unsigned short *data, int length) {
   return sum;
 }
 
-//int did_dump=0;
-
 struct EthernetHeader *CheckGetEthernet(unsigned char *data, int length, unsigned short type)
 {
     if(length < (int)sizeof(struct EthernetHeader))return NULL;
@@ -569,8 +566,6 @@ Function: ip_sum_calc
 Description: Calculate the 16 bit IP sum.
 ***************************************************************************
 */
-//typedef unsigned short u16;
-//typedef unsigned long u32;
 
 u16 ip_sum_calc(u16 len_ip_header, u16 *buff)
 {

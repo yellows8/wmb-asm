@@ -1587,12 +1587,12 @@ bool AssembleNds(char *output)
         if(tempi>0 && tempi<256)
         memset(&gdtemp[tempi],0,256-tempi);//One capture had a discription from another demo, after it's own discription. This gets rid of the extra one.
 
-        memcpy(&banner.titles[0][0],gdtemp,192*2);
-        memcpy(&banner.titles[1][0],gdtemp,192*2);
-        memcpy(&banner.titles[2][0],gdtemp,192*2);
-        memcpy(&banner.titles[3][0],gdtemp,192*2);
-        memcpy(&banner.titles[4][0],gdtemp,192*2);
-        memcpy(&banner.titles[5][0],gdtemp,192*2);
+        memcpy(&banner.titles[0][0], gdtemp, 192*2);
+        memcpy(&banner.titles[1][0], gdtemp, 192*2);
+        memcpy(&banner.titles[2][0], gdtemp, 192*2);
+        memcpy(&banner.titles[3][0], gdtemp, 192*2);
+        memcpy(&banner.titles[4][0], gdtemp, 192*2);
+        memcpy(&banner.titles[5][0], gdtemp, 192*2);
 
         banner.version = 1;
         banner.crc = CalcCRC16(banner.icon, 2080);
@@ -1638,7 +1638,7 @@ bool AssembleNds(char *output)
                 module_nds_data->header.romSize=(unsigned int)((int)module_nds_data->header.bannerOffset+2112);
             }
 
-            memcpy((void*)&ndshdr, (void*)&module_nds_data->header,sizeof(TNDSHeader));
+            memcpy((void*)&ndshdr, (void*)&module_nds_data->header, sizeof(TNDSHeader));
 
      int rpos = 0;
      memset(reserved,0,160);
@@ -1646,7 +1646,7 @@ bool AssembleNds(char *output)
      reserved[i] = 0x2D;
      rpos+=16;
 
-     memcpy((void*)&reserved[rpos], (void*)module_nds_data->advert.hostname,(size_t)(module_nds_data->advert.hostname_len*2));
+     memcpy((void*)&reserved[rpos], (void*)module_nds_data->advert.hostname, (size_t)(module_nds_data->advert.hostname_len*2));
      rpos+=((int)module_nds_data->advert.hostname_len*2);
      for(int i=0; i<32-(rpos-16); i++)
      reserved[rpos + i] = 0x00;
@@ -1657,9 +1657,16 @@ bool AssembleNds(char *output)
 
      ndshdr.logoCRC16 = CalcCRC16(ndshdr.gbaLogo,156);
      ndshdr.headerCRC16 = CalcCRC16((unsigned char*)&ndshdr,0x15E);
-     fwrite(&ndshdr,1,sizeof(TNDSHeader),nds);
-     fwrite(download_play,1,32,nds);
-     //memcpy(&ndshdr,&nds_data.header,sizeof(TNDSHeader));
+
+     FILE *fdump = fopen("/header.bin", "wb");
+    fwrite((void*)&module_nds_data->header, 1, sizeof(TNDSHeader), fdump);
+    fclose(fdump);
+    fopen("/sheader.bin", "wb");
+    fwrite((void*)&ndshdr, 1, sizeof(TNDSHeader), fdump);
+    fclose(fdump);
+
+     fwrite(&ndshdr, 1, sizeof(TNDSHeader), nds);
+     fwrite(download_play, 1, 32, nds);
      ndshdr.bannerOffset = temp1;
      ndshdr.romSize = temp2;
      ndshdr.logoCRC16 = CalcCRC16(ndshdr.gbaLogo,156);
