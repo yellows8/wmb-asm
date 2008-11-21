@@ -657,7 +657,6 @@ int WMBProcessData(unsigned char *data, int length)
      dat++;
      memcpy(Seq, dat, sizeof(unsigned short));
      seq=*Seq;
-     free(Seq);
      /*#ifdef NDS
      bstemp = seq_ptr[0];//Byte-swap/swap endians. Not sure why this is needed...
      seq_ptr[0] = seq_ptr[1];
@@ -819,7 +818,9 @@ int WMBProcessData(unsigned char *data, int length)
         }
 
 	 if(wmb_nds_data->multipleIDs)
-        UpdateAvert(wmb_nds_data);
+	 {
+        memcpy((void*)&wmb_nds_data->advert, (void*)&wmb_nds_data->beacon_data[ (980 * (int)wmb_nds_data->gameID) ], sizeof(struct ds_advert));
+	 }
 
      wmb_nds_data->trigger_assembly = 1;
 
@@ -880,16 +881,15 @@ int WMBProcessBeacons(unsigned char *data, int length)
                                          ds = (ds_element*)nin_ie;
                                          Nin_ie=nin_ie;
 
-                                         checksum_data = (unsigned short*)malloc((ds->data_size+4)/2);
-                                         memcpy(checksum_data, &ds->advert_sequence_number, (ds->data_size+4)/2);
-
+                                         checksum_data = (unsigned short*)malloc((ds->data_size+4));
+                                         memcpy(checksum_data, &ds->advert_sequence_number, ds->data_size+4);
                                          unsigned short checksum = computeBeaconChecksum(checksum_data, (ds->data_size+4)/2);//(unsigned short *) (unsigned int)(((unsigned int)&ds->data[0])-4)
                                          free(checksum_data);
                                          if(checksum!=ds->checksum)
                                          {
 											if(*WMBDEBUG)
 											{
-												fprintfdebug(*WMBLog,"BEACON SEQ %d FAILED CRC16 %x/%x CHECK PKTNUM %d!\n", (int)ds->advert_sequence_number, checksum, ds->checksum, GetPacketNum());
+												fprintfdebug(*WMBLog,"BEACON SEQ %d FAILED CRC16 %x/%x %x/%x CHECK PKTNUM %d!\n", (int)ds->advert_sequence_number, checksum, ds->checksum, ((int)&ds->advert_sequence_number), (unsigned int)(((unsigned int)&ds->data[0])-4), GetPacketNum());
 												fflushdebug(*WMBLog);
                                             }
 

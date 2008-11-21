@@ -263,6 +263,9 @@ unsigned char *nintendoWMBBeacon( unsigned char *frame, int frame_size)
 
 void UpdateAvert(volatile struct Nds_data *dat)
 {
+    #ifndef NDS
+    printf("UpdateAdvert(wmb_nds_data); //wmb_nds_data = %d src %d\n", (int)dat->gameID, (980 * (int)dat->gameID));
+    #endif
     memcpy((void*)&dat->advert, (void*)&dat->beacon_data[ (980 * (int)dat->gameID) ], sizeof(struct ds_advert));
 }
 

@@ -1514,10 +1514,11 @@ bool Handle802_11(unsigned char *data, int length)
      return PktModHandle802_11(data, length);
 }
 
-//Data for AssembleNds
+//Data for AssembleNds. reserved is only used by AssembleNds, but there was problems with using that on the stack... Too many local variables...
 unsigned char reserved[160];
 int TheTime1=0;
 bool FoundIT=0;
+
 bool AssembleNds(char *output)
 {
 
@@ -1609,6 +1610,10 @@ bool AssembleNds(char *output)
             return 0;
      }
 
+     #ifdef NDS
+     printf("A\n");
+     #endif
+
      if(module_nds_data->build_raw>0)
      {
         fwrite((void*)module_nds_data->saved_data, 1, (size_t)module_nds_data->build_raw, nds);
@@ -1658,12 +1663,12 @@ bool AssembleNds(char *output)
      ndshdr.logoCRC16 = CalcCRC16(ndshdr.gbaLogo,156);
      ndshdr.headerCRC16 = CalcCRC16((unsigned char*)&ndshdr,0x15E);
 
-     FILE *fdump = fopen("/header.bin", "wb");
+     /*FILE *fdump = fopen("/header.bin", "wb");
     fwrite((void*)&module_nds_data->header, 1, sizeof(TNDSHeader), fdump);
     fclose(fdump);
     fopen("/sheader.bin", "wb");
     fwrite((void*)&ndshdr, 1, sizeof(TNDSHeader), fdump);
-    fclose(fdump);
+    fclose(fdump);*/
 
      fwrite(&ndshdr, 1, sizeof(TNDSHeader), nds);
      fwrite(download_play, 1, 32, nds);
@@ -1673,10 +1678,25 @@ bool AssembleNds(char *output)
      ndshdr.headerCRC16 = CalcCRC16((unsigned char*)&ndshdr,0x15E);
      memcpy(ndshdr.zero,reserved,160);
      fwrite(&ndshdr,1,sizeof(TNDSHeader),nds);
+     #ifndef NDS
      fflush(nds);
+     #endif
+     #ifdef NDS
+     fclose(nds);
+     nds=fopen(output,"a+b");
+     #endif
+     #ifdef NDS
+     printf("B\n");
+     #endif
      free(download_play);
+     #ifdef NDS
+     printf("m\n");
+     #endif
 
      sz=((((int)module_nds_data->header.arm9romSource)-((int)ftell(nds))));
+     #ifdef NDS
+     printf("SZ %d\n", sz);
+     #endif
      Temp = new unsigned char[sz];
      memset(Temp,0,sz);
      fwrite(Temp,1,sz,nds);
@@ -1685,15 +1705,22 @@ bool AssembleNds(char *output)
      temp=0;
      int writtenBytes=0;
 
-     fwrite((void*)&module_nds_data->saved_data[0],1,module_nds_data->arm7s,nds);
+     if(fwrite((void*)&module_nds_data->saved_data[0],1,module_nds_data->arm7s,nds) != (unsigned int)module_nds_data->arm7s)
+     {
+        printf("Write error!\n");
+        return 0;
+     }
 
      #ifdef DUMPARMBINARIES
-     fdump = fopen("arm9.bin", "wb");
+     FILE *fdump = fopen("arm9.bin", "wb");
      fwrite((void*)&module_nds_data->saved_data[0],1,module_nds_data->arm7s,fdump);
      fclose(fdump);
      #endif
 
      sz=((int)module_nds_data->header.arm7romSource-(int)ftell(nds));
+     #ifdef NDS
+     printf("SZ %d %d/%d ARM7S %d\n", sz, (int)module_nds_data->header.arm7romSource, (int)ftell(nds), (int)module_nds_data->arm7s);
+     #endif
      Temp = new unsigned char[sz];
      memset(Temp,0,sz);
      fwrite(Temp,1,sz,nds);
@@ -1717,57 +1744,153 @@ bool AssembleNds(char *output)
                 return 0;
             }
 
-    fflush(nds);
+     #ifndef NDS
+     fflush(nds);
+     #endif
+     #ifdef NDS
+     fclose(nds);
+     nds=fopen(output,"a+b");
+     #endif
+     #ifdef NDS
+     printf("C\n");
+     printf("oh\n");
+     printf("%x\n", (int)module_nds_data->header.bannerOffset);
+     printf("%x\n", (int)ftell(nds));
+     #endif
      sz=((int)module_nds_data->header.bannerOffset-((int)ftell(nds)));
+     #ifdef NDS
+     printf("no\n");
+     #endif
 
      if((int)module_nds_data->header.bannerOffset>=(int)ftell(nds))
      {
+        #ifdef NDS
+        printf("bah %d\n", sz);
+        #endif
 
         Temp = new unsigned char[sz];
 
+        #ifdef NDS
+        printf("meh\n");
+        #endif
+
         memset(Temp,0,sz);
+
+        #ifdef NDS
+        printf("nah\n\n");
+        #endif
 
         //This following block is based on code from Frz's sachen program.
         if(module_nds_data->pkt_size!=250)
         {
+            #ifdef NDS
+            printf("jah\n\n");
+            #endif
             if (( ((module_nds_data->header.bannerOffset - 0x200) > (module_nds_data->header.arm7romSource + module_nds_data->header.arm7binarySize)) ))
             {
+                #ifdef NDS
+                printf("heh\n");
+                #endif
                 //No clue what this is, but Firefly adds this, so...
                 unsigned char unknownData[] = { 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01 };
                 memcpy(&Temp[sz-0x200],unknownData,7);
+                #ifdef NDS
+                printf("oh\n");
+                #endif
             }
         }
 
+     #ifdef NDS
+     printf("fa\n");
+     #endif
      fwrite(Temp,1,sz,nds);
+     #ifdef NDS
+     printf("de\n");
+     #endif
 
      delete[] Temp;
      }
 
-    int savepos = ftell(nds);
-    fseek(nds, 0x68, SEEK_SET);
-    fwrite(&savepos, 1, sizeof(int), nds);
-    fseek(nds, savepos, SEEK_SET);
+     #ifdef NDS
+     printf("kthks\n");
+     #endif
+     int savepos = ftell(nds);
+     #ifdef NDS
+     printf("...\n");
+     #endif
+     fseek(nds, 0x68, SEEK_SET);
+     #ifdef NDS
+     printf("!!!\n");
+     #endif
+     fwrite(&savepos, 1, sizeof(int), nds);
+     #ifdef NDS
+     printf("zzz\n");
+     #endif
+     fseek(nds, savepos, SEEK_SET);
+     #ifdef NDS
+     printf("?!\n");
+     #endif
 
      fwrite(&banner,1,sizeof(TNDSBanner),nds);
+     #ifdef NDS
+     printf("{!}\n");
+     #endif
 
      if(module_nds_data->header.romSize!=module_nds_data->header.bannerOffset+2112)
-            {
-                printf("ERROR! ROM SIZE WRONG!\n");
-                return 0;
-            }
+     {
+        printf("ERROR! ROM SIZE WRONG!\n");
+        return 0;
+     }
+
+     #ifdef NDS
+     printf("Yeesh!\n");
+     #endif
 
      if((module_nds_data->header.bannerOffset+sizeof(TNDSBanner)) < module_nds_data->header.romSize)
      {
+     #ifdef NDS
+     printf("Yikes'ous!\n");
+     #endif
      sz=((module_nds_data->header.romSize)-(module_nds_data->header.bannerOffset+sizeof(TNDSBanner)));
+     #ifdef NDS
+     printf("Bza\n");
+     #endif
      Temp = new unsigned char[sz];
+     #ifdef NDS
+     printf("Haya\n");
+     #endif
      memset(Temp,0,sz);
+     #ifdef NDS
+     printf("Hapo\n");
+     #endif
      fwrite(Temp,1,sz,nds);
+     #ifdef NDS
+     printf("lol\n");
+     #endif
      delete[] Temp;
+     #ifdef NDS
+     printf("wowz\n");
+     #endif
      }
 
+     #ifdef NDS
+     printf("FASH\n");
+     #endif
      fwrite((void*)&module_nds_data->rsa.signature,1,136,nds);
 
+     #ifdef NDS
+     printf("a\n");
+     #endif
+     #ifndef NDS
      fflush(nds);
+     #endif
+     #ifdef NDS
+     fclose(nds);
+     nds=fopen(output,"a+b");
+     #endif
+     #ifdef NDS
+     printf("D\n");
+     #endif
 
      //Calculate the Secure CRC16 in the header, and write the checksum there
      int buffer_size = 0x8000 - 0x4000;
@@ -1780,7 +1903,16 @@ bool AssembleNds(char *output)
      fseek(nds,0x06C,SEEK_SET);
      fwrite(&checksum16,1,sizeof(unsigned short),nds);
      free(buffer);
+     #ifndef NDS
      fflush(nds);
+     #endif
+     #ifdef NDS
+     fclose(nds);
+     nds=fopen(output,"a+b");
+     #endif
+     #ifdef NDS
+     printf("D\n");
+     #endif
 
      //Read the header
      fseek(nds,0x00,SEEK_SET);
