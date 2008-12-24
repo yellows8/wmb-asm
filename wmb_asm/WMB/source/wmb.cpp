@@ -657,18 +657,11 @@ int WMBProcessData(unsigned char *data, int length)
      dat++;
      memcpy(Seq, dat, sizeof(unsigned short));
      seq=*Seq;
-     /*#ifdef NDS
-     bstemp = seq_ptr[0];//Byte-swap/swap endians. Not sure why this is needed...
-     seq_ptr[0] = seq_ptr[1];
-     seq_ptr[1] = bstemp;
-     #endif*/
      if(seq==0)
      {
          free(Seq);
          return -1;//Ignore the header, which is resent many times by official hosts.
      }
-
-
 
      dat+=2;
 
