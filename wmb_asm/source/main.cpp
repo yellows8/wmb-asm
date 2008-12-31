@@ -312,19 +312,12 @@ int ReadDump(int argc, char *argv[])
         }
         else
         {
-            if(strstr(argv[i],".bin"))
+            if(ScanDirectory(files_list,argv[i],(char*)".cap")==NULL)
             {
-                ConvertBin(argv[i]);
-            }
-            else
-            {
-                if(ScanDirectory(files_list,argv[i],(char*)".cap")==NULL)
-                {
-                    //ScanDirectory will put the filename contained in argv[i], in files_list, if it's a file.
-                    //But if it's a directory, it will scan the whole directory for captures. Then if it finds a directory
-                    //during this scanning, it will repeat, and scan that directory for captures. And so on if it finds more directories in that directory.
-                    printf("Failed to open file or directory %s\n",argv[i]);
-                }
+                //ScanDirectory will put the filename contained in argv[i], in files_list, if it's a file.
+                //But if it's a directory, it will scan the whole directory for captures. Then if it finds a directory
+                //during this scanning, it will repeat, and scan that directory for captures. And so on if it finds more directories in that directory.
+                printf("Failed to open file or directory %s\n",argv[i]);
             }
         }
     }
@@ -335,63 +328,9 @@ int ReadDump(int argc, char *argv[])
         return 0;
     }
 
-    if(cmd_mode == 1)
-    {
-        int cur_selection = 0;
-        char keycode = 0;
-        printf("Select an Wmb Asm Mode:\n\n");
-
-        printf("     Assemble\n");
-        printf("     Host\n");
-        printf("     Client\n");
-
-        printf("             \n");
-
-        while(1)
-        {
-            //printf("\x1b[%dALine->", cur_selection);
-            //printf("\x1b[%dBLine_", cur_selection);
-
-            if(cur_selection==0)printf("->   Assemble\n");
-            if(cur_selection==1)printf("->   Host\n");
-            if(cur_selection==2)printf("->   Client\n");
-
-            #ifndef NDS
-                scanf("%c", &keycode);
-            #endif
-
-            #ifdef NDS
-                scanKeys();
-                if(keysDown() & KEY_DOWN)keycode = 's';
-                if(keysDown() & KEY_UP)keycode = 'w';
-                if(keysDown() & KEY_A)keycode = 'c';
-                swiWaitForVBlank();
-            #endif
-
-            if(keycode == 's')cur_selection++;
-            if(keycode == 'w')cur_selection--;
-            if(keycode == 'c')break;
-
-            if(cur_selection>2)cur_selection = 0;
-            if(cur_selection<0)cur_selection = 2;
-        }
-
-        FreeDirectory(files_list);
-        ExitAsm();
-
-        return 1;
-    }
-
 	   while(cur_file!=NULL)//Go through all the files ScanDirectory found.
 	   {
 	       if(cur_file->filename==NULL)break;//The last item in the list is empty, meaning filename is NULL too.(The last file is in the item before this)
-
-	       /*if(strstr(cur_file->filename,".bin"))//Erm, Nintendo Channel .bin converting with directories is broken, as the directory scanning code can only find one type of file currently.
-           {
-               ConvertBin(cur_file->filename);
-           }
-           else
-           {*/
 
 	           if(use_capdir)//If we're using the captures directory for the outputs' directories, process the output directory name for each capture.
 	           {
