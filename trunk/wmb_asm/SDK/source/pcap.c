@@ -76,17 +76,16 @@ DLLIMPORT struct pcap_t *pcap_open_offline(const char *filename, char *errbuf)
         return NULL;
     }
 
-    if(capheader.linkLayerType!=163 && capheader.linkLayerType!=105 && capheader.linkLayerType!=1)
+    if(capheader.linkLayerType!=163 && capheader.linkLayerType!=105)
     {
-        //Unsupported link type; This implemention only supports 802.11, with AVS, or
-        //Ethernet/Wireless, IP, TCP.
+        //Unsupported link type; This implemention only supports 802.11.
         fclose(cap->file);
         free(cap);
         return NULL;
     }
 
     if(capheader.linkLayerType==163)PCAP_CheckAVS = 1;
-    if(capheader.linkLayerType==1 || capheader.linkLayerType==105)PCAP_CheckAVS = 0;
+    if(capheader.linkLayerType==105)PCAP_CheckAVS = 0;
 
     memset(&cap->header,0,sizeof(struct pcap_file_header));
     cap->pktdata = (unsigned char*)malloc(capheader.snapshotLength);
