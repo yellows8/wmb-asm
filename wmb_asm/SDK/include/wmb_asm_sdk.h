@@ -124,8 +124,6 @@ DEALINGS IN THE SOFTWARE.
 
 #include "../include/pcap.h"
 
-#include "../include/inet.h"
-
 #ifdef __cplusplus
     }
 #endif
