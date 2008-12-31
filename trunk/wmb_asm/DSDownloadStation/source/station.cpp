@@ -71,7 +71,6 @@ DEALINGS IN THE SOFTWARE.
 unsigned char mgc_num[4] = {0x06, 0x01, 0x02, 0x00};
 
 int dlstation_stage = STAGEDL_MENU_REQ;
-bool IsSpot = 0;//Zero if the protocol for the packets being handled are DS Download Station pacekts, 1 if it's Japanese Nintendo Spot packets.(New DLStations in japan)
 
 sAsmSDK_Config *DLSTATIONCONFIG = NULL;
 bool *DLSTATIONDEBUG = NULL;
@@ -172,26 +171,22 @@ DLLIMPORT int AsmPlug_GetPriority()
 
 DLLIMPORT char *AsmPlug_GetStatus(int *error_code)
 {
-
-    if(!IsSpot)
+    if(dlstation_stage==STAGEDL_MENU_REQ)
     {
-        if(dlstation_stage==STAGEDL_MENU_REQ)
-        {
-            *error_code = STAGEDL_MENU_REQ;
-            return (char*)"02: DS DL Station: Failed to find the Menu Request packet.\n";
-        }
+        *error_code = STAGEDL_MENU_REQ;
+        return (char*)"02: DS DL Station: Failed to find the Menu Request packet.\n";
+    }
 
-        if(dlstation_stage==STAGEDL_MENU_DL)
-        {
-            *error_code = STAGEDL_MENU_DL;
-            return (char*)"03: DS DL Station: Failed to find all of the Menu packets.\n";
-        }
+    if(dlstation_stage==STAGEDL_MENU_DL)
+    {
+        *error_code = STAGEDL_MENU_DL;
+        return (char*)"03: DS DL Station: Failed to find all of the Menu packets.\n";
+    }
 
-        if(dlstation_stage==STAGEDL_DATA)
-        {
-            *error_code = STAGEDL_DATA;
-            return (char*)"04: DS DL Station: Failed to find all of the data packets.\n";
-        }
+    if(dlstation_stage==STAGEDL_DATA)
+    {
+        *error_code = STAGEDL_DATA;
+        return (char*)"04: DS DL Station: Failed to find all of the data packets.\n";
     }
 
 	*error_code=-1;
@@ -200,43 +195,33 @@ DLLIMPORT char *AsmPlug_GetStatus(int *error_code)
 
 DLLIMPORT int AsmPlug_QueryFailure()
 {
-    if(!IsSpot)
-    {
-        if(dlstation_stage==STAGEDL_MENU_REQ)return 3;
-    }
+    if(dlstation_stage==STAGEDL_MENU_REQ)return 3;
 
     return 0;
 }
 
 DLLIMPORT int AsmPlug_Handle802_11(unsigned char *data, int length)
 {
+    int ret = 0;
 
-     if(!IsSpot)
-     {
-        int ret = 0;
+    ret = HandleDL_AssocResponse(data, length);
+    if(ret)return ret;
 
-        ret = HandleDL_AssocResponse(data, length);
-        if(ret)return ret;
+    ret = HandleDL_Deauth(data, length);
+    if(ret)return ret;
 
-        ret = HandleDL_Deauth(data, length);
-        if(ret)return ret;
+    ret = HandleWMB_Data(data, length);
+    if(ret)return 0;//This plugin doesn't use WMB data packets, for there actual data - only kicking clients in the DLClients list when they ack/reply to WMB data packets. This plugin must return 0, not 1, for these WMB packets, otherwise this plugin would interfer with the WMB plugin.
 
-        ret = HandleWMB_Data(data, length);
-        if(ret)return 0;//This plugin doesn't use WMB data packets, for there actual data - only kicking clients in the DLClients list when they ack/reply to WMB data packets. This plugin must return 0, not 1, for these WMB packets, otherwise this plugin would interfer with the WMB plugin.
+    ret = HandleWMB_DataAck(data, length);
+    if(ret)return 0;
 
-        ret = HandleWMB_DataAck(data, length);
-        if(ret)return 0;
+    ret = HandleDL_PacketRequest(data, length);
+    if(ret)return 1;
 
-        ret = HandleDL_PacketRequest(data, length);
-        if(ret)return 1;
-
-        ret = HandleSP_MenuDownload(data, length);
-        if(ret)return 1;
-
-        if(dlstation_stage==STAGEDL_MENU_DL)return HandleDL_MenuDownload(data, length);
-        if(dlstation_stage==STAGEDL_HEADER)return HandleDL_Header(data, length);
-        if(dlstation_stage==STAGEDL_DATA)return HandleDL_Data(data, length);
-     }
+    if(dlstation_stage==STAGEDL_MENU_DL)return HandleDL_MenuDownload(data, length);
+    if(dlstation_stage==STAGEDL_HEADER)return HandleDL_Header(data, length);
+    if(dlstation_stage==STAGEDL_DATA)return HandleDL_Data(data, length);
 
      return 0;
 }
@@ -299,7 +284,6 @@ DLLIMPORT volatile Nds_data *AsmPlug_GetNdsData()
 
 DLLIMPORT void AsmPlug_Reset()
 {
-    IsSpot = 0;
     dlstation_stage=STAGEDL_MENU_REQ;
 
     RemoveClients();
@@ -736,65 +720,6 @@ int HandleDL_PacketRequest(unsigned char *data, int length)
     }
 
     free(req);
-
-    return 0;
-}
-
-//This function attempts to dump Nintendo Spot menu packets.
-int HandleSP_MenuDownload(unsigned char *data, int length)
-{
-    iee80211_framehead2 *frm = (iee80211_framehead2*)data;
-    unsigned char *dat;
-    unsigned char sp_mgc_num[4] = {0x7e, 0x01, 0x02, 0x00};
-    int size = 0;
-    unsigned short *seq = 0;
-    unsigned char *buffer;
-    //int lzo_ret = 0;
-    //lzo_uint out_len = 0;
-    FILE *dump;
-    char str[256];
-    memset(str, 0, 256);
-
-    if(CheckFrameControl(frm, 2, 2))
-    {
-        if(CheckFlow(frm->mac1, 0x00))
-        {
-            dat = &data[0x18];
-            if(memcmp(dat, sp_mgc_num, 4)!=0)return 0;
-            dat+=4;
-
-            size = (int)*dat;
-            size *= 2;
-            //size-=32;
-            size++;
-
-            if(size<=0)return 3;
-
-            dat+=1;
-            seq = (unsigned short*)dat;
-            dat+=2;
-
-            buffer = (unsigned char*)malloc(100000);
-            memset(buffer, 0, 100000);
-
-            if(*DLSTATIONDEBUG)
-            {
-                fprintf(*DLSTATIONLog, "Nintendo Spot: Copying menu seq %d sz %d Num %d\n", (int)*seq, size, GetPacketNum());
-                fflush(*DLSTATIONLog);
-            }
-
-            memcpy(buffer, dat, size);
-            //lzo_ret = lzo1x_decompress(dat,size,buffer,&out_len,NULL);
-            //if(lzo_ret!=LZO_E_OK)printf("Menu decompression failed: error %d\n",lzo_ret);
-
-            sprintf(str, "SpotMenu\\menu_%d.bin",(int)*seq);
-            dump = fopen(str, "wb");
-            fwrite(buffer, 1, size, dump);
-            fclose(dump);
-
-            free(buffer);
-        }
-    }
 
     return 0;
 }
