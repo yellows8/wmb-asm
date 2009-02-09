@@ -49,10 +49,10 @@ DLLIMPORT void FreeDirectory(struct FILE_LIST *filelist)
 
 DLLIMPORT struct FILE_LIST *ScanDirectory(struct FILE_LIST *filelist, char *dirname, char *ext)
 {
-    
+
     struct FILE_LIST *files=NULL;
     struct FILE_LIST *cur_files=NULL;
-    struct DIR *dir = NULL;
+    DIR *dir = NULL;
     struct dirent *ent = NULL;
     char *DirName = (char*)malloc(256);
     strcpy(DirName,dirname);
@@ -63,14 +63,14 @@ DLLIMPORT struct FILE_LIST *ScanDirectory(struct FILE_LIST *filelist, char *dirn
         {
             files = files->next;
         }
-        
+
         if(files->filename!=NULL && files->next!=NULL)files = files->next;
-        
-        
+
+
     }
-    
+
     cur_files = files;
-    
+
     FILE *f = fopen(DirName,"rb");
     if(f!=NULL)
     {
@@ -81,39 +81,39 @@ DLLIMPORT struct FILE_LIST *ScanDirectory(struct FILE_LIST *filelist, char *dirn
                 return files;
             }
         }
-        
+
         if(cur_files==NULL)
         {
             cur_files = (struct FILE_LIST*)malloc(sizeof(struct FILE_LIST));
             memset(cur_files,0,sizeof(struct FILE_LIST));
         }
-        
+
         if(cur_files->filename==NULL)
         AllocDir(cur_files);
-        
+
         fclose(f);
         strcpy(cur_files->filename,DirName);
         return files;
     }
-    
+
     char c = DirName[strlen(DirName)];
 
     if(c!='/' && c!='\\')
     {
     sprintf(DirName,"%s\\",DirName);
     }
-    
+
     dir=opendir(DirName);
     if(dir==NULL)
     {
         return NULL;
     }
-    
+
     char *str;
     str = (char*)malloc(256);
     strcpy(str,"");
     int skip=0;
-    
+
     if(files==NULL)
     {
         if(files==NULL)
@@ -121,17 +121,17 @@ DLLIMPORT struct FILE_LIST *ScanDirectory(struct FILE_LIST *filelist, char *dirn
             files = (struct FILE_LIST*)malloc(sizeof(struct FILE_LIST));
             memset(files,0,sizeof(struct FILE_LIST));
         }
-        
+
         AllocDir(files);
         cur_files = files;
     }
-    
+
     ent=(struct dirent*)1;
     while(ent!=NULL)
     {
         ent = readdir(dir);
         if(ent==NULL)break;
-        
+
         if(skip<2)
         {
             skip++;
@@ -139,16 +139,16 @@ DLLIMPORT struct FILE_LIST *ScanDirectory(struct FILE_LIST *filelist, char *dirn
         }
         else
         {
-            
+
             sprintf(str,"%s%s",DirName,ent->d_name);
             f = fopen(str,"rb");
-            
+
             if(f==NULL)
             {
-                
+
                 char *Str = (char*)malloc(256);
                 strcpy(Str,str);
-                
+
                     if(ScanDirectory(cur_files,Str,ext)==NULL)
                     {
                         printf("Failed to open file or directory %s\n",Str);
@@ -162,13 +162,13 @@ DLLIMPORT struct FILE_LIST *ScanDirectory(struct FILE_LIST *filelist, char *dirn
 
                         if(cur_files->filename!=NULL && cur_files->next!=NULL)cur_files = cur_files->next;
                     }
-        
+
                 free(Str);
             }
             else
             {
                 fclose(f);
-                
+
                     if(ext!=NULL)
                     {
                         if(strcmp((const char*)&ent->d_name[strlen(ent->d_name)-4],(const char*)ext)!=0)
@@ -176,20 +176,20 @@ DLLIMPORT struct FILE_LIST *ScanDirectory(struct FILE_LIST *filelist, char *dirn
                             continue;
                         }
                     }
-        
+
                 if(cur_files->filename==NULL)
                 AllocDir(cur_files);
-        
+
                 strcpy(cur_files->filename,str);
-                
+
                 cur_files = cur_files->next;
             }
         }
     }
-    
+
     closedir(dir);
     free(str);
     free(DirName);
-    
+
     return files;
 }

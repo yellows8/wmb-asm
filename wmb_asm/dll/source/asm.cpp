@@ -351,19 +351,6 @@ bool DLSTATION_AsmPlug_DeInit();
 volatile Nds_data *DLSTATION_AsmPlug_GetNdsData();
 void DLSTATION_AsmPlug_Reset();
 
-int NINCH_AsmPlug_GetID();
-char *NINCH_AsmPlug_GetIDStr();
-int NINCH_AsmPlug_GetPriority();
-char *NINCH_AsmPlug_GetStatus(int *error_code);
-int NINCH_AsmPlug_GetModeStatus(int module);
-int NINCH_AsmPlug_SwitchMode(int mode);
-int NINCH_AsmPlug_QueryFailure();
-int NINCH_AsmPlug_Handle802_11(unsigned char *data, int length);
-bool NINCH_AsmPlug_Init(sAsmSDK_Config *config);
-bool NINCH_AsmPlug_DeInit();
-volatile Nds_data *NINCH_AsmPlug_GetNdsData();
-void NINCH_AsmPlug_Reset();
-
 #ifdef __cplusplus
   }
 #endif
@@ -392,19 +379,6 @@ bool InitPktModules()
 	#ifdef NDS
 
 		//Ordering of packet modules in the array when compiling for DS, must be done manually, for ordering and priority ordering.
-		packetModules[totalPacketModules].Init = &NINCH_AsmPlug_Init;
-		packetModules[totalPacketModules].DeInit = &NINCH_AsmPlug_DeInit;
-		packetModules[totalPacketModules].GetNdsData = &NINCH_AsmPlug_GetNdsData;
-		packetModules[totalPacketModules].handle802_11 = &NINCH_AsmPlug_Handle802_11;
-		packetModules[totalPacketModules].reset = &NINCH_AsmPlug_Reset;
-		packetModules[totalPacketModules].get_status = &NINCH_AsmPlug_GetStatus;
-		packetModules[totalPacketModules].query_failure = &NINCH_AsmPlug_QueryFailure;
-		packetModules[totalPacketModules].GetID = &NINCH_AsmPlug_GetID;
-		packetModules[totalPacketModules].GetIDStr = &NINCH_AsmPlug_GetIDStr;
-		packetModules[totalPacketModules].GetPriority = &NINCH_AsmPlug_GetPriority;
-		packetModules[totalPacketModules].GetModeStatus = &NINCH_AsmPlug_GetModeStatus;
-		packetModules[totalPacketModules].SwitchMode = &NINCH_AsmPlug_SwitchMode;
-		totalPacketModules++;
 
 		packetModules[totalPacketModules].Init = &DLSTATION_AsmPlug_Init;
 		packetModules[totalPacketModules].DeInit = &DLSTATION_AsmPlug_DeInit;
