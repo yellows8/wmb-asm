@@ -12,6 +12,4 @@ Wmb Asm Google Code Project page: http://code.google.com/p/wmb-asm/
 
 2. It may take a long time for the DS assembler to finish one capture.
 
-3. The assembled .nds has a corrupted header, banner, and signature. There's icon data inside the header. The "banner"
-contains only bebugging text, which should be in wmb_log.txt. This "banner" overwrites the signature.(Or the "signature"
-may also have this debug text.)
+3. ~72 bytes are pre-appended to the assembled Arm7 binary, causing RSA verification to fail, and white screens when attempting to boot.

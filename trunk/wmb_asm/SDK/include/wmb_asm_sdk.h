@@ -150,7 +150,7 @@ DEALINGS IN THE SOFTWARE.
                     #endif
 
     #ifdef NDS
-        #include "../include/ndsdirent.h"
+        #include <sys/dirent.h>
     #endif
 
             #ifndef NDS
