@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
 		  fixed_argv[1] = (char*)malloc(256);
 		  fixed_argv[2] = (char*)malloc(256);
 		  strcpy(fixed_argv[0],"/wmb_asm.nds");
-		  strcpy(fixed_argv[1], "-debug");
+		  strcpy(fixed_argv[1],"-debug");
           strcpy(fixed_argv[2],"/captures/captures/capture.cap");//captures directory in the root of the homebew card filesystem.
 
 		  InitConsoleStuff();//Initialize DS-specific things. Such as the console, FAT/filesystem, and other things.
