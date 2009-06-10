@@ -19,6 +19,10 @@ OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 DEALINGS IN THE SOFTWARE.
 */
 
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+
 unsigned short calccrc16(unsigned char *data, unsigned int length);
 void ConvertEndian(void* input, void* output, int input_length);
 unsigned char *ConvertBinBuff(unsigned char *data, int length);
@@ -105,6 +109,18 @@ struct TNDSHeader {
   unsigned char zero[160];
 } __attribute__ ((__packed__));
 
+int GetFileLength(FILE* _pfile)
+{
+	int l_iSavPos, l_iEnd;
+
+	l_iSavPos = ftell(_pfile);
+	fseek(_pfile, 0, SEEK_END);
+	l_iEnd = ftell(_pfile);
+	fseek(_pfile, l_iSavPos, SEEK_SET);
+
+	return l_iEnd;
+}
+
 void ConvertBin(char *filename)
 {
     printf("Converting %s...\n",filename);
@@ -159,8 +175,9 @@ unsigned char *ConvertBinBuff(unsigned char *data, int length)
     unsigned char *nds = (unsigned char*)malloc(length - 0x1C8);
     NCBin_Header *header = (NCBin_Header*)data;
     unsigned char mgc_str[5] = {0x00, 0x00, 0x02, 0x00, 0x00};
+    unsigned char mgc_str2[5] = {0x00, 0x00, 0x03, 0x00, 0x00};
 
-    if(memcmp(data, mgc_str, 5)!=0)return NULL;//This is not a Nintendo Channel .bin ds demo.
+    if(!(memcmp(data, mgc_str, 5)==0 || memcmp(data, mgc_str2, 5)==0))return NULL;//This is not a Nintendo Channel .bin ds demo.
 
     memset(nds, 0, length - 0x1C8);
     memcpy(nds, &data[0x1C8], length - 0x1C8);
