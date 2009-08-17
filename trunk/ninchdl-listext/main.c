@@ -29,8 +29,16 @@ Copyright (C) 2009              John Kelley <wiidev@kelley.ca>
 
 #define MINIMUM_MINI_VERSION 0x00010001
 
-otp_t otp;
-seeprom_t seeprom;
+int gbalzss_main(int argc, char *argv[]);
+char argv_str[256];
+
+inline u32 be32(u32 x)//From update_download by SquidMan.
+{
+    return (x>>24) |
+        ((x<<8) & 0x00FF0000) |
+        ((x>>8) & 0x0000FF00) |
+        (x<<24);
+}
 
 static void dsp_reset(void)
 {
@@ -38,45 +46,6 @@ static void dsp_reset(void)
 	write16(0x0c00500a, read16(0x0c00500a) | 0x0010);
 	write16(0x0c005036, 0);
 }
-
-/*static char ascii(char s) {
-  if(s < 0x20) return '.';
-  if(s > 0x7E) return '.';
-  return s;
-}*/
-
-/*void hexdump(void *d, int len) {
-  u8 *data;
-  int i, off;
-  data = (u8*)d;
-  for (off=0; off<len; off += 16) {
-    printf("%08x  ",off);
-    for(i=0; i<16; i++)
-      if((i+off)>=len) printf("   ");
-      else printf("%02x ",data[off+i]);
-
-    printf(" ");
-    for(i=0; i<16; i++)
-      if((i+off)>=len) printf(" ");
-      else printf("%c",ascii(data[off+i]));
-    printf("\n");
-  }
-}
-
-void testOTP(void)
-{
-	//print_str_noscroll(114, 114, "reading OTP...\n");
-	//getotp(&otp);
-	//print_str_noscroll(115, 115, "read OTP!");
-	//print_str_noscroll(116, 116, "OTP:\n");
-	//hexdump(&otp, sizeof(otp));
-
-	//print_str_noscroll(117, 117, "reading SEEPROM...\n");
-	//getseeprom(&seeprom);
-	//print_str_noscroll(118, 118, "read SEEPROM!\n");
-	//print_str_noscroll(119, 119, "SEEPROM:\n");
-	//hexdump(&seeprom, sizeof(seeprom));
-}*/
 
 int main(void)
 {
@@ -86,6 +55,7 @@ int main(void)
 	char pstr[256];
 	char vff_dumpfn[256];
 	unsigned char *buffer;
+	int is_csdata = 0;
 	FIL fil;
 	u32 tempsz;
 	exception_init();
@@ -199,12 +169,51 @@ int main(void)
 	f_write(&fil, buffer, nfs_fil.size, &tempsz);
 
 	f_close(&fil);
+    print_str_noscroll(112, 210, "Done.");
 
-	print_str_noscroll(112, 126, "Unmounting...");
+    if(memcmp(&buffer[0x480], "WC24DATABIN", 11)==0)
+    {
+        print_str_noscroll(112, 110, "Found WC24Data.bin in VFF.");
+    }
+    else if(memcmp(&buffer[0x480], "CSDATA  BIN", 11)==0)
+	{
+        print_str_noscroll(112, 110, "Found CSData.bin in VFF; only decompression is supported.");
+        is_csdata = 1;
+	}
+	else
+	{
+        print_str_noscroll(112, 110, "WC24 dl list not found in VFF.");
+		return -3;
+	}
+
+    sprintf(str, "Extracting %s...", is_csdata==0?"WC24Data.bin":"CSData.bin");
+	print_str_noscroll(112, 226, str);
+
+    u32 datasize;
+    if(is_csdata)memcpy(&datasize, &buffer[0x49c], 4);
+    if(!is_csdata)memcpy(&datasize, &buffer[0x209c], 4);
+    datasize = be32(datasize);
+    sprintf(str, "/HAT%c_%s", region, is_csdata==0?"WC24Data.bin":"CSData.bin");
+    if(f_open(&fil, str, FA_WRITE | FA_CREATE_ALWAYS)!=0)
+	{
+	    sprintf(pstr, "Failed to open %s", str);
+		print_str_noscroll(112, 242, pstr);
+		return -3;
+	}
+
+    f_write(&fil, &buffer[is_csdata==0?0x3220:0x1620], datasize, &tempsz);
+
+    f_close(&fil);
+
+    print_str_noscroll(112, 242, "Decompressing...");
+    memset(argv_str, 0, 256);
+    sprintf(pstr, "/HAT%cdecom_%s", region, is_csdata==0?"WC24Data.bin":"CSData.bin");
+    sprintf(argv_str, "gbalzss%xd%x%s%x%s", 0, 0, str, 0, str);
+    gbalzss_main(4, argv_str);
+
 	free(buffer);
 	fat_umount();
-
-	print_str_noscroll(112, 210, "Done.");
+	print_str_noscroll(112, 258, "Done.");
 	return 0;
 }
 

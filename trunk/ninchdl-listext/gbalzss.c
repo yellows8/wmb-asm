@@ -352,7 +352,7 @@ void Decode(void)	/* Just the reverse of Encode(). */
 	}
 }
 
-int main(int argc, char *argv[])
+int gbalzss_main(int argc, char *argv[])
 {
 	char  *s = argv[1];
 
