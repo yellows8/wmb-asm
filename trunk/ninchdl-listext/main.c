@@ -84,6 +84,7 @@ int main(void)
 	struct nandfs_fp nfs_fil;
 	char str[256];
 	char pstr[256];
+	char vff_dumpfn[256];
 	unsigned char *buffer;
 	FIL fil;
 	u32 tempsz;
@@ -139,6 +140,7 @@ int main(void)
 	}
 
 	memset(str, 0, 256);
+	memset(vff_dumpfn, 0, 256);
 	print_str_noscroll(112, 128, "Choose a region via GC/GPIO: A/Pwr for E, B/Rst for P, Y/Ejt for J.");
 	char region = 'a';
 	while(1)
@@ -156,6 +158,7 @@ int main(void)
 		if(region!='a')break;
 	}
 
+    sprintf(vff_dumpfn, "/HAT%c_wc24dl.vff", region);
 	sprintf(str, "/title/00010001/484154%02x/data/wc24dl.vff", region);
 	if(nandfs_open(&nfs_fil, str)!=0)
 	{
@@ -187,7 +190,7 @@ int main(void)
 	}
 
 	print_str_noscroll(112, 194, "Writing to SD...");
-	if(f_open(&fil, "/wc24dl.vff", FA_WRITE | FA_CREATE_ALWAYS)!=0)
+	if(f_open(&fil, vff_dumpfn, FA_WRITE | FA_CREATE_ALWAYS)!=0)
 	{
 		print_str_noscroll(112, 110, "Failed to open /wc24data.vff");
 		return -3;

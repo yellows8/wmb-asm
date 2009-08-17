@@ -60,7 +60,7 @@ int memcmp(const void *s1, const void *s2, size_t len)
 
 	for (i = 0; i < len; i++)
 		if (p1[i] != p2[i]) return p1[i] - p2[i];
-	
+
 	return 0;
 }
 
@@ -70,7 +70,7 @@ int strcmp(const char *s1, const char *s2)
 
 	for (i = 0; s1[i] && s1[i] == s2[i]; i++)
 		;
-	
+
 	return s1[i] - s2[i];
 }
 
@@ -109,7 +109,7 @@ size_t strlcat(char *dest, const char *src, size_t maxlen)
 char * strchr(const char *s, int c)
 {
 	size_t i;
-	
+
 	for (i = 0; s[i]; i++)
 		if (s[i] == (char)c) return (char *)s + i;
 
@@ -155,3 +155,25 @@ size_t strcspn(const char *s1, const char *s2)
 	return len;
 }
 
+char *strpbrk(const char *s1, const char *s2)//Implemented by yellowstar.
+{
+    char *cmpstr = (char*)s2;
+    if(s1==NULL || s2==NULL)return NULL;
+    while(*s1!=0)
+    {
+        while(*cmpstr!=0)
+        {
+            if(*cmpstr==*s1)return (char*)s1;
+            cmpstr++;
+        }
+        s1++;
+        cmpstr = (char*)s2;
+    }
+    return NULL;
+}
+
+int toupper(int c)//Implemented by yellowstar.
+{
+    if(c<0x61)return c;
+    return c - 0x20;
+}
