@@ -16,18 +16,18 @@ Copyright (C) 2009              John Kelley <wiidev@kelley.ca>
 
 #ifdef WII_MINI_APP
 
-#include "bootmii_ppc.h"
-#include "string.h"
-#include "ipc.h"
-#include "mini_ipc.h"
-#include "nandfs.h"
-#include "fat.h"
-#include "malloc.h"
-#include "diskio.h"
-#include "printf.h"
-#include "video_low.h"
-#include "input.h"
-#include "console.h"
+#include "../bootmii_ppc.h"
+#include "../string.h"
+#include "../ipc.h"
+#include "../mini_ipc.h"
+#include "../nandfs.h"
+#include "../fat.h"
+#include "../malloc.h"
+#include "../diskio.h"
+#include "../printf.h"
+#include "../video_low.h"
+#include "../input.h"
+#include "../console.h"
 
 #define MINIMUM_MINI_VERSION 0x00010001
 
@@ -58,6 +58,14 @@ typedef unsigned char u8;
 typedef unsigned short u16;
 typedef unsigned long u32;
 typedef unsigned long long u64;
+#ifndef BIG_ENDIAN
+#define BIG_ENDIAN 4321
+#endif
+#ifndef LITTLE_ENDIAN
+#define LITTLE_ENDIAN 1234
+#endif
+#define BYTE_ORDER LITTLE_ENDIAN
+
 #endif
 #endif
 
@@ -185,7 +193,7 @@ inline u32 be32(u32 x)//From update_download by SquidMan.
 
 inline u32 le32(u32 x)//From update_download by SquidMan.
 {
-    #if BYTE_ORDER==LITTE_ENDIAN
+    #if BYTE_ORDER == LITTLE_ENDIAN
     return x;
     #else
     return (x>>24) |
@@ -334,8 +342,16 @@ int main(int argc, char **argv)
 	WPAD_ScanPads();
 	#endif
 	char region = 'a';
+	#ifdef WII_MINI_APP
 	while(1)
 	{
+    #endif
+
+    #ifdef HW_RVL
+	while(1)
+	{
+    #endif
+
 	    #ifdef HW_RVL
 	    WPAD_ScanPads();
 	    u32 button = WPAD_ButtonsDown(0);
@@ -358,8 +374,14 @@ int main(int argc, char **argv)
 		if(button & GPIO_EJECT)region = 'J';
         #endif
 
+    #ifdef WII_MINI_APP
 		if(region!='a')break;
 	}
+	#endif
+	#ifdef HW_RVL
+        if(region!='a')break;
+	}
+	#endif
 
     #ifdef WII_MINI_APP
     sprintf(vff_dumpfn, "/wc24dl.vff");
@@ -487,7 +509,7 @@ int main(int argc, char **argv)
     u32 datasize;
     if(is_csdata)memcpy(&datasize, &buffer[0x49c], 4);
     if(!is_csdata)memcpy(&datasize, &buffer[0x209c], 4);
-    datasize = be32(datasize);
+    datasize = le32(datasize);
     memset(str, 0, 256);
     #ifdef WII_MINI_APP
     sprintf(str, "/%s", is_csdata==0?"WC24Data.bin":"CSData.bin");
@@ -594,6 +616,7 @@ int main(int argc, char **argv)
 	f_read(&fil, buffer, dfinfo.fsize, &tempsz);
 	f_close(&fil);
     #else
+        printf("Parsing...\n");
         fil = fopen(str, "rb");
         if(fil==NULL)
         {
