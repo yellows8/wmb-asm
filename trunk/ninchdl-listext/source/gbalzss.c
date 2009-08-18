@@ -45,11 +45,19 @@
 #include <unistd.h>
 #include <ctype.h>
 #include <string.h>
-#include <machine/endian.h>
+
+#ifndef BIG_ENDIAN
+#define BIG_ENDIAN 4321
 #endif
+#ifndef LITTLE_ENDIAN
+#define LITTLE_ENDIAN 1234
+#endif
+#define BYTE_ORDER LITTLE_ENDIAN
+#endif
+
 #ifdef WII_MINI_APP
-#include "string.h"
-#include "console.h"
+#include "../string.h"
+#include "../console.h"
 #ifndef EOF
 #define EOF -1
 #endif
@@ -64,7 +72,7 @@
 #endif
 
 #ifdef USING_LIBFF
-#include "ff.h"
+#include "../ff.h"
 #endif
 #ifndef USING_LIBFF
 struct stat finfo;
@@ -125,6 +133,7 @@ int getc (
 #endif
 
 u32 be32(u32 x);//From update_download by SquidMan.
+u32 le32(u32 x);//From be32 from update_download by SquidMan.
 
 void InitTree(void)  /* initialize trees */
 {
@@ -223,7 +232,7 @@ void Encode(void)
 	gfx_printf("gba header: %x\n", gbaheader );
 	#endif
 	#ifndef WII_MINI_APP
-	printf("gba header: %x\n", gbaheader );
+	printf("gba header: %x\n", (int)gbaheader );
 	#endif
 	for(i=0; i<4; i++) putc( tmp[i], outfile );
 
@@ -363,13 +372,13 @@ void Decode(void)	/* Just the reverse of Encode(). */
 	#else
     decomp_size = gbaheader>>8;
 	#endif
-	decomp_size = be32(decomp_size);
+	decomp_size = le32(decomp_size);
 
     #ifdef WII_MINI_APP
 	gfx_printf("gba header: %x, decompressed size: %d\n", gbaheader, decomp_size );
     #endif
     #ifndef WII_MINI_APP
-    printf("gba header: %x, decompressed size: %d\n", gbaheader, decomp_size );
+    printf("gba header: %x, decompressed size: %d\n", (int)gbaheader, (int)decomp_size );
     #endif
 
 	for (i = 0; i < N - F; i++) text_buf[i] = 0xff;
@@ -404,8 +413,13 @@ int gbalzss_main(int argc, char *argv[])
 	char  *s = argv[1];
 
 	if (argc != 4) {
+	    #ifdef WII_MINI_APP
 		gfx_printf("'gbalzss e file1 file2' encodes file1 into file2.\n"
 			"'gbalzss d file1 file2' decodes file1 into file2.\n");
+        #else
+        printf("'gbalzss e file1 file2' encodes file1 into file2.\n"
+			"'gbalzss d file1 file2' decodes file1 into file2.\n");
+        #endif
 		return 1;//EXIT_FAILURE
 	}
 
