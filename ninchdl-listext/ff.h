@@ -65,7 +65,7 @@
 /* Number of volumes (logical drives) to be used. */
 
 
-#define	_USE_STRFUNC	0
+#define	_USE_STRFUNC	2
 /* To enable string functions, set _USE_STRFUNC to 1 or 2. */
 
 

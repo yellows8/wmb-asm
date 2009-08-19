@@ -38,6 +38,14 @@ Copyright (C) 2009              John Kelley <wiidev@kelley.ca>
 #define LITTLE_ENDIAN 1234
 #endif
 #define BYTE_ORDER BIG_ENDIAN
+
+int putc (
+	int chr,	/* A character to be output */
+	FIL* fil	/* Ponter to the file object */
+);
+int getc (
+	FIL* fil	/* Ponter to the file object */
+);
 #endif
 
 #ifndef WII_MINI_APP
@@ -83,21 +91,21 @@ typedef struct _DLlist_rating_entry
 	u8 boardID;//? For US, 2.
 	u8 age;//Required years of age.
 	u16 title[11];//Title/text of the rating.
-} DLlist_rating_entry;
+} __attribute((packed)) DLlist_rating_entry;
 
 typedef struct _DLlist_title_type_entry
 {
 	u8 typeID;
 	u8 groupID;
 	u16 title[31];//Name of type.
-} DLlist_title_type_entry;
+} __attribute((packed)) DLlist_title_type_entry;
 
 typedef struct _DLlist_company_entry
 {
 	u32 ID;//?
 	u16 devtitle[31];
 	u16 pubtitle[31];
-} DLlist_company_entry;
+} __attribute((packed)) DLlist_company_entry;
 
 typedef struct _DLlist_title_entry
 {
@@ -112,7 +120,7 @@ typedef struct _DLlist_title_entry
 	u8 unk4[0x13];
 	u16 title[62];
 	u16 subtitle[31];
-} DLlist_title_entry;
+} __attribute((packed)) DLlist_title_entry;
 
 typedef struct _DLlist_video_entry
 {
@@ -120,7 +128,7 @@ typedef struct _DLlist_video_entry
 	u8 unk1[0xb];
 	u16 title[36];
 	u8 unk2[0x1e];
-} DLlist_video_entry;
+} __attribute((packed)) DLlist_video_entry;
 
 typedef struct _DLlist_demo_entry
 {
@@ -129,7 +137,7 @@ typedef struct _DLlist_demo_entry
 	u16 subtitle[31];//Optional
 	u32 titleid;//ID of title entry, not title entry titleid.
 	u8 unk[0xa];
-} DLlist_demo_entry;
+} __attribute((packed)) DLlist_demo_entry;
 
 typedef struct _DLlist_header
 {
@@ -137,7 +145,7 @@ typedef struct _DLlist_header
 	u8 version;
 	u8 ver1;//? NinCh v3: 0, NinCh v4 JP: 0x39
 	u8 unk4;
-	u8 unk5[0x2b];
+	u8 unk5[0x2a];
 	u32 ratings_total;
 	u32 ratings_offset;
 	u32 total_title_types;
@@ -153,7 +161,7 @@ typedef struct _DLlist_header
 	u32 demos_total;
 	u32 demos_offset;
 	u32 wc24msg_opt_offset;
-} DLlist_header;
+} __attribute((packed)) DLlist_header;
 
 typedef struct _DLlist_header_wrapper
 {
@@ -161,7 +169,7 @@ typedef struct _DLlist_header_wrapper
 	u8 version;
 	u8 ver1;//? NinCh v3: 0, NinCh v4 JP: 0x39
 	u8 unk4;
-	u8 unk5[0x2b];
+	u8 unk5[0x2a];
 	u32 ratings_total;
 	DLlist_rating_entry *ratings;
 	u32 total_title_types;
@@ -177,7 +185,7 @@ typedef struct _DLlist_header_wrapper
 	u32 demos_total;
 	DLlist_demo_entry *demos;
 	u16 *wc24msg_opt;
-} DLlist_header_wrapper;
+} __attribute((packed)) DLlist_header_wrapper;
 
 inline u32 be32(u32 x)//From update_download by SquidMan.
 {
@@ -201,6 +209,40 @@ inline u32 le32(u32 x)//From update_download by SquidMan.
         ((x>>8) & 0x0000FF00) |
         (x<<24);
     #endif
+}
+
+inline u16 be16(u16 x)//From update_download by SquidMan.
+{
+    #if BYTE_ORDER==BIG_ENDIAN
+    return x;
+    #else
+    return (x>>8) |
+        (x<<8);
+    #endif
+}
+
+inline u16 le16(u16 x)//From update_download by SquidMan.
+{
+    #if BYTE_ORDER == LITTLE_ENDIAN
+    return x;
+    #else
+    return (x>>8) |
+        (x<<8);
+    #endif
+}
+
+DLlist_title_entry *LookupTitle(u32 ID, DLlist_header_wrapper *header)//A title's ID.
+{
+    u32 i;
+    u32 numtitles = ((u32)header->titles - (u32)header->videos) / sizeof(DLlist_title_entry);
+    for(i = 0; i<numtitles; i++)
+    {
+        if(header->titles[i].ID==ID)
+        {
+            return &header->titles[i];
+        }
+    }
+    return NULL;
 }
 
 #ifdef WII_MINI_APP
@@ -615,6 +657,13 @@ int main(int argc, char **argv)
 
 	f_read(&fil, buffer, dfinfo.fsize, &tempsz);
 	f_close(&fil);
+
+	if(f_open(&fil, "/dump.txt", FA_WRITE | FA_CREATE_ALWAYS)!=0)
+	{
+		sprintf(str, "Failed to open %s", "/dump.txt");
+		print_str_noscroll(112, 274, str);
+		return -3;
+	}
     #else
         printf("Parsing...\n");
         fil = fopen(str, "rb");
@@ -635,13 +684,206 @@ int main(int argc, char **argv)
         }
         fread(buffer, 1, fstats.st_size, fil);
         fclose(fil);
+
+        #ifdef HW_RVL
+        sprintf(str, "/dump.txt");
+        #else
+        sprintf(str, "dump.txt");
+        #endif
+        fil = fopen(str, "wb");
+        if(fil==NULL)
+        {
+		sprintf(pstr, "Failed to open %s", str);
+		printf(pstr);
+		return -3;
+        }
     #endif
+
+    DLlist_header_wrapper *header = (DLlist_header_wrapper*)buffer;
+    if(header->version>3)
+    {
+        sprintf(pstr, "Unsupported dl list version for parser: %d\n", header->version);
+        free(buffer);
+
+        #ifdef WII_MINI_APP
+        print_str_noscroll(112, 274, pstr);
+        f_close(&fil);
+        fat_umount();
+        #else
+        printf(pstr);
+        fclose(fil);
+        #endif
+        return 0;
+    }
+
+    u16 utf_temp;
+    u32 i, texti, ratingi;
+
+    header->ratings = (DLlist_rating_entry*)(be32((u32)header->ratings) + (u32)buffer);
+    header->main_title_types = (DLlist_title_type_entry*)(be32((u32)header->main_title_types) + (u32)buffer);
+    header->companies = (DLlist_company_entry*)(be32((u32)header->companies) + (u32)buffer);
+    header->sub_title_types = (DLlist_title_entry*)(be32((u32)header->sub_title_types) + (u32)buffer);
+    header->titles = (DLlist_title_entry*)(be32((u32)header->titles) + (u32)buffer);
+    header->unk_data = (u32*)(be32((u32)header->unk_data) + (u32)buffer);
+    header->videos = (DLlist_video_entry*)(be32((u32)header->videos) + (u32)buffer);
+    header->demos = (DLlist_demo_entry*)(be32((u32)header->demos) + (u32)buffer);
+    header->wc24msg_opt = (u16*)(be32((u32)header->wc24msg_opt) + (u32)buffer);
+
+    header->ratings_total = be32(header->ratings_total);
+    header->total_title_types = be32(header->total_title_types);
+    header->companies_total = be32(header->companies_total);
+    header->unk_title = be32(header->unk_title);
+    header->videos_total = be32(header->videos_total);
+    header->demos_total = be32(header->demos_total);
+
+    #ifdef USING_LIBFF
+    f_puts("Demos:\n", &fil);
+    #else
+    fputs("Demos:\n", fil);
+    #endif
+
+    sprintf(str, "Number of demos: %d\n\n", (int)header->demos_total);
+    #ifdef USING_LIBFF
+    f_puts(str, &fil);
+    #else
+    fputs(str, fil);
+    #endif
+
+    DLlist_title_entry *title_ptr;
+    for(i=0; i<header->demos_total; i++)
+    {
+        for(texti=0; texti<31; texti++)
+        {
+            utf_temp = header->demos[i].title[texti];
+            if(utf_temp==0)break;
+            utf_temp = be16(utf_temp);
+            #ifdef USING_LIBFF
+            putc((u8)utf_temp, &fil);
+            #else
+            putc((u8)utf_temp, fil);
+            #endif
+        }
+        #ifdef USING_LIBFF
+        f_puts("\n", &fil);
+        #else
+        fputs("\n", fil);
+        #endif
+        for(texti=0; texti<31; texti++)
+        {
+            utf_temp = header->demos[i].subtitle[texti];
+            if(utf_temp==0)break;
+            utf_temp = be16(utf_temp);
+            #ifdef USING_LIBFF
+            putc((u8)utf_temp, &fil);
+            #else
+            putc((u8)utf_temp, fil);
+            #endif
+        }
+        #ifdef USING_LIBFF
+        f_puts("\n", &fil);
+        #else
+        fputs("\n", fil);
+        #endif
+        sprintf(str, "ID: %u\n", be32(header->demos[i].ID));
+        #ifdef USING_LIBFF
+        f_puts(str, &fil);
+        #else
+        fputs(str, fil);
+        #endif
+
+        sprintf(str, "Rating: ");
+        #ifdef USING_LIBFF
+        f_puts(str, &fil);
+        #else
+        fputs(str, fil);
+        #endif
+
+        title_ptr = LookupTitle(header->demos[i].titleid, header);
+        for(ratingi=0; ratingi<header->ratings_total; ratingi++)
+        {
+            if(header->ratings[ratingi].ratingID==title_ptr->ratingID)
+            {
+                for(texti=0; texti<11; texti++)
+                {
+                    utf_temp = header->ratings[ratingi].title[texti];
+                    if(utf_temp==0)break;
+                    utf_temp = be16(utf_temp);
+                    #ifdef USING_LIBFF
+                    putc((u8)utf_temp, &fil);
+                    #else
+                    putc((u8)utf_temp, fil);
+                    #endif
+                }
+            }
+        }
+
+        #ifdef USING_LIBFF
+        f_puts("\n", &fil);
+        #else
+        fputs("\n", fil);
+        #endif
+
+        #ifdef USING_LIBFF
+        f_puts(str, &fil);
+        #else
+        fputs(str, fil);
+        #endif
+
+        DLlist_company_entry *comp;
+        comp = (DLlist_company_entry*)((u32)buffer + (u32)be16(title_ptr->company_offset));
+        for(texti=0; texti<31; texti++)
+        {
+                utf_temp = comp->devtitle[texti];
+                if(utf_temp==0)break;
+                utf_temp = be16(utf_temp);
+                #ifdef USING_LIBFF
+                putc((u8)utf_temp, &fil);
+                #else
+                putc((u8)utf_temp, fil);
+                #endif
+        }
+        #ifdef USING_LIBFF
+        f_puts("\n", &fil);
+        #else
+        fputs("\n", fil);
+        #endif
+        if(memcmp(comp->devtitle, comp->pubtitle, 31 * 2)!=0)
+        {
+        for(texti=0; texti<31; texti++)
+        {
+                utf_temp = comp->pubtitle[texti];
+                if(utf_temp==0)break;
+                utf_temp = be16(utf_temp);
+                #ifdef USING_LIBFF
+                putc((u8)utf_temp, &fil);
+                #else
+                putc((u8)utf_temp, fil);
+                #endif
+        }
+        }
+
+        #ifndef WII_MINI_APP
+        #ifndef HW_RVL
+        sprintf(str, "\nURL: https://a248.e.akamai.net/f/248/49125/1h/entus.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/dstrial/%s/%s/%d.bin\n\n", (int)header->version, argv[2], argv[3], be32(header->demos[i].ID));
+        #endif
+        #endif
+
+        #ifdef USING_LIBFF
+        //f_puts(str, &fil);
+        f_flush(&fil);
+        #else
+        //fputs(str, fil);
+        fflush(fil);
+        #endif
+    }
 
     free(buffer);
     #ifdef WII_MINI_APP
+    f_close(&fil);
 	fat_umount();
 	print_str_noscroll(112, 274, "Done.");
 	#else
+	fclose(fil);
     printf("Done.\n");
 	#endif
 	return 0;
