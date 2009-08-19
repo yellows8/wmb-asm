@@ -150,7 +150,9 @@ typedef struct _DLlist_demo_entry
 	u16 title[31];
 	u16 subtitle[31];//Optional
 	u32 titleid;//ID of title entry, not title entry titleid.
-	u8 unk[0xa];
+	u32 company_offset;
+	u32 removal_timestamp;//0xffffffff when there is no end of distrubition date, timestamp otherwise.
+	u8 unk[2];
 } __attribute((packed)) DLlist_demo_entry;
 
 typedef struct _DLlist_header
@@ -937,6 +939,24 @@ int main(int argc, char **argv)
                 putc((u8)utf_temp, fil);
                 #endif
         }
+        }
+
+        sprintf(str, "\r\nRemoval date: %x", header->demos[i].removal_timestamp);
+        if(header->demos[i].removal_timestamp==0xffffffff)
+        {
+            #ifdef USING_LIBFF
+            f_puts("\r\nNo removal date.", &fil);
+            #else
+            fputs("\r\nNo removal date.", fil);
+            #endif
+        }
+        else
+        {
+            #ifdef USING_LIBFF
+            f_puts(str, &fil);
+            #else
+            fputs(str, fil);
+            #endif
         }
 
         sprintf(str, "\r\nURL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/dstrial/%s/%s/%u.bin\r\n\r\n", GetRegionCode(header->country_code), (int)header->version, country_code, language_code, be32(header->demos[i].ID));
