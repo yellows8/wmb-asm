@@ -141,8 +141,7 @@ typedef struct _DLlist_video_entry
 {
 	u32 ID;//Decimal ID for URL filename.
 	u8 unk1[0xb];
-	u16 title[36];
-	u8 unk2[0x1e];
+	u16 title[51];
 } __attribute((packed)) DLlist_video_entry;
 
 typedef struct _DLlist_demo_entry
@@ -252,7 +251,7 @@ inline u16 le16(u16 x)//From update_download by SquidMan.
     #endif
 }
 
-DLlist_title_entry *LookupTitle(u32 ID, DLlist_header_wrapper *header)//A title's ID.
+DLlist_title_entry *LookupTitle(u32 ID, DLlist_header_wrapper *header)
 {
     u32 i;
     u32 numtitles = ((u32)header->titles - (u32)header->videos) / sizeof(DLlist_title_entry);
@@ -292,6 +291,23 @@ char *GetCountryCode(u32 code)
     {
         return NULL;
     }
+}
+
+char GetRegionCode(u32 code)
+{
+    if(code==1)
+    {
+        return 'j';
+    }
+    else if(code > 7 && code < 53)
+    {
+        return 'u';
+    }
+    else if(code > 63 && code < 113)
+    {
+        return 'e';
+    }
+    return 'e';
 }
 
 #ifdef WII_MINI_APP
@@ -923,7 +939,55 @@ int main(int argc, char **argv)
         }
         }
 
-        sprintf(str, "\r\nURL: https://a248.e.akamai.net/f/248/49125/1h/entus.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/dstrial/%s/%s/%d.bin\r\n\r\n", (int)header->version, country_code, language_code, be32(header->demos[i].ID));
+        sprintf(str, "\r\nURL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/dstrial/%s/%s/%u.bin\r\n\r\n", GetRegionCode(header->country_code), (int)header->version, country_code, language_code, be32(header->demos[i].ID));
+
+        #ifdef USING_LIBFF
+        f_puts(str, &fil);
+        f_flush(&fil);
+        #else
+        fputs(str, fil);
+        fflush(fil);
+        #endif
+    }
+
+    #ifdef USING_LIBFF
+    f_puts("Videos:\r\n", &fil);
+    #else
+    fputs("Videos:\r\n", fil);
+    #endif
+
+    sprintf(str, "Number of videos: %d\r\n\r\n", (int)header->videos_total);
+    #ifdef USING_LIBFF
+    f_puts(str, &fil);
+    #else
+    fputs(str, fil);
+    #endif
+    for(i=0; i<header->videos_total; i++)
+    {
+        for(texti=0; texti<51; texti++)
+        {
+            utf_temp = header->videos[i].title[texti];
+            if(utf_temp==0)break;
+            utf_temp = be16(utf_temp);
+            #ifdef USING_LIBFF
+            putc((u8)utf_temp, &fil);
+            #else
+            putc((u8)utf_temp, fil);
+            #endif
+        }
+        #ifdef USING_LIBFF
+        f_puts("\r\n", &fil);
+        #else
+        fputs("\r\n", fil);
+        #endif
+        sprintf(str, "ID: %u\r\n", be32(header->videos[i].ID));
+        #ifdef USING_LIBFF
+        f_puts(str, &fil);
+        #else
+        fputs(str, fil);
+        #endif
+
+        sprintf(str, "\r\nURL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/movie/%s/%s/%u.3gp\r\n\r\n", GetRegionCode(header->country_code), (int)header->version, country_code, language_code, be32(header->videos[i].ID));
 
         #ifdef USING_LIBFF
         f_puts(str, &fil);
