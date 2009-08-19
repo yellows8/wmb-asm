@@ -85,6 +85,21 @@ static void *xfb = NULL;
 static GXRModeObj *rmode = NULL;
 #endif
 
+char country_codes[172][3] = {
+{"JP"}, {"AI"}, {"AG"}, {"AR"}, {"AW"}, {"BS"}, {"BB"}, {"BZ"}, {"BO"}, {"BR"}, {"VG"},
+{"CA"}, {"KY"}, {"CL"}, {"CO"}, {"CR"}, {"DM"}, {"DO"}, {"EC"}, {"SV"}, {"GF"}, {"GD"},
+{"GP"}, {"GT"}, {"GY"}, {"HT"}, {"HN"}, {"JM"}, {"MQ"}, {"MX"}, {"MS"}, {"AN"}, {"NI"},
+{"PA"}, {"PY"}, {"PE"}, {"KN"}, {"LC"}, {"VC"}, {"SR"}, {"TT"}, {"TC"}, {"US"}, {"UY"},
+{"VI"}, {"VE"}, {"AL"}, {"AU"}, {"AT"}, {"BE"}, {"BA"}, {"BW"}, {"BG"}, {"HR"}, {"CY"},
+{"CZ"}, {"DK"}, {"EE"}, {"FI"}, {"FR"}, {"DE"}, {"GR"}, {"HU"}, {"IS"}, {"IE"}, {"IT"},
+{"LV"}, {"LS"}, {"LI"}, {"LT"}, {"LU"}, {"MK"}, {"MT"}, {"ME"}, {"MZ"}, {"NA"}, {"NL"},
+{"NZ"}, {"NO"}, {"PL"}, {"PT"}, {"RO"}, {"RU"}, {"RS"}, {"SK"}, {"SI"}, {"ZA"}, {"ES"},
+{"SZ"}, {"SE"}, {"CH"}, {"TR"}, {"GB"}, {"ZM"}, {"ZW"}, {"TW"}, {"KR"}, {"HK"}, {"MO"},
+{"ID"}, {"SG"}, {"TH"}, {"PH"}, {"MY"}, {"CN"}, {"AE"}, {"IN"}, {"EG"}, {"OM"}, {"QA"},
+{"KW"}, {"SA"}, {"SY"}, {"BH"}, {"JO"} };
+
+char language_codes[7][3] = {{"ja"}, {"en"}, {"de"}, {"fr"}, {"es"}, {"it"}, {"nl"}};
+
 typedef struct _DLlist_rating_entry
 {
 	u8 ratingID;
@@ -145,7 +160,10 @@ typedef struct _DLlist_header
 	u8 version;
 	u8 ver1;//? NinCh v3: 0, NinCh v4 JP: 0x39
 	u8 unk4;
-	u8 unk5[0x2a];
+	u8 unk5[11];
+	u32 country_code;
+	u32 language_code;
+	u8 unk6[0x17];
 	u32 ratings_total;
 	u32 ratings_offset;
 	u32 total_title_types;
@@ -169,7 +187,10 @@ typedef struct _DLlist_header_wrapper
 	u8 version;
 	u8 ver1;//? NinCh v3: 0, NinCh v4 JP: 0x39
 	u8 unk4;
-	u8 unk5[0x2a];
+	u8 unk5[11];
+	u32 country_code;
+	u32 language_code;
+	u8 unk6[0x17];
 	u32 ratings_total;
 	DLlist_rating_entry *ratings;
 	u32 total_title_types;
@@ -243,6 +264,34 @@ DLlist_title_entry *LookupTitle(u32 ID, DLlist_header_wrapper *header)//A title'
         }
     }
     return NULL;
+}
+
+char *GetCountryCode(u32 code)
+{
+    if(code==1)
+    {
+        return (char*)country_codes[0];
+    }
+    else if(code > 7 && code < 53)
+    {
+        return (char*)country_codes[code - 7];
+    }
+    else if(code > 63 && code < 113)
+    {
+        return (char*)country_codes[code - 17];
+    }
+    else if(code > 147 && code < 158)
+    {
+        return (char*)country_codes[code - 52];
+    }
+    else if(code > 167 && code < 178)
+    {
+        return (char*)country_codes[code - 62];
+    }
+    else
+    {
+        return NULL;
+    }
 }
 
 #ifdef WII_MINI_APP
@@ -365,10 +414,10 @@ int main(int argc, char **argv)
         printf("Failed to mount FAT.\n");
     }
     #else
-    if(argc!=4)
+    if(argc!=2)
     {
         printf("Usage:\n");
-        printf("ninchdl-listext <wc24dl.vff> <region code> <language code>\n");
+        printf("ninchdl-listext <wc24dl.vff>\n");
         return 0;
     }
     #endif
@@ -735,14 +784,32 @@ int main(int argc, char **argv)
     header->unk_title = be32(header->unk_title);
     header->videos_total = be32(header->videos_total);
     header->demos_total = be32(header->demos_total);
+    header->country_code = be32(header->country_code);
+    header->language_code = be32(header->language_code);
+    char *country_code = GetCountryCode(header->country_code);
+    char *language_code = (char*)language_codes[header->language_code];
+    if(country_code==NULL)
+    {
+        free(buffer);
+        sprintf(pstr, "Unknown country code: %d\n", (int)header->country_code);
+        #ifdef WII_MINI_APP
+        f_close(&fil);
+        fat_umount();
+        print_str_noscroll(112, 274, pstr);
+        #else
+        fclose(fil);
+        printf(pstr);
+        #endif
+        return -4;
+    }
 
     #ifdef USING_LIBFF
-    f_puts("Demos:\n", &fil);
+    f_puts("Demos:\r\n", &fil);
     #else
-    fputs("Demos:\n", fil);
+    fputs("Demos:\r\n", fil);
     #endif
 
-    sprintf(str, "Number of demos: %d\n\n", (int)header->demos_total);
+    sprintf(str, "Number of demos: %d\r\n\r\n", (int)header->demos_total);
     #ifdef USING_LIBFF
     f_puts(str, &fil);
     #else
@@ -764,9 +831,9 @@ int main(int argc, char **argv)
             #endif
         }
         #ifdef USING_LIBFF
-        f_puts("\n", &fil);
+        f_puts("\r\n", &fil);
         #else
-        fputs("\n", fil);
+        fputs("\r\n", fil);
         #endif
         for(texti=0; texti<31; texti++)
         {
@@ -780,11 +847,11 @@ int main(int argc, char **argv)
             #endif
         }
         #ifdef USING_LIBFF
-        f_puts("\n", &fil);
+        f_puts("\r\n", &fil);
         #else
-        fputs("\n", fil);
+        fputs("\r\n", fil);
         #endif
-        sprintf(str, "ID: %u\n", be32(header->demos[i].ID));
+        sprintf(str, "ID: %u\r\n", be32(header->demos[i].ID));
         #ifdef USING_LIBFF
         f_puts(str, &fil);
         #else
@@ -818,15 +885,9 @@ int main(int argc, char **argv)
         }
 
         #ifdef USING_LIBFF
-        f_puts("\n", &fil);
+        f_puts("\r\n", &fil);
         #else
-        fputs("\n", fil);
-        #endif
-
-        #ifdef USING_LIBFF
-        f_puts(str, &fil);
-        #else
-        fputs(str, fil);
+        fputs("\r\n", fil);
         #endif
 
         DLlist_company_entry *comp;
@@ -843,9 +904,9 @@ int main(int argc, char **argv)
                 #endif
         }
         #ifdef USING_LIBFF
-        f_puts("\n", &fil);
+        f_puts("\r\n", &fil);
         #else
-        fputs("\n", fil);
+        fputs("\r\n", fil);
         #endif
         if(memcmp(comp->devtitle, comp->pubtitle, 31 * 2)!=0)
         {
@@ -862,17 +923,13 @@ int main(int argc, char **argv)
         }
         }
 
-        #ifndef WII_MINI_APP
-        #ifndef HW_RVL
-        sprintf(str, "\nURL: https://a248.e.akamai.net/f/248/49125/1h/entus.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/dstrial/%s/%s/%d.bin\n\n", (int)header->version, argv[2], argv[3], be32(header->demos[i].ID));
-        #endif
-        #endif
+        sprintf(str, "\r\nURL: https://a248.e.akamai.net/f/248/49125/1h/entus.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/dstrial/%s/%s/%d.bin\r\n\r\n", (int)header->version, country_code, language_code, be32(header->demos[i].ID));
 
         #ifdef USING_LIBFF
-        //f_puts(str, &fil);
+        f_puts(str, &fil);
         f_flush(&fil);
         #else
-        //fputs(str, fil);
+        fputs(str, fil);
         fflush(fil);
         #endif
     }
