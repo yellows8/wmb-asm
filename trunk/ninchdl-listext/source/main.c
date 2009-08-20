@@ -100,6 +100,13 @@ char country_codes[172][3] = {
 
 char language_codes[7][3] = {{"ja"}, {"en"}, {"de"}, {"fr"}, {"es"}, {"it"}, {"nl"}};
 
+typedef struct _DLlist_timestamp
+{
+    u8 day_of_month;
+    u8 month;//Zero based.
+    u16 year;
+} __attribute((packed)) DLlist_timestamp;
+
 typedef struct _DLlist_rating_entry
 {
 	u8 ratingID;
@@ -161,7 +168,8 @@ typedef struct _DLlist_header
 	u8 version;
 	u8 ver1;//? NinCh v3: 0, NinCh v4 JP: 0x39
 	u8 unk4;
-	u8 unk5[11];
+	u32 filesize;//filesize of dl list.
+	u8 unk5[7];
 	u32 country_code;
 	u32 language_code;
 	u8 unk6[0x17];
@@ -188,7 +196,8 @@ typedef struct _DLlist_header_wrapper
 	u8 version;
 	u8 ver1;//? NinCh v3: 0, NinCh v4 JP: 0x39
 	u8 unk4;
-	u8 unk5[11];
+	u32 filesize;//filesize of dl list.
+	u8 unk5[7];
 	u32 country_code;
 	u32 language_code;
 	u8 unk6[0x17];
@@ -310,6 +319,19 @@ char GetRegionCode(u32 code)
         return 'e';
     }
     return 'e';
+}
+
+void GetTimestamp(u32 input, DLlist_timestamp *timestamp)
+{
+    #ifdef LITTLE_ENDIAN
+    timestamp->day_of_month = (u8)(input >> 24);
+    timestamp->month = (u8)(input >> 16);
+    timestamp->year = be16((u16)input);
+    #else
+    timestamp->day_of_month = (u8)(input >> 8);
+    timestamp->month = (u8)(input);
+    timestamp->year = be16((u16)(input >> 16));
+    #endif
 }
 
 #ifdef WII_MINI_APP
@@ -696,6 +718,9 @@ int main(int argc, char **argv)
 
 	free(buffer);
 
+
+    DLlist_header_wrapper *header;
+
     #ifdef WII_MINI_APP
     sprintf(str, "/decom.bin");
     #else
@@ -722,11 +747,33 @@ int main(int argc, char **argv)
 		return 0;
 	}
 
+	buffer = (unsigned char*)malloc(dfinfo.fsize);
 	f_read(&fil, buffer, dfinfo.fsize, &tempsz);
 	f_close(&fil);
+	header = (DLlist_header_wrapper*)buffer;
+	header->country_code = be32(header->country_code);
+    	header->language_code = be32(header->language_code);
+    	char *country_code = GetCountryCode(header->country_code);
+   	char *language_code = (char*)language_codes[header->language_code];
+	if(country_code==NULL)
+    	{
+        	free(buffer);
+        	sprintf(pstr, "Unknown country code: %d\n", (int)header->country_code);
+        	#ifdef WII_MINI_APP
+        	fat_umount();
+        	print_str_noscroll(112, 274, pstr);
+        	#else
+        	printf(pstr);
+        	#endif
+        	return -4;
+    	}
 
-	if(f_open(&fil, "/dump.txt", FA_WRITE | FA_CREATE_ALWAYS)!=0)
+	memset(str, 0, 256);
+	sprintf(str, "/dump%c.txt", GetRegionCode(header->country_code));
+	if(f_open(&fil, str, FA_WRITE | FA_CREATE_ALWAYS)!=0)
 	{
+		free(buffer);
+		fat_umount();
 		sprintf(str, "Failed to open %s", "/dump.txt");
 		print_str_noscroll(112, 274, str);
 		return -3;
@@ -751,11 +798,28 @@ int main(int argc, char **argv)
         }
         fread(buffer, 1, fstats.st_size, fil);
         fclose(fil);
+	header = (DLlist_header_wrapper*)buffer;
+	header->country_code = be32(header->country_code);
+    	header->language_code = be32(header->language_code);
+    	char *country_code = GetCountryCode(header->country_code);
+    	char *language_code = (char*)language_codes[header->language_code];
+	if(country_code==NULL)
+    	{
+        	free(buffer);
+        	sprintf(pstr, "Unknown country code: %d\n", (int)header->country_code);
+        	#ifdef WII_MINI_APP
+        	fat_umount();
+        	print_str_noscroll(112, 274, pstr);
+        	#else
+        	printf(pstr);
+        	#endif
+        	return -4;
+    	}
 
         #ifdef HW_RVL
-        sprintf(str, "/dump.txt");
+        sprintf(str, "/dump%c.txt", GetRegionCode(header->country_code));
         #else
-        sprintf(str, "dump.txt");
+        sprintf(str, "dump%c.txt", GetRegionCode(header->country_code));
         #endif
         fil = fopen(str, "wb");
         if(fil==NULL)
@@ -766,7 +830,6 @@ int main(int argc, char **argv)
         }
     #endif
 
-    DLlist_header_wrapper *header = (DLlist_header_wrapper*)buffer;
     if(header->version>3)
     {
         sprintf(pstr, "Unsupported dl list version for parser: %d\n", header->version);
@@ -802,35 +865,18 @@ int main(int argc, char **argv)
     header->unk_title = be32(header->unk_title);
     header->videos_total = be32(header->videos_total);
     header->demos_total = be32(header->demos_total);
-    header->country_code = be32(header->country_code);
-    header->language_code = be32(header->language_code);
-    char *country_code = GetCountryCode(header->country_code);
-    char *language_code = (char*)language_codes[header->language_code];
-    if(country_code==NULL)
-    {
-        free(buffer);
-        sprintf(pstr, "Unknown country code: %d\n", (int)header->country_code);
-        #ifdef WII_MINI_APP
-        f_close(&fil);
-        fat_umount();
-        print_str_noscroll(112, 274, pstr);
-        #else
-        fclose(fil);
-        printf(pstr);
-        #endif
-        return -4;
-    }
 
     #ifdef USING_LIBFF
-    f_puts("Demos:\r\n", &fil);
+    f_puts("Demos:\n", &fil);
     #else
     fputs("Demos:\r\n", fil);
     #endif
 
-    sprintf(str, "Number of demos: %d\r\n\r\n", (int)header->demos_total);
     #ifdef USING_LIBFF
+    sprintf(str, "Number of demos: %d\n\n", (int)header->demos_total);
     f_puts(str, &fil);
     #else
+    sprintf(str, "Number of demos: %d\r\n\r\n", (int)header->demos_total);
     fputs(str, fil);
     #endif
 
@@ -849,7 +895,7 @@ int main(int argc, char **argv)
             #endif
         }
         #ifdef USING_LIBFF
-        f_puts("\r\n", &fil);
+        f_puts("\n", &fil);
         #else
         fputs("\r\n", fil);
         #endif
@@ -865,14 +911,16 @@ int main(int argc, char **argv)
             #endif
         }
         #ifdef USING_LIBFF
-        f_puts("\r\n", &fil);
+        f_puts("\n", &fil);
         #else
         fputs("\r\n", fil);
         #endif
-        sprintf(str, "ID: %u\r\n", be32(header->demos[i].ID));
+
         #ifdef USING_LIBFF
+        sprintf(str, "ID: %u\n", be32(header->demos[i].ID));
         f_puts(str, &fil);
         #else
+        sprintf(str, "ID: %u\r\n", be32(header->demos[i].ID));
         fputs(str, fil);
         #endif
 
@@ -903,7 +951,7 @@ int main(int argc, char **argv)
         }
 
         #ifdef USING_LIBFF
-        f_puts("\r\n", &fil);
+        f_puts("\n", &fil);
         #else
         fputs("\r\n", fil);
         #endif
@@ -922,7 +970,7 @@ int main(int argc, char **argv)
                 #endif
         }
         #ifdef USING_LIBFF
-        f_puts("\r\n", &fil);
+        f_puts("\n", &fil);
         #else
         fputs("\r\n", fil);
         #endif
@@ -941,45 +989,50 @@ int main(int argc, char **argv)
         }
         }
 
-        sprintf(str, "\r\nRemoval date: %x", header->demos[i].removal_timestamp);
+        DLlist_timestamp timestamp;
+
         if(header->demos[i].removal_timestamp==0xffffffff)
         {
             #ifdef USING_LIBFF
-            f_puts("\r\nNo removal date.", &fil);
+            f_puts("\nNo removal date.", &fil);
             #else
             fputs("\r\nNo removal date.", fil);
             #endif
         }
         else
         {
+            GetTimestamp(header->demos[i].removal_timestamp, &timestamp);
             #ifdef USING_LIBFF
+            sprintf(str, "\nRemoval date: %d/%d/%d", timestamp.month + 1, timestamp.day_of_month, timestamp.year);
             f_puts(str, &fil);
             #else
+            sprintf(str, "\r\nRemoval date: %d/%d/%d", timestamp.month + 1, timestamp.day_of_month, timestamp.year);
             fputs(str, fil);
             #endif
         }
 
-        sprintf(str, "\r\nURL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/dstrial/%s/%s/%u.bin\r\n\r\n", GetRegionCode(header->country_code), (int)header->version, country_code, language_code, be32(header->demos[i].ID));
-
         #ifdef USING_LIBFF
+        sprintf(str, "\nURL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/dstrial/%s/%s/%u.bin\n\n", GetRegionCode(header->country_code), (int)header->version, country_code, language_code, be32(header->demos[i].ID));
         f_puts(str, &fil);
-        f_flush(&fil);
+        f_sync(&fil);
         #else
+        sprintf(str, "\r\nURL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/dstrial/%s/%s/%u.bin\r\n\r\n", GetRegionCode(header->country_code), (int)header->version, country_code, language_code, be32(header->demos[i].ID));
         fputs(str, fil);
         fflush(fil);
         #endif
     }
 
     #ifdef USING_LIBFF
-    f_puts("Videos:\r\n", &fil);
+    f_puts("Videos:\n", &fil);
     #else
     fputs("Videos:\r\n", fil);
     #endif
 
-    sprintf(str, "Number of videos: %d\r\n\r\n", (int)header->videos_total);
     #ifdef USING_LIBFF
+    sprintf(str, "Number of videos: %d\n\n", (int)header->videos_total);
     f_puts(str, &fil);
     #else
+    sprintf(str, "Number of videos: %d\r\n\r\n", (int)header->videos_total);
     fputs(str, fil);
     #endif
     for(i=0; i<header->videos_total; i++)
@@ -996,23 +1049,25 @@ int main(int argc, char **argv)
             #endif
         }
         #ifdef USING_LIBFF
-        f_puts("\r\n", &fil);
+        f_puts("\n", &fil);
         #else
         fputs("\r\n", fil);
         #endif
-        sprintf(str, "ID: %u\r\n", be32(header->videos[i].ID));
+
         #ifdef USING_LIBFF
+        sprintf(str, "ID: %u\n", be32(header->videos[i].ID));
         f_puts(str, &fil);
         #else
+        sprintf(str, "ID: %u\r\n", be32(header->videos[i].ID));
         fputs(str, fil);
         #endif
 
-        sprintf(str, "\r\nURL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/movie/%s/%s/%u.3gp\r\n\r\n", GetRegionCode(header->country_code), (int)header->version, country_code, language_code, be32(header->videos[i].ID));
-
         #ifdef USING_LIBFF
+        sprintf(str, "\nURL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/movie/%s/%s/%u.3gp\n\n", GetRegionCode(header->country_code), (int)header->version, country_code, language_code, be32(header->videos[i].ID));
         f_puts(str, &fil);
-        f_flush(&fil);
+        f_sync(&fil);
         #else
+        sprintf(str, "\r\nURL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/movie/%s/%s/%u.3gp\r\n\r\n", GetRegionCode(header->country_code), (int)header->version, country_code, language_code, be32(header->videos[i].ID));
         fputs(str, fil);
         fflush(fil);
         #endif
