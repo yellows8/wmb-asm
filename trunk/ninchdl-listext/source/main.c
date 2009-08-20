@@ -147,7 +147,9 @@ typedef struct _DLlist_title_entry
 typedef struct _DLlist_video_entry
 {
 	u32 ID;//Decimal ID for URL filename.
-	u8 unk1[0xb];
+	u16 unk;
+	u32 titleid;//The assocaited title entry's ID.
+	u8 unk2[0x5];
 	u16 title[51];
 } __attribute((packed)) DLlist_video_entry;
 
@@ -1061,6 +1063,74 @@ int main(int argc, char **argv)
         sprintf(str, "ID: %u\r\n", be32(header->videos[i].ID));
         fputs(str, fil);
         #endif
+
+        if(header->videos[i].titleid!=0)
+        {
+        sprintf(str, "Rating: ");
+        #ifdef USING_LIBFF
+        f_puts(str, &fil);
+        #else
+        fputs(str, fil);
+        #endif
+
+        title_ptr = LookupTitle(header->videos[i].titleid, header);
+        for(ratingi=0; ratingi<header->ratings_total; ratingi++)
+        {
+            if(header->ratings[ratingi].ratingID==title_ptr->ratingID)
+            {
+                for(texti=0; texti<11; texti++)
+                {
+                    utf_temp = header->ratings[ratingi].title[texti];
+                    if(utf_temp==0)break;
+                    utf_temp = be16(utf_temp);
+                    #ifdef USING_LIBFF
+                    putc((u8)utf_temp, &fil);
+                    #else
+                    putc((u8)utf_temp, fil);
+                    #endif
+                }
+            }
+        }
+
+        #ifdef USING_LIBFF
+        f_puts("\n", &fil);
+        #else
+        fputs("\r\n", fil);
+        #endif
+
+        DLlist_company_entry *comp;
+        comp = (DLlist_company_entry*)((u32)buffer + (u32)be16(title_ptr->company_offset));
+        for(texti=0; texti<31; texti++)
+        {
+                utf_temp = comp->devtitle[texti];
+                if(utf_temp==0)break;
+                utf_temp = be16(utf_temp);
+                #ifdef USING_LIBFF
+                putc((u8)utf_temp, &fil);
+                #else
+                putc((u8)utf_temp, fil);
+                #endif
+        }
+        #ifdef USING_LIBFF
+        f_puts("\n", &fil);
+        #else
+        fputs("\r\n", fil);
+        #endif
+        if(memcmp(comp->devtitle, comp->pubtitle, 31 * 2)!=0)
+        {
+        for(texti=0; texti<31; texti++)
+        {
+                utf_temp = comp->pubtitle[texti];
+                if(utf_temp==0)break;
+                utf_temp = be16(utf_temp);
+                #ifdef USING_LIBFF
+                putc((u8)utf_temp, &fil);
+                #else
+                putc((u8)utf_temp, fil);
+                #endif
+        }
+        }
+        }
 
         #ifdef USING_LIBFF
         sprintf(str, "\nURL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/movie/%s/%s/%u.3gp\n\n", GetRegionCode(header->country_code), (int)header->version, country_code, language_code, be32(header->videos[i].ID));
