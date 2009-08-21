@@ -290,7 +290,7 @@ char *GetCountryCode(u32 code)
     }
     else if(code > 63 && code < 113)
     {
-        return (char*)country_codes[code - 17];
+        return (char*)country_codes[code - 16];
     }
     else if(code > 147 && code < 158)
     {
@@ -325,15 +325,13 @@ char GetRegionCode(u32 code)
 
 void GetTimestamp(u32 input, DLlist_timestamp *timestamp)
 {
-    #ifdef LITTLE_ENDIAN
-    timestamp->day_of_month = (u8)(input >> 24);
-    timestamp->month = (u8)(input >> 16);
-    timestamp->year = be16((u16)input);
-    #else
-    timestamp->day_of_month = (u8)(input >> 8);
-    timestamp->month = (u8)(input);
-    timestamp->year = be16((u16)(input >> 16));
-    #endif
+    u32 temp;
+    u8 *ptr = (u8*)&temp;
+    u16 *year = (u16*)ptr;
+    memcpy(&temp, &input, 4);
+    timestamp->year = be16(*year);
+    timestamp->month = ptr[2];
+    timestamp->day_of_month = ptr[3];
 }
 
 #ifdef WII_MINI_APP
@@ -375,6 +373,26 @@ int main(int argc, char **argv)
 	gecko_init();
     input_init();
 	init_fb(vmode);
+
+    int fat_init = fat_mount();
+
+    FILINFO idfinfo;
+    char *buf;
+    u32 temp;
+	if(f_stat(str, &idfinfo)==0)
+	{
+	    if(f_open(&fil, "/bootmii/bootmii.ini", FA_READ)==0)
+	    {
+	    buf = (char*)malloc(idfinfo.fsize);
+	    f_read(&fil, buf, idfinfo.fsize, &temp);
+	    f_close(&fil);
+        if(strstr(buf, "NTSC")==0)vmode = VIDEO_640X480_NTSCi_YUV16;
+        if(strstr(buf, "PAL50")==0)vmode = VIDEO_640X480_PAL50_YUV16;
+        if(strstr(buf, "PAL60")==0)vmode = VIDEO_640X480_PAL60_YUV16;
+        if(strstr(buf, "PROGRESSIVE")==0)vmode = VIDEO_640X480_NTSCp_YUV16;
+        free(buf);
+	    }
+	}
 
 	VIDEO_Init(vmode);
 	VIDEO_SetFrameBuffer(get_xfb());
@@ -435,7 +453,7 @@ int main(int argc, char **argv)
     #ifdef WII_MINI_APP
     print_str_noscroll(112, 96, "ninchdl-listext v1.0 by yellows8.");
 	print_str_noscroll(112, 112, "Mounting FAT and initalizing nandfs...");
-	if(fat_mount()!=0)
+	if(fat_init!=0)
 	{
 		print_str_noscroll(112, 128, "fat_mount failed.");
 		return -1;
