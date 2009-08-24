@@ -26,8 +26,9 @@ DEALINGS IN THE SOFTWARE.
 unsigned short calccrc16(unsigned char *data, unsigned int length);
 void ConvertEndian(void* input, void* output, int input_length);
 unsigned char *ConvertBinBuff(unsigned char *data, int length);
+typedef enum{false = 0, true = 1} bool;
 
-struct NCBin_Header
+typedef struct _NCBin_Header
 {
     unsigned char mgc_num[5];//Should be 00 00 02 00 00
     unsigned char unk1[7];
@@ -39,22 +40,22 @@ struct NCBin_Header
     unsigned short game_name[61];//The demo name displayed on the Wii when broadcasting/transferring the demo to the DS
     unsigned char padding;
     unsigned char unk[12];
-} __attribute__ ((__packed__));
+} __attribute__ ((__packed__)) NCBin_Header;
 
-#define ENDIAN_LITTE 0
+#define ENDIAN_LITTLE 0
 #define ENDIAN_BIG 1
-bool machine_endian=ENDIAN_LITTE;
+bool machine_endian=ENDIAN_LITTLE;
 
-struct TNDSBanner {
+typedef struct _TNDSBanner {
   unsigned short version;
   unsigned short crc;
   unsigned char reserved[28];
   unsigned char icon[512];
   unsigned short palette[16];
   unsigned short titles[6][128];
-} __attribute__ ((__packed__));
+} __attribute__ ((__packed__)) TNDSBanner;
 
-struct TNDSHeader {
+typedef struct _TNDSHeader {
   char gameTitle[12];
   char gameCode[4];
   char makercode[2];
@@ -107,7 +108,7 @@ struct TNDSHeader {
   unsigned short headerCRC16;
 
   unsigned char zero[160];
-} __attribute__ ((__packed__));
+} __attribute__ ((__packed__)) TNDSHeader;
 
 int GetFileLength(FILE* _pfile)
 {
@@ -174,10 +175,12 @@ unsigned char *ConvertBinBuff(unsigned char *data, int length)
 {
     unsigned char *nds = (unsigned char*)malloc(length - 0x1C8);
     NCBin_Header *header = (NCBin_Header*)data;
-    unsigned char mgc_str[5] = {0x00, 0x00, 0x02, 0x00, 0x00};
-    unsigned char mgc_str2[5] = {0x00, 0x00, 0x03, 0x00, 0x00};
 
-    if(!(memcmp(data, mgc_str, 5)==0 || memcmp(data, mgc_str2, 5)==0))return NULL;//This is not a Nintendo Channel .bin ds demo.
+    if(data[2]<2 || data[2]>3)
+    {
+        printf("Unsupported .bin header version.\n");
+        return NULL;
+    }
 
     memset(nds, 0, length - 0x1C8);
     memcpy(nds, &data[0x1C8], length - 0x1C8);
@@ -189,10 +192,11 @@ unsigned char *ConvertBinBuff(unsigned char *data, int length)
     memset(description, 0, 128 * 2);
     //int end = 0;
     int offset = 0;
+    int i;
 
     memset(banner->titles, 0, 1536);
 
-    for(int i=0; i<49; i++)
+    for(i=0; i<49; i++)
     {
         if(header->game_title[i]==0)break;//If we found the null terminating character, break, write the newline character, then handle the description.
 
@@ -206,7 +210,7 @@ unsigned char *ConvertBinBuff(unsigned char *data, int length)
     description[offset] = 0x000A;
     offset++;
 
-    for(int i=0; i<97; i++)
+    for(i=0; i<97; i++)
     {
         if(header->game_description[i]==0)break;//If we found the null terminating character, break, write the newline character, then handle the description.
 
@@ -322,7 +326,7 @@ void CheckEndianA(void* input, int input_length)
      int *int_input=(int*)input;
 
      if(wanted_value==*int_input)machine_endian=ENDIAN_BIG;
-     if(wanted_value!=*int_input)machine_endian=ENDIAN_LITTE;
+     if(wanted_value!=*int_input)machine_endian=ENDIAN_LITTLE;
 }
 
 void ConvertEndian(void* input, void* output, int input_length)
@@ -361,6 +365,7 @@ void ConvertEndian(void* input, void* output, int input_length)
 
 int main(int argc, char *argv[])
 {
+    int i;
     if(argc==1)
     {
         printf("Binconv by yellowstar 08/24/08\n");
@@ -371,11 +376,9 @@ int main(int argc, char *argv[])
     }
     else
     {
-        for(int i=1; i<=argc-1; i++)
+        for(i=1; i<=argc-1; i++)
             ConvertBin(argv[i]);
     }
-
-    system("PAUSE");
 
     return 0;
 }
