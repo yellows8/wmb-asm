@@ -327,7 +327,7 @@ void GetTimestamp(u32 input, DLlist_timestamp *timestamp)
 {
     u32 temp;
     u8 *ptr = (u8*)&temp;
-    u16 *year = (u16*)ptr;
+    u16 *year = (u16*)&temp;
     memcpy(&temp, &input, 4);
     timestamp->year = be16(*year);
     timestamp->month = ptr[2];
@@ -372,7 +372,6 @@ int main(int argc, char **argv)
 
 	gecko_init();
     input_init();
-	init_fb(vmode);
 
     int fat_init = fat_mount();
 
@@ -386,14 +385,15 @@ int main(int argc, char **argv)
 	    buf = (char*)malloc(idfinfo.fsize);
 	    f_read(&fil, buf, idfinfo.fsize, &temp);
 	    f_close(&fil);
-        if(strstr(buf, "NTSC")==0)vmode = VIDEO_640X480_NTSCi_YUV16;
-        if(strstr(buf, "PAL50")==0)vmode = VIDEO_640X480_PAL50_YUV16;
-        if(strstr(buf, "PAL60")==0)vmode = VIDEO_640X480_PAL60_YUV16;
-        if(strstr(buf, "PROGRESSIVE")==0)vmode = VIDEO_640X480_NTSCp_YUV16;
+        if(strstr(buf, "NTSC"))vmode = VIDEO_640X480_NTSCi_YUV16;
+        if(strstr(buf, "PAL50"))vmode = VIDEO_640X480_PAL50_YUV16;
+        if(strstr(buf, "PAL60"))vmode = VIDEO_640X480_PAL60_YUV16;
+        if(strstr(buf, "PROGRESSIVE"))vmode = VIDEO_640X480_NTSCp_YUV16;
         free(buf);
 	    }
 	}
 
+    init_fb(vmode);
 	VIDEO_Init(vmode);
 	VIDEO_SetFrameBuffer(get_xfb());
 	VISetupEncoder();

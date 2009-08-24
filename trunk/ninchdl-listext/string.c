@@ -177,3 +177,13 @@ int toupper(int c)//Implemented by yellowstar.
     if(c<0x61)return c;
     return c - 0x20;
 }
+char *strstr(char *a, char *b)//Implemented by yellowstar.
+{
+    while(*a!=0)
+    {
+	if(strcmp(a, b)==0)return a;
+	a++;
+    }
+    return NULL;
+}
+
