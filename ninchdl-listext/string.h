@@ -26,6 +26,7 @@ size_t strspn(const char *, const char *);
 size_t strcspn(const char *, const char *);
 char *strpbrk(const char *s1, const char *s2);//Added by yellowstar.
 int toupper(int c);//Added by yellowstar.
+char *strstr(char *a, char *b);//Added by yellowstar
 
 #endif
 
