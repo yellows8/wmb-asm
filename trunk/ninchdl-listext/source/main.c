@@ -358,6 +358,11 @@ int main(int argc, char **argv)
 	char vff_dumpfn[256];
 	unsigned char *buffer;
 	int is_csdata = 0;
+	int is_vff = 1;
+	int version = 3;
+	#ifndef WII_MINI_APP
+	FILE *fil;
+	#endif
 	#ifdef WII_MINI_APP
 	FIL fil;
 	u32 tempsz;
@@ -466,7 +471,7 @@ int main(int argc, char **argv)
 	}
     #else
 
-    printf("ninchdl-listext v1.0 by yellows8.\n");
+    printf("ninchdl-listext v1.0 by yellowstar.\n");
     #ifdef HW_RVL
     printf("Mounting FAT...\n");
     if(!fatInitialize())
@@ -474,10 +479,15 @@ int main(int argc, char **argv)
         printf("Failed to mount FAT.\n");
     }
     #else
-    if(argc!=2)
+    if(argc<5)
     {
         printf("Usage:\n");
         printf("ninchdl-listext <wc24dl.vff>\n");
+        printf("Alternate usage:\n");
+        printf("ninchdl-listext <country code> <language code>\n<region char> <version> <wc24pubk.mod>\n");
+        printf("See either source code or google code wmb-asm NintendoChannel wiki page for list of country and language codes.\n");
+        printf("region char must be either u, e, or j.\nOnly version 3 is supported by the parser.(Currently only JP has NinCh v4.)\n");
+        printf("wc24pubk.mod is the filename for the NinCh WC24 keys.(Can also be the 16 byte\nAES key.) The default is wc24pubk.mod if this is ommitted.\n");
         return 0;
     }
     #endif
@@ -571,12 +581,21 @@ int main(int argc, char **argv)
 
 	if(strncmp((char*)buffer, "VFF ", 4)!=0)
 	{
-		print_str_noscroll(112, 194, "Invalid VFF.");
-		return -4;
+	    if(buffer[0]!=0x10)
+		{
+            print_str_noscroll(112, 194, "Invalid VFF, and input file is not raw compressed data.");
+            return -4;
+		}
+		else
+		{
+		    is_vff = 0;
+		}
 	}
     #else
         #ifndef HW_RVL
         struct stat fstats;
+        if(strstr(vff_dumpfn, ".vff"))
+        {
         FILE *fil = fopen(vff_dumpfn, "rb");
         if(fil==NULL)
         {
@@ -598,108 +617,166 @@ int main(int argc, char **argv)
 
         if(strncmp((char*)buffer, "VFF ", 4)!=0)
         {
-            #ifdef WII_MINI_APP
-            print_str_noscroll(112, 194, "Invalid VFF.");
-            #else
-            printf("Invalid VFF.");
-            #endif
-            return -4;
+            if(buffer[0]!=0x10)
+            {
+                #ifdef WII_MINI_APP
+                print_str_noscroll(112, 194, "Invalid VFF, and input file is not raw compressed data.\n");
+                #else
+                printf("Invalid VFF, and input file is not raw compressed data.\n");
+                #endif
+                return -4;
+            }
+            else
+            {
+                is_vff = 0;
+                return -4;
+            }
+        }
+        }
+        else
+        {
+            is_vff = 0;
         }
         #endif
     #endif
 
     #ifdef WII_MINI_APP
-	print_str_noscroll(112, 194, "Writing to SD...");
-	if(f_open(&fil, vff_dumpfn, FA_WRITE | FA_CREATE_ALWAYS)!=0)
-	{
-		sprintf(str, "Failed to open %s", vff_dumpfn);
-		print_str_noscroll(112, 110, str);
-		return -3;
-	}
-
-	f_write(&fil, buffer, nfs_fil.size, &tempsz);
-
-	f_close(&fil);
-    print_str_noscroll(112, 210, "Done.");
-    #endif
-
-    if(memcmp(&buffer[0x2080], "WC24DATABIN", 11)==0)
+    if(is_vff)
     {
-        #ifdef WII_MINI_APP
-        print_str_noscroll(112, 110, "Found WC24Data.bin in VFF.");
-        #else
-        printf("Found WC24Data.bin in VFF.\n");
-        #endif
-    }
-    else if(memcmp(&buffer[0x480], "CSDATA  BIN", 11)==0)
-	{
-	    #ifdef WII_MINI_APP
-        print_str_noscroll(112, 110, "Found CSData.bin in VFF; only decompression is supported.");
-        #else
-        printf("Found CSData.bin in VFF; only decompression is supported.\n");
-        #endif
-        is_csdata = 1;
-	}
-	else
-	{
-	    #ifdef WII_MINI_APP
-        print_str_noscroll(112, 110, "WC24 dl list not found in VFF.");
-        #else
-        printf("WC24 dl list not found in VFF.\n");
-        #endif
-		return -3;
-	}
+        print_str_noscroll(112, 194, "Writing to SD...");
+        if(f_open(&fil, vff_dumpfn, FA_WRITE | FA_CREATE_ALWAYS)!=0)
+        {
+            sprintf(str, "Failed to open %s", vff_dumpfn);
+            print_str_noscroll(112, 110, str);
+            return -3;
+        }
 
-    sprintf(str, "Extracting %s...\n", is_csdata==0?"WC24Data.bin":"CSData.bin");
-	#ifdef WII_MINI_APP
-	print_str_noscroll(112, 226, str);
-    #else
-    printf(str);
+        f_write(&fil, buffer, nfs_fil.size, &tempsz);
+
+        f_close(&fil);
+        print_str_noscroll(112, 210, "Done.");
+    }
     #endif
 
-    u32 datasize;
-    if(is_csdata)memcpy(&datasize, &buffer[0x49c], 4);
-    if(!is_csdata)memcpy(&datasize, &buffer[0x209c], 4);
-    datasize = le32(datasize);
-    memset(str, 0, 256);
-    #ifdef WII_MINI_APP
-    sprintf(str, "/%s", is_csdata==0?"WC24Data.bin":"CSData.bin");
-    #else
-        #ifdef HW_RVL
+    if(is_vff)
+    {
+        if(memcmp(&buffer[0x2080], "WC24DATABIN", 11)==0)
+        {
+            #ifdef WII_MINI_APP
+            print_str_noscroll(112, 110, "Found WC24Data.bin in VFF.");
+            #else
+            printf("Found WC24Data.bin in VFF.\n");
+            #endif
+        }
+        else if(memcmp(&buffer[0x480], "CSDATA  BIN", 11)==0)
+        {
+            #ifdef WII_MINI_APP
+            print_str_noscroll(112, 110, "Found CSData.bin in VFF; only decompression is supported.");
+            #else
+            printf("Found CSData.bin in VFF; only decompression is supported.\n");
+            #endif
+            is_csdata = 1;
+        }
+        else
+        {
+            #ifdef WII_MINI_APP
+            print_str_noscroll(112, 110, "WC24 dl list not found in VFF.");
+            #else
+            printf("WC24 dl list not found in VFF.\n");
+            #endif
+            return -3;
+        }
+    }
+
+    #ifndef WII_MINI_APP
+    if(!is_vff)
+    {
+        memset(pstr, 0, 256);
+        memset(str, 0, 256);
+        if(version<4)strcpy(str, "wc24data.LZ");
+        if(version>=4)strcpy(str, "csdata.LZ");
+        sscanf(argv[4], "%d", &version);
+        sprintf(pstr, "http://ent%c.wapp.wii.com/%d/%s/%s/%s", argv[3][0], version, argv[1], argv[2], str);
+        memset(str, 0, 256);
+        sprintf(str, "wc24decrypt %s ", pstr);
+        memset(pstr, 0, 256);
+        if(version<4)strcpy(pstr, "WC24Data.bin");
+        if(version>=4)strcpy(pstr, "CSData.bin");
+        strcat(str, pstr);
+        strcat(str, " ");
+        if(argc!=6)
+        {
+            strcat(str, "wc24pubk.mod");
+        }
+        else
+        {
+            strcat(str, argv[5]);
+        }
+        printf("%s\n", str);
+        system(str);
+    }
+    #endif
+
+    if(is_vff)
+    {
+        sprintf(str, "Extracting %s...\n", is_csdata==0?"WC24Data.bin":"CSData.bin");
+        #ifdef WII_MINI_APP
+        print_str_noscroll(112, 226, str);
+        #else
+        printf(str);
+        #endif
+
+        u32 datasize;
+        if(is_csdata)memcpy(&datasize, &buffer[0x49c], 4);
+        if(!is_csdata)memcpy(&datasize, &buffer[0x209c], 4);
+        datasize = le32(datasize);
+        memset(str, 0, 256);
+        #ifdef WII_MINI_APP
         sprintf(str, "/%s", is_csdata==0?"WC24Data.bin":"CSData.bin");
         #else
-            sprintf(str, "%s", is_csdata==0?"WC24Data.bin":"CSData.bin");
+            #ifdef HW_RVL
+            sprintf(str, "/%s", is_csdata==0?"WC24Data.bin":"CSData.bin");
+            #else
+                sprintf(str, "%s", is_csdata==0?"WC24Data.bin":"CSData.bin");
+            #endif
         #endif
-    #endif
 
-    #ifdef USING_LIBFF
-    if(f_open(&fil, str, FA_WRITE | FA_CREATE_ALWAYS)!=0)
-	{
-	    sprintf(pstr, "Failed to open %s", str);
-		print_str_noscroll(112, 242, pstr);
-		return -3;
-	}
-    #else
-    fil = fopen(str, "wb");
-    if(fil==NULL)
+        #ifdef USING_LIBFF
+        if(f_open(&fil, str, FA_WRITE | FA_CREATE_ALWAYS)!=0)
+        {
+            sprintf(pstr, "Failed to open %s", str);
+            print_str_noscroll(112, 242, pstr);
+            return -3;
+        }
+        #else
+        fil = fopen(str, "wb");
+        if(fil==NULL)
+        {
+            sprintf(pstr, "Failed to open %s\n", str);
+            printf(pstr);
+            return -3;
+        }
+        #endif
+
+        #ifdef USING_LIBFF
+        f_write(&fil, &buffer[is_csdata==0?0x3220:0x1620], datasize, &tempsz);
+        #else
+        fwrite(&buffer[is_csdata==0?0x3220:0x1620], 1, datasize, fil);
+        #endif
+
+        #ifdef USING_LIBFF
+        f_close(&fil);
+        #else
+        fclose(fil);
+        #endif
+    }
+    else
     {
-	    sprintf(pstr, "Failed to open %s\n", str);
-		printf(pstr);
-		return -3;
-	}
-    #endif
+        memset(str, 0, 256);
+        if(version<4)strcpy(str, "WC24Data.bin");
+        if(version>=4)strcpy(str, "CSData.bin");
+    }
 
-    #ifdef USING_LIBFF
-    f_write(&fil, &buffer[is_csdata==0?0x3220:0x1620], datasize, &tempsz);
-    #else
-    fwrite(&buffer[is_csdata==0?0x3220:0x1620], 1, datasize, fil);
-    #endif
-
-    #ifdef USING_LIBFF
-    f_close(&fil);
-    #else
-    fclose(fil);
-    #endif
     #ifdef WII_MINI_APP
     print_str_noscroll(112, 242, "Decompressing...");
     #else
