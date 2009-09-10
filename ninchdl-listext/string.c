@@ -179,9 +179,10 @@ int toupper(int c)//Implemented by yellowstar.
 }
 char *strstr(char *a, char *b)//Implemented by yellowstar.
 {
+    int len = strlen(b);
     while(*a!=0)
     {
-	if(strcmp(a, b)==0)return a;
+	if(strncmp(a, b, len)==0)return a;
 	a++;
     }
     return NULL;
