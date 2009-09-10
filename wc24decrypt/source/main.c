@@ -151,9 +151,10 @@ int main(int argc, char **argv)
                 while(str[i-1]!='/')i--;
                 strncpy(fnstr, &str[i], strlen(str) - i);
 
+                remove(fnstr);
                 if(argv[1][4]!='s')
                 {
-                    sprintf(str, "wget -N %s", argv[1]);
+                    sprintf(str, "wget %s", argv[1]);
                     printf("%s\n", str);
                     system(str);
                 }
