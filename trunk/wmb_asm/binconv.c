@@ -129,6 +129,7 @@ void ConvertBin(char *filename)
     FILE *fbin, *fnds;
     unsigned char *input_buffer, *output_buffer;
     int length;
+    unsigned int romsize;
     char str[256];
     memset(str, 0, 256);
 
@@ -164,7 +165,16 @@ void ConvertBin(char *filename)
         return;
     }
 
-    fwrite(output_buffer, 1, length - 0x1C8, fnds);
+    if(input_buffer[2]<4)
+    {
+        memcpy(&romsize, &input_buffer[0x1c8 + 0x80], 4);
+        fwrite(output_buffer, 1, romsize + 136, fnds);
+    }
+    if(input_buffer[2]>=4)
+    {
+        memcpy(&romsize, &input_buffer[0x14c + 0x80], 4);
+        fwrite(output_buffer, 1, romsize + 136, fnds);
+    }
 
     fclose(fnds);
 
@@ -173,17 +183,23 @@ void ConvertBin(char *filename)
 
 unsigned char *ConvertBinBuff(unsigned char *data, int length)
 {
-    unsigned char *nds = (unsigned char*)malloc(length - 0x1C8);
+    unsigned char *nds;
     NCBin_Header *header = (NCBin_Header*)data;
+    unsigned int romsize = 0;
 
-    if(data[2]<2 || data[2]>3)
+    if(data[2]>4)
     {
         printf("Unsupported .bin header version.\n");
         return NULL;
     }
 
-    memset(nds, 0, length - 0x1C8);
-    memcpy(nds, &data[0x1C8], length - 0x1C8);
+    unsigned int hdrsz = 0x14c;
+    if(data[2]<4)hdrsz = 0x1c8;
+    nds = (unsigned char*)malloc(length - hdrsz);
+
+    memset(nds, 0, length - hdrsz);
+    memcpy(&romsize, &data[hdrsz + 0x80], 4);
+    memcpy(nds, &data[hdrsz], romsize + 136);
 
     TNDSHeader *nds_header = (TNDSHeader*)nds;
     unsigned int *bannerOffset = &nds_header->bannerOffset;
