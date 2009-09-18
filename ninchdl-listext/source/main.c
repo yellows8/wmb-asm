@@ -444,7 +444,7 @@ char *GetCountryCode(u32 code)
     }
     else if(code > 63 && code < 113)
     {
-        return (char*)country_codes[code - 16];
+        return (char*)country_codes[code - 18];
     }
     else if(code > 147 && code < 158)
     {
