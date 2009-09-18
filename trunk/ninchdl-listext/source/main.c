@@ -102,12 +102,12 @@ char language_codes[7][3] = {{"ja"}, {"en"}, {"de"}, {"fr"}, {"es"}, {"it"}, {"n
 
 typedef struct _DLlist_timestamp
 {
-    u8 day_of_month;
-    u8 month;//Zero based.
     u16 year;
+    u8 month;//Zero based.
+    u8 day_of_month;
 } __attribute((packed)) DLlist_timestamp;
 
-typedef struct _DLlist_rating_entry
+typedef struct _DLlist_rating_entry//v3
 {
 	u8 ratingID;
 	u8 boardID;//? For US, 2.
@@ -115,21 +115,41 @@ typedef struct _DLlist_rating_entry
 	u16 title[11];//Title/text of the rating.
 } __attribute((packed)) DLlist_rating_entry;
 
-typedef struct _DLlist_title_type_entry
+typedef struct _DLlist_rating_entry_v4//v4
+{
+	u8 ratingID;
+	u8 unk;
+	u8 age;//Required years of age.
+	u8 unk2;
+	u32 JFIF_offset;//.jpg pic for this rating.
+	u32 unk3;
+	u16 title[8];//Title/text of the rating.
+} __attribute((packed)) DLlist_rating_entry_v4;
+
+typedef struct _DLlist_title_type_entry//v3
 {
 	u8 typeID;
 	u8 groupID;
 	u16 title[31];//Name of type.
 } __attribute((packed)) DLlist_title_type_entry;
 
-typedef struct _DLlist_company_entry
+typedef struct _DLlist_title_type_entry_v4//v4
+{
+	u8 typeID;
+	char console_model[3];//console model code.
+	u16 title[31];//Name of type.
+	u8 groupID;
+	u8 unk;//usually matches the rating list "header" last byte.
+} __attribute((packed)) DLlist_title_type_entry_v4;
+
+typedef struct _DLlist_company_entry//v3
 {
 	u32 ID;//?
 	u16 devtitle[31];
 	u16 pubtitle[31];
 } __attribute((packed)) DLlist_company_entry;
 
-typedef struct _DLlist_title_entry
+typedef struct _DLlist_title_entry//v3
 {
 	u32 ID;
 	u32 titleID;//Or DS Game code.
@@ -144,7 +164,22 @@ typedef struct _DLlist_title_entry
 	u16 subtitle[31];
 } __attribute((packed)) DLlist_title_entry;
 
-typedef struct _DLlist_video_entry
+typedef struct _DLlist_title_entry_v4//v4
+{
+	u32 ID;
+	u32 titleID;//Or DS Game code.
+	u8 title_type;
+	u8 unk;
+	u32 unk2;
+	u16 company_offset;
+	u32 unk3;//Release date timestamp?
+	u8 ratingID;
+	u8 unk4[0x1d];
+	u16 title[62];
+	u16 subtitle[31];
+} __attribute((packed)) DLlist_title_entry_v4;
+
+typedef struct _DLlist_video_entry//v3
 {
 	u32 ID;//Decimal ID for URL filename.
 	u16 unk;
@@ -153,7 +188,25 @@ typedef struct _DLlist_video_entry
 	u16 title[51];
 } __attribute((packed)) DLlist_video_entry;
 
-typedef struct _DLlist_demo_entry
+typedef struct _DLlist_video_entry_v4//v4
+{
+	u32 ID;//Decimal ID for URL filename.
+	u16 unk;
+	u32 titleid;//The assocaited title entry's ID.
+	u8 unk2[0x16];
+	u16 title[123];
+} __attribute((packed)) DLlist_video_entry_v4;
+
+typedef struct _DLlist_video2_entry_v4//v4
+{
+	u32 ID;//Decimal ID for URL filename.
+	u16 unk;
+	u32 titleid;//The assocaited title entry's ID.
+	u8 unk2[0x14];
+	u16 title[102];
+} __attribute((packed)) DLlist_video2_entry_v4;
+
+typedef struct _DLlist_demo_entry//v3
 {
 	u32 ID;//Decimal ID for URL filename.
 	u16 title[31];
@@ -164,11 +217,29 @@ typedef struct _DLlist_demo_entry
 	u8 unk[2];
 } __attribute((packed)) DLlist_demo_entry;
 
-typedef struct _DLlist_header
+typedef struct _DLlist_demo_entry_v4//v4
+{
+	u32 ID;//Decimal ID for URL filename.
+	u16 title[31];
+	u16 subtitle[31];//Optional
+	u32 titleid;//ID of title entry, not title entry titleid.
+	u32 company_offset;
+	u32 removal_timestamp;//0xffffffff when there is no end of distrubition date, timestamp otherwise.
+	u8 unk[0xd4];
+} __attribute((packed)) DLlist_demo_entry_v4;
+
+typedef struct _DLlist_detailed_rating_entry_v4
+{
+    u8 rating_group;
+    u8 ratingID;
+    u16 title[102];
+} __attribute((packed)) DLlist_detailed_rating_entry_v4;
+
+typedef struct _DLlist_header//v3
 {
 	u16 unk0;
 	u8 version;
-	u8 ver1;//? NinCh v3: 0, NinCh v4 JP: 0x39
+	u8 unk_region;//? NinCh v3: 0, NinCh v4 JP: 0x39
 	u8 unk4;
 	u32 filesize;//filesize of dl list.
 	u8 unk5[7];
@@ -192,11 +263,11 @@ typedef struct _DLlist_header
 	u32 wc24msg_opt_offset;
 } __attribute((packed)) DLlist_header;
 
-typedef struct _DLlist_header_wrapper
+typedef struct _DLlist_header_wrapper//v3
 {
 	u16 unk0;
 	u8 version;
-	u8 ver1;//? NinCh v3: 0, NinCh v4 JP: 0x39
+	u8 unk_region;//? NinCh v3: 0, NinCh v4 JP: 0x39
 	u8 unk4;
 	u32 filesize;//filesize of dl list.
 	u8 unk5[7];
@@ -219,6 +290,75 @@ typedef struct _DLlist_header_wrapper
 	DLlist_demo_entry *demos;
 	u16 *wc24msg_opt;
 } __attribute((packed)) DLlist_header_wrapper;
+
+typedef struct _DLlist_header_v4
+{
+	u16 unk0;
+	u8 version;
+	u8 unkb_region;//? NinCh v3: 0, NinCh v4 JP: 0x39
+	u32 filesize;//filesize of dl list.
+	u32 unk8;
+	u32 DlListID;
+	u32 unk_region;
+	u32 country_code;
+	u8 unk18[0x2];
+	u8 language_code;
+	u8 unk6[0x9];
+	u32 ratings_total;
+	u32 ratings_offset;
+	u32 total_title_types;
+	u32 title_types_offset;
+	u32 companies_total;
+	u32 companies_offset;
+	u32 total_titles;
+	u32 titles_offset;
+	u32 unk[2];
+	u32 videos0_total;//videos0/videos1 is the high/low quality videos.(Unknown currently which list is high/low quality.)
+	u32 videos0_offset;
+	u32 videos1_total;
+	u32 videos1_offset;
+	u32 demos_total;
+	u32 demos_offset;
+	u8 unk20[0x20];
+	u32 videos2_total;//Unknown what this list is for exactly.
+	u32 videos2_offset;
+	u32 total_detailed_ratings;
+	u32 detailed_ratings_offset;
+} __attribute((packed)) DLlist_header_v4;
+
+typedef struct _DLlist_header_wrapper_v4
+{
+	u16 unk0;
+	u8 version;
+	u8 unkb_region;//? NinCh v3: 0, NinCh v4 JP: 0x39
+	u32 filesize;//filesize of dl list.
+	u32 unk8;
+	u32 DlListID;
+	u32 unk_region;
+	u32 country_code;
+	u32 language_code;
+	u8 unk6[0x9];
+	u32 ratings_total;
+	DLlist_rating_entry_v4 *ratings;
+	u32 total_title_types;
+	DLlist_title_type_entry_v4 *title_types;
+	u32 companies_total;
+	DLlist_company_entry *companies;
+	u32 total_titles;
+	DLlist_title_entry_v4 *titles;
+	u32 unk[2];
+	u32 videos0_total;//videos0/videos1 is the high/low quality videos.(Unknown currently which list is high/low quality.)
+	DLlist_video_entry_v4 *videos0;
+	u32 videos1_total;
+	DLlist_video_entry_v4 *videos1;
+	u32 demos_total;
+	DLlist_demo_entry_v4 *demos;
+	u8 unk20[0x20];
+	u32 videos2_total;//Unknown what this list is for exactly.
+	DLlist_video2_entry_v4 *videos2;
+	u32 total_detailed_ratings;
+	DLlist_detailed_rating_entry_v4 *detailed_ratings;
+} __attribute((packed)) DLlist_header_wrapper_v4;
 
 inline u32 be32(u32 x)//From update_download by SquidMan.
 {
@@ -278,6 +418,20 @@ DLlist_title_entry *LookupTitle(u32 ID, DLlist_header_wrapper *header)
     return NULL;
 }
 
+DLlist_title_entry_v4 *LookupTitleV4(u32 ID, DLlist_header_wrapper_v4 *header)
+{
+    u32 i;
+    u32 numtitles = header->total_titles;
+    for(i = 0; i<numtitles; i++)
+    {
+        if(header->titles[i].ID==ID)
+        {
+            return &header->titles[i];
+        }
+    }
+    return NULL;
+}
+
 char *GetCountryCode(u32 code)
 {
     if(code==1)
@@ -325,13 +479,8 @@ char GetRegionCode(u32 code)
 
 void GetTimestamp(u32 input, DLlist_timestamp *timestamp)
 {
-    u32 temp;
-    u8 *ptr = (u8*)&temp;
-    u16 *year = (u16*)&temp;
-    memcpy(&temp, &input, 4);
-    timestamp->year = be16(*year);
-    timestamp->month = ptr[2];
-    timestamp->day_of_month = ptr[3];
+    memcpy(timestamp, &input, 4);
+    timestamp->year = be16(timestamp->year);
 }
 
 #ifdef WII_MINI_APP
@@ -479,14 +628,15 @@ int main(int argc, char **argv)
         printf("Failed to mount FAT.\n");
     }
     #else
-    if(argc<5)
+    if(argc!=2 && argc!=5)
     {
         printf("Usage:\n");
         printf("ninchdl-listext <wc24dl.vff>\n");
+        printf("Input can be a compressed dl list as well.\n");
         printf("Alternate usage:\n");
         printf("ninchdl-listext <country code> <language code>\n<region char> <version> <wc24pubk.mod>\n");
         printf("See either source code or google code wmb-asm NintendoChannel wiki page for list of country and language codes.\n");
-        printf("region char must be either u, e, or j.\nOnly version 3 is supported by the parser.(Currently only JP has NinCh v4.)\n");
+        printf("region char must be either u, e, or j.\n");
         printf("wc24pubk.mod is the filename for the NinCh WC24 keys.(Can also be the 16 byte\nAES key.) The default is wc24pubk.mod if this is ommitted.\n");
         return 0;
     }
@@ -688,14 +838,15 @@ int main(int argc, char **argv)
         }
     }
 
+    u32 DlListID = 0;
     #ifndef WII_MINI_APP
-    if(!is_vff)
+    if(!is_vff && strstr(argv[1], ".LZ")==NULL)
     {
         memset(pstr, 0, 256);
         memset(str, 0, 256);
+        sscanf(argv[4], "%d", &version);
         if(version<4)strcpy(str, "wc24data.LZ");
         if(version>=4)strcpy(str, "csdata.LZ");
-        sscanf(argv[4], "%d", &version);
         sprintf(pstr, "http://ent%c.wapp.wii.com/%d/%s/%s/%s", argv[3][0], version, argv[1], argv[2], str);
         memset(str, 0, 256);
         sprintf(str, "wc24decrypt %s ", pstr);
@@ -714,6 +865,31 @@ int main(int argc, char **argv)
         }
         printf("%s\n", str);
         system(str);
+
+        if(version>=4)
+        {
+            FILE *f;
+            memset(argv_str, 0, 256);
+            sprintf(argv_str, "gbalzss%cd%c%s%c%s", 0, 0, pstr, 0, "decom.bin");
+            unsigned int Argv_[4];
+            Argv_[0] = (unsigned int)&argv_str[0];
+            Argv_[1] = (unsigned int)&argv_str[8];
+            Argv_[2] = (unsigned int)&argv_str[10];
+            Argv_[3] = (unsigned int)&argv_str[11 + strlen(pstr)];
+            gbalzss_main(4, (char**)Argv_);
+            memset(argv_str, 0, 256);
+            memset(str, 0, 256);
+
+            f = fopen("decom.bin", "rb");
+            if(f==NULL)return -3;
+            fseek(f, 0xc, SEEK_SET);
+            fread(&DlListID, 1, 4, f);
+            fclose(f);
+            DlListID = be32(DlListID);
+            sprintf(str, "curl -k --output %u.LZ https://ent%cs.wapp.wii.com/%s/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/list/%s/%s/%u.LZ", DlListID, argv[3][0], argv[4], argv[1], argv[2], DlListID);
+            printf("%s\n", str);
+            system(str);
+        }
     }
     #endif
 
@@ -773,8 +949,15 @@ int main(int argc, char **argv)
     else
     {
         memset(str, 0, 256);
-        if(version<4)strcpy(str, "WC24Data.bin");
-        if(version>=4)strcpy(str, "CSData.bin");
+        if(strstr(argv[1], ".LZ")==NULL && strstr(argv[1], ".")==NULL)
+        {
+            if(version<4)strcpy(str, "WC24Data.bin");
+            if(version>=4)sprintf(str, "%u.LZ", DlListID);
+        }
+        else if(strstr(argv[1], "."))
+        {
+            strcpy(str, argv[1]);
+        }
     }
 
     #ifdef WII_MINI_APP
@@ -816,7 +999,8 @@ int main(int argc, char **argv)
 	free(buffer);
 
 
-    DLlist_header_wrapper *header;
+    DLlist_header_wrapper *header = NULL;
+    DLlist_header_wrapper_v4 *header_v4 = NULL;
 
     #ifdef WII_MINI_APP
     sprintf(str, "/decom.bin");
@@ -847,11 +1031,34 @@ int main(int argc, char **argv)
 	buffer = (unsigned char*)malloc(dfinfo.fsize);
 	f_read(&fil, buffer, dfinfo.fsize, &tempsz);
 	f_close(&fil);
-	header = (DLlist_header_wrapper*)buffer;
-	header->country_code = be32(header->country_code);
-    	header->language_code = be32(header->language_code);
-    	char *country_code = GetCountryCode(header->country_code);
-   	char *language_code = (char*)language_codes[header->language_code];
+	char *country_code;
+   	char *language_code;
+   	char region_code;
+	if(buffer[2]<4)header = (DLlist_header_wrapper*)buffer;
+	if(buffer[2]>=4)header_v4 = (DLlist_header_wrapper_v4*)buffer;
+
+	if(buffer[2]<4)
+	{
+        header->country_code = be32(header->country_code);
+        header->language_code = be32(header->language_code);
+	}
+	else
+	{
+	    header_v4->country_code = be32(header_v4->country_code);
+        header_v4->language_code = be32(header_v4->language_code);
+	}
+
+   	if(buffer[2]<4)
+   	{
+        country_code = GetCountryCode(header->country_code);
+        language_code = (char*)language_codes[header->language_code];
+   	}
+   	else
+   	{
+        country_code = GetCountryCode(header_v4->country_code);
+        language_code = (char*)language_codes[header_v4->language_code];
+   	}
+
 	if(country_code==NULL)
     	{
         	free(buffer);
@@ -865,8 +1072,10 @@ int main(int argc, char **argv)
         	return -4;
     	}
 
+    if(buffer[2]<4)region_code = GetRegionCode(header->country_code);
+    if(buffer[2]>=4)region_code = GetRegionCode(header_v4->country_code);
 	memset(str, 0, 256);
-	sprintf(str, "/dump%c.txt", GetRegionCode(header->country_code));
+	sprintf(str, "/dump%c.txt", region_code);
 	if(f_open(&fil, str, FA_WRITE | FA_CREATE_ALWAYS)!=0)
 	{
 		free(buffer);
@@ -895,11 +1104,35 @@ int main(int argc, char **argv)
         }
         fread(buffer, 1, fstats.st_size, fil);
         fclose(fil);
-	header = (DLlist_header_wrapper*)buffer;
-	header->country_code = be32(header->country_code);
-    	header->language_code = be32(header->language_code);
-    	char *country_code = GetCountryCode(header->country_code);
-    	char *language_code = (char*)language_codes[header->language_code];
+
+        if(buffer[2]<4)header = (DLlist_header_wrapper*)buffer;
+        if(buffer[2]>=4)header_v4 = (DLlist_header_wrapper_v4*)buffer;
+        char *country_code;
+   	char *language_code;
+   	char region_code;
+
+	if(buffer[2]<4)
+	{
+        header->country_code = be32(header->country_code);
+        header->language_code = be32(header->language_code);
+	}
+	else
+	{
+	    header_v4->country_code = be32(header_v4->country_code);
+        header_v4->language_code = be32(header_v4->language_code);
+	}
+
+   	if(buffer[2]<4)
+   	{
+        country_code = GetCountryCode(header->country_code);
+        language_code = (char*)language_codes[header->language_code];
+   	}
+   	else
+   	{
+        country_code = GetCountryCode(header_v4->country_code);
+        language_code = (char*)language_codes[header_v4->language_code];
+   	}
+
 	if(country_code==NULL)
     	{
         	free(buffer);
@@ -913,10 +1146,13 @@ int main(int argc, char **argv)
         	return -4;
     	}
 
+        if(buffer[2]<4)region_code = GetRegionCode(header->country_code);
+        if(buffer[2]>=4)region_code = GetRegionCode(header_v4->country_code);
+        memset(str, 0, 256);
         #ifdef HW_RVL
-        sprintf(str, "/dump%c.txt", GetRegionCode(header->country_code));
+        sprintf(str, "/dump%c.txt", region_code);
         #else
-        sprintf(str, "dump%c.txt", GetRegionCode(header->country_code));
+        sprintf(str, "dump%c.txt", region_code);
         #endif
         fil = fopen(str, "wb");
         if(fil==NULL)
@@ -927,7 +1163,7 @@ int main(int argc, char **argv)
         }
     #endif
 
-    if(header->version>3)
+    if(buffer[2]>4)
     {
         sprintf(pstr, "Unsupported dl list version for parser: %d\n", header->version);
         free(buffer);
@@ -945,23 +1181,57 @@ int main(int argc, char **argv)
 
     u16 utf_temp;
     u32 i, texti, ratingi;
+    u32 total_demos, total_videos;
 
-    header->ratings = (DLlist_rating_entry*)(be32((u32)header->ratings) + (u32)buffer);
-    header->main_title_types = (DLlist_title_type_entry*)(be32((u32)header->main_title_types) + (u32)buffer);
-    header->companies = (DLlist_company_entry*)(be32((u32)header->companies) + (u32)buffer);
-    header->sub_title_types = (DLlist_title_entry*)(be32((u32)header->sub_title_types) + (u32)buffer);
-    header->titles = (DLlist_title_entry*)(be32((u32)header->titles) + (u32)buffer);
-    header->unk_data = (u32*)(be32((u32)header->unk_data) + (u32)buffer);
-    header->videos = (DLlist_video_entry*)(be32((u32)header->videos) + (u32)buffer);
-    header->demos = (DLlist_demo_entry*)(be32((u32)header->demos) + (u32)buffer);
-    header->wc24msg_opt = (u16*)(be32((u32)header->wc24msg_opt) + (u32)buffer);
+    if(buffer[2]<4)
+    {
+        header->ratings = (DLlist_rating_entry*)(be32((u32)header->ratings) + (u32)buffer);
+        header->main_title_types = (DLlist_title_type_entry*)(be32((u32)header->main_title_types) + (u32)buffer);
+        header->companies = (DLlist_company_entry*)(be32((u32)header->companies) + (u32)buffer);
+        header->sub_title_types = (DLlist_title_entry*)(be32((u32)header->sub_title_types) + (u32)buffer);
+        header->titles = (DLlist_title_entry*)(be32((u32)header->titles) + (u32)buffer);
+        header->unk_data = (u32*)(be32((u32)header->unk_data) + (u32)buffer);
+        header->videos = (DLlist_video_entry*)(be32((u32)header->videos) + (u32)buffer);
+        header->demos = (DLlist_demo_entry*)(be32((u32)header->demos) + (u32)buffer);
+        header->wc24msg_opt = (u16*)(be32((u32)header->wc24msg_opt) + (u32)buffer);
+    }
+    else
+    {
+        header_v4->ratings = (DLlist_rating_entry_v4*)(be32((u32)header_v4->ratings) + (u32)buffer);
+        header_v4->title_types = (DLlist_title_type_entry_v4*)(be32((u32)header_v4->title_types) + (u32)buffer);
+        header_v4->companies = (DLlist_company_entry*)(be32((u32)header_v4->companies) + (u32)buffer);
+        header_v4->titles = (DLlist_title_entry_v4*)(be32((u32)header_v4->titles) + (u32)buffer);
+        header_v4->demos = (DLlist_demo_entry_v4*)(be32((u32)header_v4->demos) + (u32)buffer);
+        header_v4->videos0 = (DLlist_video_entry_v4*)(be32((u32)header_v4->videos0) + (u32)buffer);
+        header_v4->videos1 = (DLlist_video_entry_v4*)(be32((u32)header_v4->videos1) + (u32)buffer);
+        header_v4->videos2 = (DLlist_video2_entry_v4*)(be32((u32)header_v4->videos2) + (u32)buffer);
+        header_v4->detailed_ratings = (DLlist_detailed_rating_entry_v4*)(be32((u32)header_v4->detailed_ratings) + (u32)buffer);
+    }
 
-    header->ratings_total = be32(header->ratings_total);
-    header->total_title_types = be32(header->total_title_types);
-    header->companies_total = be32(header->companies_total);
-    header->unk_title = be32(header->unk_title);
-    header->videos_total = be32(header->videos_total);
-    header->demos_total = be32(header->demos_total);
+    if(buffer[2]<4)
+    {
+        header->ratings_total = be32(header->ratings_total);
+        header->total_title_types = be32(header->total_title_types);
+        header->companies_total = be32(header->companies_total);
+        header->unk_title = be32(header->unk_title);
+        header->videos_total = be32(header->videos_total);
+        header->demos_total = be32(header->demos_total);
+        total_demos = header->demos_total;
+        total_videos = header->videos_total;
+    }
+    else
+    {
+        header_v4->ratings_total = be32(header_v4->ratings_total);
+        header_v4->total_title_types = be32(header_v4->total_title_types);
+        header_v4->companies_total = be32(header_v4->companies_total);
+        header_v4->demos_total = be32(header_v4->demos_total);
+        header_v4->videos0_total = be32(header_v4->videos0_total);
+        header_v4->videos1_total = be32(header_v4->videos1_total);
+        header_v4->videos2_total = be32(header_v4->videos2_total);
+        header_v4->total_detailed_ratings = be32(header_v4->total_detailed_ratings);
+        total_demos = header_v4->demos_total;
+        total_videos = header_v4->videos0_total;
+    }
 
     #ifdef USING_LIBFF
     f_puts("Demos:\n", &fil);
@@ -970,19 +1240,21 @@ int main(int argc, char **argv)
     #endif
 
     #ifdef USING_LIBFF
-    sprintf(str, "Number of demos: %d\n\n", (int)header->demos_total);
+    sprintf(str, "Number of demos: %d\n\n", total_demos);
     f_puts(str, &fil);
     #else
-    sprintf(str, "Number of demos: %d\r\n\r\n", (int)header->demos_total);
+    sprintf(str, "Number of demos: %d\r\n\r\n", total_demos);
     fputs(str, fil);
     #endif
 
     DLlist_title_entry *title_ptr;
-    for(i=0; i<header->demos_total; i++)
+    DLlist_title_entry_v4 *title_ptr_v4;
+    for(i=0; i<total_demos; i++)
     {
         for(texti=0; texti<31; texti++)
         {
-            utf_temp = header->demos[i].title[texti];
+            if(buffer[2]<4)utf_temp = header->demos[i].title[texti];
+            if(buffer[2]>=4)utf_temp = header_v4->demos[i].title[texti];
             if(utf_temp==0)break;
             utf_temp = be16(utf_temp);
             #ifdef USING_LIBFF
@@ -998,7 +1270,8 @@ int main(int argc, char **argv)
         #endif
         for(texti=0; texti<31; texti++)
         {
-            utf_temp = header->demos[i].subtitle[texti];
+            if(buffer[2]<4)utf_temp = header->demos[i].subtitle[texti];
+            if(buffer[2]>=4)utf_temp = header_v4->demos[i].subtitle[texti];
             if(utf_temp==0)break;
             utf_temp = be16(utf_temp);
             #ifdef USING_LIBFF
@@ -1013,11 +1286,14 @@ int main(int argc, char **argv)
         fputs("\r\n", fil);
         #endif
 
+        u32 demo_ID = 0;
+        if(buffer[2]<4)demo_ID = be32(header->demos[i].ID);
+        if(buffer[2]>=4)demo_ID = be32(header_v4->demos[i].ID);
         #ifdef USING_LIBFF
-        sprintf(str, "ID: %u\n", be32(header->demos[i].ID));
+        sprintf(str, "ID: %u\n", demo_ID);
         f_puts(str, &fil);
         #else
-        sprintf(str, "ID: %u\r\n", be32(header->demos[i].ID));
+        sprintf(str, "ID: %u\r\n", demo_ID);
         fputs(str, fil);
         #endif
 
@@ -1028,21 +1304,45 @@ int main(int argc, char **argv)
         fputs(str, fil);
         #endif
 
-        title_ptr = LookupTitle(header->demos[i].titleid, header);
-        for(ratingi=0; ratingi<header->ratings_total; ratingi++)
+        if(buffer[2]<4)title_ptr = LookupTitle(header->demos[i].titleid, header);
+        if(buffer[2]>=4)title_ptr_v4 = LookupTitleV4(header_v4->demos[i].titleid, header_v4);
+        if(buffer[2]<4)
         {
-            if(header->ratings[ratingi].ratingID==title_ptr->ratingID)
+            for(ratingi=0; ratingi<header->ratings_total; ratingi++)
             {
-                for(texti=0; texti<11; texti++)
+                if(header->ratings[ratingi].ratingID==title_ptr->ratingID)
                 {
-                    utf_temp = header->ratings[ratingi].title[texti];
-                    if(utf_temp==0)break;
-                    utf_temp = be16(utf_temp);
-                    #ifdef USING_LIBFF
-                    putc((u8)utf_temp, &fil);
-                    #else
-                    putc((u8)utf_temp, fil);
-                    #endif
+                    for(texti=0; texti<11; texti++)
+                    {
+                        utf_temp = header->ratings[ratingi].title[texti];
+                        if(utf_temp==0)break;
+                        utf_temp = be16(utf_temp);
+                        #ifdef USING_LIBFF
+                        putc((u8)utf_temp, &fil);
+                        #else
+                        putc((u8)utf_temp, fil);
+                        #endif
+                    }
+                }
+            }
+        }
+        else
+        {
+            for(ratingi=0; ratingi<header_v4->ratings_total; ratingi++)
+            {
+                if(header_v4->ratings[ratingi].ratingID==title_ptr_v4->ratingID)
+                {
+                    for(texti=0; texti<8; texti++)
+                    {
+                        utf_temp = header_v4->ratings[ratingi].title[texti];
+                        if(utf_temp==0)break;
+                        utf_temp = be16(utf_temp);
+                        #ifdef USING_LIBFF
+                        putc((u8)utf_temp, &fil);
+                        #else
+                        putc((u8)utf_temp, fil);
+                        #endif
+                    }
                 }
             }
         }
@@ -1054,7 +1354,8 @@ int main(int argc, char **argv)
         #endif
 
         DLlist_company_entry *comp;
-        comp = (DLlist_company_entry*)((u32)buffer + (u32)be16(title_ptr->company_offset));
+        if(buffer[2]<4)comp = (DLlist_company_entry*)((u32)buffer + (u32)be16(title_ptr->company_offset));
+        if(buffer[2]>=4)comp = (DLlist_company_entry*)((u32)buffer + (u32)be16(title_ptr_v4->company_offset));
         for(texti=0; texti<31; texti++)
         {
                 utf_temp = comp->devtitle[texti];
@@ -1087,8 +1388,11 @@ int main(int argc, char **argv)
         }
 
         DLlist_timestamp timestamp;
+        u32 timestamp_u32;
+        if(buffer[2]<4)timestamp_u32 = header->demos[i].removal_timestamp;
+        if(buffer[2]>=4)timestamp_u32 = header_v4->demos[i].removal_timestamp;
 
-        if(header->demos[i].removal_timestamp==0xffffffff)
+        if(timestamp_u32==0xffffffff)
         {
             #ifdef USING_LIBFF
             f_puts("\nNo removal date.", &fil);
@@ -1098,7 +1402,7 @@ int main(int argc, char **argv)
         }
         else
         {
-            GetTimestamp(header->demos[i].removal_timestamp, &timestamp);
+            GetTimestamp(timestamp_u32, &timestamp);
             #ifdef USING_LIBFF
             sprintf(str, "\nRemoval date: %d/%d/%d", timestamp.month + 1, timestamp.day_of_month, timestamp.year);
             f_puts(str, &fil);
@@ -1109,11 +1413,11 @@ int main(int argc, char **argv)
         }
 
         #ifdef USING_LIBFF
-        sprintf(str, "\nURL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/dstrial/%s/%s/%u.bin\n\n", GetRegionCode(header->country_code), (int)header->version, country_code, language_code, be32(header->demos[i].ID));
+        sprintf(str, "\nURL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/dstrial/%s/%s/%u.bin\n\n", region_code, (int)buffer[2], country_code, language_code, demo_ID);
         f_puts(str, &fil);
         f_sync(&fil);
         #else
-        sprintf(str, "\r\nURL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/dstrial/%s/%s/%u.bin\r\n\r\n", GetRegionCode(header->country_code), (int)header->version, country_code, language_code, be32(header->demos[i].ID));
+        sprintf(str, "\r\nURL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/dstrial/%s/%s/%u.bin\r\n\r\n", region_code, (int)buffer[2], country_code, language_code, demo_ID);
         fputs(str, fil);
         fflush(fil);
         #endif
@@ -1126,17 +1430,18 @@ int main(int argc, char **argv)
     #endif
 
     #ifdef USING_LIBFF
-    sprintf(str, "Number of videos: %d\n\n", (int)header->videos_total);
+    sprintf(str, "Number of videos: %d\n\n", total_videos);
     f_puts(str, &fil);
     #else
-    sprintf(str, "Number of videos: %d\r\n\r\n", (int)header->videos_total);
+    sprintf(str, "Number of videos: %d\r\n\r\n", total_videos);
     fputs(str, fil);
     #endif
-    for(i=0; i<header->videos_total; i++)
+    for(i=0; i<total_videos; i++)
     {
         for(texti=0; texti<51; texti++)
         {
-            utf_temp = header->videos[i].title[texti];
+            if(buffer[2]<4)utf_temp = header->videos[i].title[texti];
+            if(buffer[2]>=4)utf_temp = header_v4->videos0[i].title[texti];
             if(utf_temp==0)break;
             utf_temp = be16(utf_temp);
             #ifdef USING_LIBFF
@@ -1151,15 +1456,38 @@ int main(int argc, char **argv)
         fputs("\r\n", fil);
         #endif
 
+        u32 video_ID, video_titleid, video1_ID = 0;
+        if(buffer[2]<4)video_ID = be32(header->videos[i].ID);
+        if(buffer[2]>=4)
+        {
+            video_ID = be32(header_v4->videos0[i].ID);
+            video1_ID = be32(header_v4->videos1[i].ID);
+        }
         #ifdef USING_LIBFF
-        sprintf(str, "ID: %u\n", be32(header->videos[i].ID));
-        f_puts(str, &fil);
+        if(buffer[2]<4)
+        {
+            sprintf(str, "ID: %u\n", video_ID);
+            f_puts(str, &fil);
+        }
+        else
+        {
+            //sprintf(str, "ID0: %u\nID1: %u\n", video_ID, video1_ID);
+        }
         #else
-        sprintf(str, "ID: %u\r\n", be32(header->videos[i].ID));
-        fputs(str, fil);
+        if(buffer[2]<4)
+        {
+            sprintf(str, "ID: %u\r\n", video_ID);
+            fputs(str, fil);
+        }
+        else
+        {
+            //sprintf(str, "ID0: %u\r\nID1: %u\r\n", video_ID, video1_ID);
+        }
         #endif
 
-        if(header->videos[i].titleid!=0)
+        if(buffer[2]<4)video_titleid = header->videos[i].titleid;
+        if(buffer[2]>=4)video_titleid = header_v4->videos0[i].titleid;
+        if(video_titleid!=0)
         {
         sprintf(str, "Rating: ");
         #ifdef USING_LIBFF
@@ -1168,21 +1496,53 @@ int main(int argc, char **argv)
         fputs(str, fil);
         #endif
 
-        title_ptr = LookupTitle(header->videos[i].titleid, header);
-        for(ratingi=0; ratingi<header->ratings_total; ratingi++)
+        if(buffer[2]<4)title_ptr = LookupTitle(header->videos[i].titleid, header);
+        if(buffer[2]>=4)title_ptr_v4 = LookupTitleV4(header_v4->videos0[i].titleid, header_v4);
+        if(buffer[2]<4)
         {
-            if(header->ratings[ratingi].ratingID==title_ptr->ratingID)
+            for(ratingi=0; ratingi<header->ratings_total; ratingi++)
             {
-                for(texti=0; texti<11; texti++)
+                if(header->ratings[ratingi].ratingID==title_ptr->ratingID)
                 {
-                    utf_temp = header->ratings[ratingi].title[texti];
-                    if(utf_temp==0)break;
-                    utf_temp = be16(utf_temp);
-                    #ifdef USING_LIBFF
-                    putc((u8)utf_temp, &fil);
-                    #else
-                    putc((u8)utf_temp, fil);
-                    #endif
+                    for(texti=0; texti<11; texti++)
+                    {
+                        utf_temp = header->ratings[ratingi].title[texti];
+                        if(utf_temp==0)break;
+                        utf_temp = be16(utf_temp);
+                        #ifdef USING_LIBFF
+                        putc((u8)utf_temp, &fil);
+                        #else
+                        putc((u8)utf_temp, fil);
+                        #endif
+                    }
+                }
+            }
+        }
+        else
+        {
+            for(ratingi=0; ratingi<header_v4->ratings_total; ratingi++)
+            {
+                if(header_v4->ratings[ratingi].ratingID==title_ptr_v4->ratingID)
+                {
+                    for(texti=0; texti<8; texti++)
+                    {
+                        utf_temp = header_v4->ratings[ratingi].title[texti];
+                        if(utf_temp==0)break;
+                        utf_temp = be16(utf_temp);
+                        #ifdef USING_LIBFF
+                        putc((u8)utf_temp, &fil);
+                        #else
+                        if(((u8)utf_temp)==0xa)
+                        {
+                            printf("a\n");
+                            fputs("\r\n", fil);
+                        }
+                        else
+                        {
+                            fputc((u8)utf_temp, fil);
+                        }
+                        #endif
+                    }
                 }
             }
         }
@@ -1194,7 +1554,8 @@ int main(int argc, char **argv)
         #endif
 
         DLlist_company_entry *comp;
-        comp = (DLlist_company_entry*)((u32)buffer + (u32)be16(title_ptr->company_offset));
+        if(buffer[2]<4)comp = (DLlist_company_entry*)((u32)buffer + (u32)be16(title_ptr->company_offset));
+        if(buffer[2]>=4)comp = (DLlist_company_entry*)((u32)buffer + (u32)be16(title_ptr_v4->company_offset));
         for(texti=0; texti<31; texti++)
         {
                 utf_temp = comp->devtitle[texti];
@@ -1228,12 +1589,26 @@ int main(int argc, char **argv)
         }
 
         #ifdef USING_LIBFF
-        sprintf(str, "\nURL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/movie/%s/%s/%u.3gp\n\n", GetRegionCode(header->country_code), (int)header->version, country_code, language_code, be32(header->videos[i].ID));
-        f_puts(str, &fil);
+        if(buffer[2]<4)
+        {
+            sprintf(str, "\nURL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/movie/%s/%s/%u.3gp\n\n", GetRegionCode(header->country_code), (int)header->version, country_code, language_code, video_ID);
+            f_puts(str, &fil);
+        }
+        else
+        {
+            //sprintf(str, "\nURL0: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/movie/%s/%s/%u.3gp\nURL1: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/movie/%s/%s/%u.3gp\n\n", region_code, buffer[2], country_code, language_code, video_ID, region_code, buffer[2], country_code, language_code, video1_ID);
+        }
         f_sync(&fil);
         #else
-        sprintf(str, "\r\nURL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/movie/%s/%s/%u.3gp\r\n\r\n", GetRegionCode(header->country_code), (int)header->version, country_code, language_code, be32(header->videos[i].ID));
-        fputs(str, fil);
+        if(buffer[2]<4)
+        {
+            sprintf(str, "\r\nURL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/movie/%s/%s/%u.3gp\r\n\r\n", region_code, buffer[2], country_code, language_code, video_ID);
+            fputs(str, fil);
+        }
+        else
+        {
+            //sprintf(str, "\r\nURL0: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/movie/%s/%s/%u.3gp\nURL1: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/movie/%s/%s/%u.3gp\r\n\r\n", region_code, buffer[2], country_code, language_code, video_ID, region_code, buffer[2], country_code, language_code, video1_ID);
+        }
         fflush(fil);
         #endif
     }
