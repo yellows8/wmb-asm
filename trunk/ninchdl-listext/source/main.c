@@ -952,6 +952,7 @@ int main(int argc, char **argv)
         #else
         fclose(fil);
         #endif
+        free(buffer);
     }
     else
     {
@@ -993,7 +994,6 @@ int main(int argc, char **argv)
 
 	if(is_csdata)
 	{
-		free(buffer);
 		#ifdef WII_MINI_APP
 		fat_umount();
 		print_str_noscroll(112, 258, "Done.");
@@ -1002,8 +1002,6 @@ int main(int argc, char **argv)
 		#endif
 		return 0;
 	}
-
-	free(buffer);
 
 
     DLlist_header_wrapper *header = NULL;
