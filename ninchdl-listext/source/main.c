@@ -123,7 +123,7 @@ typedef struct _DLlist_rating_entry_v4//v4
 	u8 unk2;
 	u32 JFIF_offset;//.jpg pic for this rating.
 	u32 unk3;
-	u16 title[8];//Title/text of the rating.
+	u16 title[11];//Title/text of the rating.
 } __attribute((packed)) DLlist_rating_entry_v4;
 
 typedef struct _DLlist_title_type_entry//v3
@@ -191,16 +191,21 @@ typedef struct _DLlist_video_entry//v3
 typedef struct _DLlist_video_entry_v4//v4
 {
 	u32 ID;//Decimal ID for URL filename.
-	u16 unk;
+	u16 time_length;//Length of video measured in seconds.
 	u32 titleid;//The assocaited title entry's ID.
-	u8 unk2[0x16];
+	u8 unk2[0x10];
+	u8 ratingID;
+	u8 unk3;
+	u8 new_tag;
+	u8 video_index;
+	u8 unk4[2];
 	u16 title[123];
 } __attribute((packed)) DLlist_video_entry_v4;
 
 typedef struct _DLlist_video2_entry_v4//v4
 {
 	u32 ID;//Decimal ID for URL filename.
-	u16 unk;
+	u16 unk;//time_length?
 	u32 titleid;//The assocaited title entry's ID.
 	u8 unk2[0x14];
 	u16 title[102];
@@ -225,7 +230,11 @@ typedef struct _DLlist_demo_entry_v4//v4
 	u32 titleid;//ID of title entry, not title entry titleid.
 	u32 company_offset;
 	u32 removal_timestamp;//0xffffffff when there is no end of distrubition date, timestamp otherwise.
-	u8 unk[0xd4];
+	u32 unk1;
+	u8 ratingID;
+	u8 new_tag;//When non-zero, NinCh displays the "NEW" tag?
+	u8 new_tag_index;//Might be the index for the order of demos with the "NEW" tag?
+	u8 unk2[0xcd];
 } __attribute((packed)) DLlist_demo_entry_v4;
 
 typedef struct _DLlist_detailed_rating_entry_v4
@@ -313,15 +322,14 @@ typedef struct _DLlist_header_v4
 	u32 total_titles;
 	u32 titles_offset;
 	u32 unk[2];
-	u32 videos0_total;//videos0/videos1 is the high/low quality videos.(Unknown currently which list is high/low quality.)
+	u32 videos0_total;
 	u32 videos0_offset;
-	u32 videos1_total;
-	u32 videos1_offset;
+	u32 unk1[2];
 	u32 demos_total;
 	u32 demos_offset;
 	u8 unk20[0x20];
-	u32 videos2_total;//Unknown what this list is for exactly.
-	u32 videos2_offset;
+	u32 videos1_total;//Unknown what this list is for exactly.
+	u32 videos1_offset;
 	u32 total_detailed_ratings;
 	u32 detailed_ratings_offset;
 } __attribute((packed)) DLlist_header_v4;
@@ -347,15 +355,14 @@ typedef struct _DLlist_header_wrapper_v4
 	u32 total_titles;
 	DLlist_title_entry_v4 *titles;
 	u32 unk[2];
-	u32 videos0_total;//videos0/videos1 is the high/low quality videos.(Unknown currently which list is high/low quality.)
-	DLlist_video_entry_v4 *videos0;
-	u32 videos1_total;
-	DLlist_video_entry_v4 *videos1;
+	u32 videos0_total;
+	DLlist_video_entry_v4 *videos0;//All 60 videos.
+	u32 unk1[2];
 	u32 demos_total;
 	DLlist_demo_entry_v4 *demos;
 	u8 unk20[0x20];
-	u32 videos2_total;//Unknown what this list is for exactly.
-	DLlist_video2_entry_v4 *videos2;
+	u32 videos1_total;
+	DLlist_video2_entry_v4 *videos1;//Old NinCh v3 videos.
 	u32 total_detailed_ratings;
 	DLlist_detailed_rating_entry_v4 *detailed_ratings;
 } __attribute((packed)) DLlist_header_wrapper_v4;
@@ -1203,8 +1210,7 @@ int main(int argc, char **argv)
         header_v4->titles = (DLlist_title_entry_v4*)(be32((u32)header_v4->titles) + (u32)buffer);
         header_v4->demos = (DLlist_demo_entry_v4*)(be32((u32)header_v4->demos) + (u32)buffer);
         header_v4->videos0 = (DLlist_video_entry_v4*)(be32((u32)header_v4->videos0) + (u32)buffer);
-        header_v4->videos1 = (DLlist_video_entry_v4*)(be32((u32)header_v4->videos1) + (u32)buffer);
-        header_v4->videos2 = (DLlist_video2_entry_v4*)(be32((u32)header_v4->videos2) + (u32)buffer);
+        header_v4->videos1 = (DLlist_video2_entry_v4*)(be32((u32)header_v4->videos1) + (u32)buffer);
         header_v4->detailed_ratings = (DLlist_detailed_rating_entry_v4*)(be32((u32)header_v4->detailed_ratings) + (u32)buffer);
     }
 
@@ -1227,7 +1233,6 @@ int main(int argc, char **argv)
         header_v4->demos_total = be32(header_v4->demos_total);
         header_v4->videos0_total = be32(header_v4->videos0_total);
         header_v4->videos1_total = be32(header_v4->videos1_total);
-        header_v4->videos2_total = be32(header_v4->videos2_total);
         header_v4->total_detailed_ratings = be32(header_v4->total_detailed_ratings);
         total_demos = header_v4->demos_total;
         total_videos = header_v4->videos0_total;
@@ -1259,8 +1264,10 @@ int main(int argc, char **argv)
             utf_temp = be16(utf_temp);
             #ifdef USING_LIBFF
             putc((u8)utf_temp, &fil);
+            if((utf_temp >> 8))putc((u8)(utf_temp >> 8), &fil);
             #else
             putc((u8)utf_temp, fil);
+            if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
             #endif
         }
         #ifdef USING_LIBFF
@@ -1276,8 +1283,10 @@ int main(int argc, char **argv)
             utf_temp = be16(utf_temp);
             #ifdef USING_LIBFF
             putc((u8)utf_temp, &fil);
+            if((utf_temp >> 8))putc((u8)(utf_temp >> 8), &fil);
             #else
             putc((u8)utf_temp, fil);
+            if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
             #endif
         }
         #ifdef USING_LIBFF
@@ -1285,6 +1294,20 @@ int main(int argc, char **argv)
         #else
         fputs("\r\n", fil);
         #endif
+
+        if(buffer[2]>=4)
+        {
+            if(header_v4->demos[i].new_tag)
+            {
+                #ifdef USING_LIBFF
+                sprintf(str, "NEW (index %d)\n", header_v4->demos[i].new_tag_index);
+                f_puts(str, &fil);
+                #else
+                sprintf(str, "NEW (index %d)\r\n", header_v4->demos[i].new_tag_index);
+                fputs(str, fil);
+                #endif
+            }
+        }
 
         u32 demo_ID = 0;
         if(buffer[2]<4)demo_ID = be32(header->demos[i].ID);
@@ -1304,13 +1327,22 @@ int main(int argc, char **argv)
         fputs(str, fil);
         #endif
 
-        if(buffer[2]<4)title_ptr = LookupTitle(header->demos[i].titleid, header);
-        if(buffer[2]>=4)title_ptr_v4 = LookupTitleV4(header_v4->demos[i].titleid, header_v4);
+        u32 ratingID = 0;
+        if(buffer[2]<4)
+        {
+            title_ptr = LookupTitle(header->demos[i].titleid, header);
+            ratingID = title_ptr->ratingID;
+        }
+        else
+        {
+            title_ptr_v4 = LookupTitleV4(header_v4->demos[i].titleid, header_v4);
+            ratingID = header_v4->demos[i].ratingID;
+        }
         if(buffer[2]<4)
         {
             for(ratingi=0; ratingi<header->ratings_total; ratingi++)
             {
-                if(header->ratings[ratingi].ratingID==title_ptr->ratingID)
+                if(header->ratings[ratingi].ratingID==ratingID)
                 {
                     for(texti=0; texti<11; texti++)
                     {
@@ -1319,8 +1351,10 @@ int main(int argc, char **argv)
                         utf_temp = be16(utf_temp);
                         #ifdef USING_LIBFF
                         putc((u8)utf_temp, &fil);
+                        if((utf_temp >> 8))putc((u8)(utf_temp >> 8), &fil);
                         #else
                         putc((u8)utf_temp, fil);
+                        if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
                         #endif
                     }
                 }
@@ -1330,17 +1364,19 @@ int main(int argc, char **argv)
         {
             for(ratingi=0; ratingi<header_v4->ratings_total; ratingi++)
             {
-                if(header_v4->ratings[ratingi].ratingID==title_ptr_v4->ratingID)
+                if(header_v4->ratings[ratingi].ratingID==ratingID)
                 {
-                    for(texti=0; texti<8; texti++)
+                    for(texti=0; texti<11; texti++)
                     {
                         utf_temp = header_v4->ratings[ratingi].title[texti];
                         if(utf_temp==0)break;
                         utf_temp = be16(utf_temp);
                         #ifdef USING_LIBFF
                         putc((u8)utf_temp, &fil);
+                        if((utf_temp >> 8))putc((u8)(utf_temp >> 8), &fil);
                         #else
                         putc((u8)utf_temp, fil);
+                        if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
                         #endif
                     }
                 }
@@ -1363,8 +1399,10 @@ int main(int argc, char **argv)
                 utf_temp = be16(utf_temp);
                 #ifdef USING_LIBFF
                 putc((u8)utf_temp, &fil);
+                if((utf_temp >> 8))putc((u8)(utf_temp >> 8), &fil);
                 #else
                 putc((u8)utf_temp, fil);
+                if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
                 #endif
         }
         #ifdef USING_LIBFF
@@ -1381,8 +1419,10 @@ int main(int argc, char **argv)
                 utf_temp = be16(utf_temp);
                 #ifdef USING_LIBFF
                 putc((u8)utf_temp, &fil);
+                if((utf_temp >> 8))putc((u8)(utf_temp >> 8), &fil);
                 #else
                 putc((u8)utf_temp, fil);
+                if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
                 #endif
         }
         }
@@ -1438,7 +1478,10 @@ int main(int argc, char **argv)
     #endif
     for(i=0; i<total_videos; i++)
     {
-        for(texti=0; texti<51; texti++)
+        u32 txt_len = 0;
+        if(buffer[2]<4)txt_len = 51;
+        if(buffer[2]>=4)txt_len = 123;
+        for(texti=0; texti<txt_len; texti++)
         {
             if(buffer[2]<4)utf_temp = header->videos[i].title[texti];
             if(buffer[2]>=4)utf_temp = header_v4->videos0[i].title[texti];
@@ -1446,8 +1489,10 @@ int main(int argc, char **argv)
             utf_temp = be16(utf_temp);
             #ifdef USING_LIBFF
             putc((u8)utf_temp, &fil);
+            if((utf_temp >> 8))putc((u8)(utf_temp >> 8), &fil);
             #else
             putc((u8)utf_temp, fil);
+            if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
             #endif
         }
         #ifdef USING_LIBFF
@@ -1455,6 +1500,28 @@ int main(int argc, char **argv)
         #else
         fputs("\r\n", fil);
         #endif
+
+        if(buffer[2]>=4)
+        {
+            if(header_v4->videos0[i].new_tag)
+            {
+                #ifdef USING_LIBFF
+                sprintf(str, "NEW\n");
+                f_puts(str, &fil);
+                #else
+                sprintf(str, "NEW\r\n");
+                fputs(str, fil);
+                #endif
+            }
+            u16 time_length = be16(header_v4->videos0[i].time_length);
+            #ifdef USING_LIBFF
+            sprintf(str, "Time length %02d:%02d\n", time_length / 60, time_length % 60);
+            f_puts(str, &fil);
+            #else
+            sprintf(str, "Time length %02d:%02d\r\n", time_length / 60, time_length % 60);
+            fputs(str, fil);
+            #endif
+        }
 
         u32 video_ID, video_titleid, video1_ID = 0;
         if(buffer[2]<4)video_ID = be32(header->videos[i].ID);
@@ -1471,7 +1538,8 @@ int main(int argc, char **argv)
         }
         else
         {
-            //sprintf(str, "ID0: %u\nID1: %u\n", video_ID, video1_ID);
+            sprintf(str, "ID: %u\n", video_ID);
+            f_puts(str, &fil);
         }
         #else
         if(buffer[2]<4)
@@ -1481,7 +1549,8 @@ int main(int argc, char **argv)
         }
         else
         {
-            //sprintf(str, "ID0: %u\r\nID1: %u\r\n", video_ID, video1_ID);
+            sprintf(str, "ID: %u\r\n", video_ID);
+            fputs(str, fil);
         }
         #endif
 
@@ -1492,17 +1561,28 @@ int main(int argc, char **argv)
         sprintf(str, "Rating: ");
         #ifdef USING_LIBFF
         f_puts(str, &fil);
+        if((utf_temp >> 8))putc((u8)(utf_temp >> 8), &fil);
         #else
         fputs(str, fil);
+        if((utf_temp >> 8))putc((u8)(utf_temp >> 8), &fil);
         #endif
 
-        if(buffer[2]<4)title_ptr = LookupTitle(header->videos[i].titleid, header);
-        if(buffer[2]>=4)title_ptr_v4 = LookupTitleV4(header_v4->videos0[i].titleid, header_v4);
+        u32 ratingID = 0;
+        if(buffer[2]<4)
+        {
+            title_ptr = LookupTitle(header->videos[i].titleid, header);
+            ratingID = title_ptr->ratingID;
+        }
+        else
+        {
+            title_ptr_v4 = LookupTitleV4(header_v4->videos0[i].titleid, header_v4);
+            ratingID = header_v4->videos0[i].ratingID;
+        }
         if(buffer[2]<4)
         {
             for(ratingi=0; ratingi<header->ratings_total; ratingi++)
             {
-                if(header->ratings[ratingi].ratingID==title_ptr->ratingID)
+                if(header->ratings[ratingi].ratingID==ratingID)
                 {
                     for(texti=0; texti<11; texti++)
                     {
@@ -1511,8 +1591,10 @@ int main(int argc, char **argv)
                         utf_temp = be16(utf_temp);
                         #ifdef USING_LIBFF
                         putc((u8)utf_temp, &fil);
+                        if((utf_temp >> 8))putc((u8)(utf_temp >> 8), &fil);
                         #else
                         putc((u8)utf_temp, fil);
+                        if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
                         #endif
                     }
                 }
@@ -1522,25 +1604,19 @@ int main(int argc, char **argv)
         {
             for(ratingi=0; ratingi<header_v4->ratings_total; ratingi++)
             {
-                if(header_v4->ratings[ratingi].ratingID==title_ptr_v4->ratingID)
+                if(header_v4->ratings[ratingi].ratingID==ratingID)
                 {
-                    for(texti=0; texti<8; texti++)
+                    for(texti=0; texti<11; texti++)
                     {
                         utf_temp = header_v4->ratings[ratingi].title[texti];
                         if(utf_temp==0)break;
                         utf_temp = be16(utf_temp);
                         #ifdef USING_LIBFF
                         putc((u8)utf_temp, &fil);
+                        if((utf_temp >> 8))putc((u8)(utf_temp >> 8), &fil);
                         #else
-                        if(((u8)utf_temp)==0xa)
-                        {
-                            printf("a\n");
-                            fputs("\r\n", fil);
-                        }
-                        else
-                        {
-                            fputc((u8)utf_temp, fil);
-                        }
+                        putc((u8)utf_temp, fil);
+                        if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
                         #endif
                     }
                 }
@@ -1563,8 +1639,10 @@ int main(int argc, char **argv)
                 utf_temp = be16(utf_temp);
                 #ifdef USING_LIBFF
                 putc((u8)utf_temp, &fil);
+                if((utf_temp >> 8))putc((u8)(utf_temp >> 8), &fil);
                 #else
                 putc((u8)utf_temp, fil);
+                if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
                 #endif
         }
         #ifdef USING_LIBFF
@@ -1581,8 +1659,10 @@ int main(int argc, char **argv)
                 utf_temp = be16(utf_temp);
                 #ifdef USING_LIBFF
                 putc((u8)utf_temp, &fil);
+                if((utf_temp >> 8))putc((u8)(utf_temp >> 8), &fil);
                 #else
                 putc((u8)utf_temp, fil);
+                if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
                 #endif
         }
         }
@@ -1608,6 +1688,7 @@ int main(int argc, char **argv)
         else
         {
             //sprintf(str, "\r\nURL0: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/movie/%s/%s/%u.3gp\nURL1: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/movie/%s/%s/%u.3gp\r\n\r\n", region_code, buffer[2], country_code, language_code, video_ID, region_code, buffer[2], country_code, language_code, video1_ID);
+            fputs("\r\n\r\n", fil);
         }
         fflush(fil);
         #endif
