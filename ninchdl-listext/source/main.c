@@ -1486,9 +1486,11 @@ int main(int argc, char **argv)
             if(utf_temp==0)break;
             utf_temp = be16(utf_temp);
             #ifdef USING_LIBFF
+            if(((u8)utf_temp)==0x0A)putc(0x0D, &fil);
             putc((u8)utf_temp, &fil);
             if((utf_temp >> 8))putc((u8)(utf_temp >> 8), &fil);
             #else
+            if(((u8)utf_temp)==0x0A)putc(0x0D, fil);
             putc((u8)utf_temp, fil);
             if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
             #endif
@@ -1674,19 +1676,23 @@ int main(int argc, char **argv)
         }
         else
         {
-            //sprintf(str, "\nURL0: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/movie/%s/%s/%u.3gp\nURL1: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/movie/%s/%s/%u.3gp\n\n", region_code, buffer[2], country_code, language_code, video_ID, region_code, buffer[2], country_code, language_code, video1_ID);
+            sprintf(str, "\nLow Quality URL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/movie/%s/%s/%u-l.mo", region_code, buffer[2], country_code, language_code, video_ID);
+            f_puts(str, &fil);
+            sprintf(str, "\nHigh Quality URL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/movie/%s/%s/%u-h.mo\n\n", region_code, buffer[2], country_code, language_code, video_ID);
+            f_puts(str, &fil);
         }
         f_sync(&fil);
         #else
         if(buffer[2]<4)
         {
             sprintf(str, "\r\nURL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/movie/%s/%s/%u.3gp\r\n\r\n", region_code, buffer[2], country_code, language_code, video_ID);
-            fputs(str, fil);
         }
         else
         {
-            //sprintf(str, "\r\nURL0: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/movie/%s/%s/%u.3gp\nURL1: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/movie/%s/%s/%u.3gp\r\n\r\n", region_code, buffer[2], country_code, language_code, video_ID, region_code, buffer[2], country_code, language_code, video1_ID);
-            fputs("\r\n\r\n", fil);
+            sprintf(str, "\r\nLow Quality URL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/movie/%s/%s/%u-l.mo", region_code, buffer[2], country_code, language_code, video_ID);
+            fputs(str, fil);
+            sprintf(str, "\r\nHigh Quality URL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/movie/%s/%s/%u-h.mo\r\n\r\n", region_code, buffer[2], country_code, language_code, video_ID);
+            fputs(str, fil);
         }
         fflush(fil);
         #endif
