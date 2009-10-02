@@ -157,7 +157,7 @@ typedef struct _DLlist_title_entry//v3
 	u8 unk;
 	u32 unk2;
 	u16 company_offset;
-	u32 unk3;
+	u32 release_date;
 	u8 ratingID;
 	u8 unk4[0x13];
 	u16 title[62];
@@ -172,17 +172,18 @@ typedef struct _DLlist_title_entry_v4//v4
 	u8 unk;
 	u32 unk2;
 	u16 company_offset;
-	u32 unk3;//Release date timestamp?
+	u32 release_date;
 	u8 ratingID;
 	u8 unk4[0x1d];
-	u16 title[62];
+	u16 title[31];
 	u16 subtitle[31];
+	u16 short_title[31];
 } __attribute((packed)) DLlist_title_entry_v4;
 
 typedef struct _DLlist_video_entry//v3
 {
 	u32 ID;//Decimal ID for URL filename.
-	u16 unk;
+	u16 time_length;//Length of video measured in seconds.
 	u32 titleid;//The assocaited title entry's ID.
 	u8 unk2[0x5];
 	u16 title[51];
@@ -414,7 +415,7 @@ inline u16 le16(u16 x)//From update_download by SquidMan.
 DLlist_title_entry *LookupTitle(u32 ID, DLlist_header_wrapper *header)
 {
     u32 i;
-    u32 numtitles = ((u32)header->titles - (u32)header->videos) / sizeof(DLlist_title_entry);
+    u32 numtitles = ((u32)header->videos - (u32)header->titles) / sizeof(DLlist_title_entry);
     for(i = 0; i<numtitles; i++)
     {
         if(header->titles[i].ID==ID)
@@ -635,16 +636,18 @@ int main(int argc, char **argv)
         printf("Failed to mount FAT.\n");
     }
     #else
-    if(argc!=2 && argc!=5)
+    if(argc==1 || (argc<5 && argc>3) || argc>=8)
     {
         printf("Usage:\n");
-        printf("ninchdl-listext <wc24dl.vff>\n");
+        printf("ninchdl-listext <wc24dl.vff> <options>\n");
         printf("Input can be a compressed dl list as well.\n");
         printf("Alternate usage:\n");
-        printf("ninchdl-listext <country code> <language code>\n<region char> <version> <wc24pubk.mod>\n");
+        printf("ninchdl-listext <country code> <language code>\n<region char> <version> <wc24pubk.mod> <options>\n");
         printf("See either source code or google code wmb-asm NintendoChannel wiki page for list of country and language codes.\n");
         printf("region char must be either u, e, or j.\n");
         printf("wc24pubk.mod is the filename for the NinCh WC24 keys.(Can also be the 16 byte\nAES key.) The default is wc24pubk.mod if this is ommitted.\n");
+	    printf("Options:\n");
+		printf("-l<ID> List titles with a title type ID or console model ID. If the ID is ommitted, the whole title list is listed.\n");
         return 0;
     }
     #endif
@@ -862,14 +865,18 @@ int main(int argc, char **argv)
         if(version>=4)strcpy(pstr, "CSData.bin");
         strcat(str, pstr);
         strcat(str, " ");
-        if(argc!=6)
+        if(argc<6)
         {
             strcat(str, "wc24pubk.mod");
         }
-        else
+        else if(strstr(argv[5], ",mod"))
         {
             strcat(str, argv[5]);
         }
+		else
+		{
+			strcat(str, "wc24pubk.mod");
+		}
         printf("%s\n", str);
         system(str);
 
@@ -1234,6 +1241,7 @@ int main(int argc, char **argv)
         header_v4->total_detailed_ratings = be32(header_v4->total_detailed_ratings);
         total_demos = header_v4->demos_total;
         total_videos = header_v4->videos0_total;
+	    header_v4->total_titles = be32(header_v4->total_titles);
     }
 
     #ifdef USING_LIBFF
@@ -1250,8 +1258,10 @@ int main(int argc, char **argv)
     fputs(str, fil);
     #endif
 
-    DLlist_title_entry *title_ptr;
-    DLlist_title_entry_v4 *title_ptr_v4;
+    DLlist_title_entry *title_ptr = NULL;
+    DLlist_title_entry_v4 *title_ptr_v4 = NULL;
+    DLlist_timestamp timestamp;
+    u32 timestamp_u32;
     for(i=0; i<total_demos; i++)
     {
         for(texti=0; texti<31; texti++)
@@ -1318,25 +1328,27 @@ int main(int argc, char **argv)
         fputs(str, fil);
         #endif
 
-        sprintf(str, "Rating: ");
-        #ifdef USING_LIBFF
-        f_puts(str, &fil);
-        #else
-        fputs(str, fil);
-        #endif
-
         u32 ratingID = 0;
         if(buffer[2]<4)
         {
             title_ptr = LookupTitle(header->demos[i].titleid, header);
-            ratingID = title_ptr->ratingID;
+            if(title_ptr)ratingID = title_ptr->ratingID;
         }
         else
         {
             title_ptr_v4 = LookupTitleV4(header_v4->demos[i].titleid, header_v4);
             ratingID = header_v4->demos[i].ratingID;
         }
-        if(buffer[2]<4)
+        if((buffer[2]<4 && title_ptr) || buffer[2]>=4)
+        {
+            sprintf(str, "Rating: ");
+            #ifdef USING_LIBFF
+            f_puts(str, &fil);
+            #else
+            fputs(str, fil);
+            #endif
+        }
+        if(buffer[2]<4 && title_ptr)
         {
             for(ratingi=0; ratingi<header->ratings_total; ratingi++)
             {
@@ -1355,10 +1367,11 @@ int main(int argc, char **argv)
                         if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
                         #endif
                     }
+                    break;
                 }
             }
         }
-        else
+        else if(buffer[2]>=4)
         {
             for(ratingi=0; ratingi<header_v4->ratings_total; ratingi++)
             {
@@ -1380,7 +1393,6 @@ int main(int argc, char **argv)
                 }
             }
         }
-
         #ifdef USING_LIBFF
         f_puts("\n", &fil);
         #else
@@ -1388,10 +1400,12 @@ int main(int argc, char **argv)
         #endif
 
         DLlist_company_entry *comp;
-        if(buffer[2]<4)comp = (DLlist_company_entry*)((u32)buffer + (u32)be16(title_ptr->company_offset));
-        if(buffer[2]>=4)comp = (DLlist_company_entry*)((u32)buffer + (u32)be16(title_ptr_v4->company_offset));
-        for(texti=0; texti<31; texti++)
+        if(buffer[2]<4 && title_ptr)comp = (DLlist_company_entry*)((u32)buffer + (u32)be16(title_ptr->company_offset));
+        if(buffer[2]>=4)comp = (DLlist_company_entry*)((u32)buffer + (u32)be32(header_v4->demos[i].company_offset));
+        if(comp)
         {
+            for(texti=0; texti<31; texti++)
+            {
                 utf_temp = comp->devtitle[texti];
                 if(utf_temp==0)break;
                 utf_temp = be16(utf_temp);
@@ -1402,12 +1416,15 @@ int main(int argc, char **argv)
                 putc((u8)utf_temp, fil);
                 if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
                 #endif
+            }
         }
         #ifdef USING_LIBFF
         f_puts("\n", &fil);
         #else
         fputs("\r\n", fil);
         #endif
+		if((buffer[2]<4 && title_ptr) || (buffer[2]>=4))
+		{
         if(memcmp(comp->devtitle, comp->pubtitle, 31 * 2)!=0)
         {
         for(texti=0; texti<31; texti++)
@@ -1424,9 +1441,8 @@ int main(int argc, char **argv)
                 #endif
         }
         }
+		}
 
-        DLlist_timestamp timestamp;
-        u32 timestamp_u32;
         if(buffer[2]<4)timestamp_u32 = header->demos[i].removal_timestamp;
         if(buffer[2]>=4)timestamp_u32 = header_v4->demos[i].removal_timestamp;
 
@@ -1442,12 +1458,38 @@ int main(int argc, char **argv)
         {
             GetTimestamp(timestamp_u32, &timestamp);
             #ifdef USING_LIBFF
-            sprintf(str, "\nRemoval date: %d/%d/%d", timestamp.month + 1, timestamp.day_of_month, timestamp.year);
+            sprintf(str, "\nRemoval date: %d/%d/%d\n", timestamp.month + 1, timestamp.day_of_month, timestamp.year);
             f_puts(str, &fil);
             #else
-            sprintf(str, "\r\nRemoval date: %d/%d/%d", timestamp.month + 1, timestamp.day_of_month, timestamp.year);
+            sprintf(str, "\r\nRemoval date: %d/%d/%d\r\n", timestamp.month + 1, timestamp.day_of_month, timestamp.year);
             fputs(str, fil);
             #endif
+        }
+
+        if(title_ptr || title_ptr_v4)
+        {
+            if(buffer[2]<4)timestamp_u32 = title_ptr->release_date;
+            if(buffer[2]>=4)timestamp_u32 = title_ptr_v4->release_date;
+
+            if(timestamp_u32==0xffffffff)
+            {
+                #ifdef USING_LIBFF
+                f_puts("\nNo title release date.\n", &fil);
+                #else
+                fputs("\r\nNo title release date.\r\n", fil);
+                #endif
+            }
+            else
+            {
+                GetTimestamp(timestamp_u32, &timestamp);
+                #ifdef USING_LIBFF
+                sprintf(str, "\nTitle release date: %d/%d/%d\n", timestamp.month + 1, timestamp.day_of_month, timestamp.year);
+                f_puts(str, &fil);
+                #else
+                sprintf(str, "\r\nTitle release date: %d/%d/%d\r\n", timestamp.month + 1, timestamp.day_of_month, timestamp.year);
+                fputs(str, fil);
+                #endif
+            }
         }
 
         #ifdef USING_LIBFF
@@ -1513,7 +1555,10 @@ int main(int argc, char **argv)
                 fputs(str, fil);
                 #endif
             }
-            u16 time_length = be16(header_v4->videos0[i].time_length);
+        }
+            u16 time_length;
+            if(buffer[2]<4)time_length = be16(header->videos[i].time_length);
+            if(buffer[2]>=4)time_length = be16(header_v4->videos0[i].time_length);
             #ifdef USING_LIBFF
             sprintf(str, "Time length %02d:%02d\n", time_length / 60, time_length % 60);
             f_puts(str, &fil);
@@ -1521,7 +1566,6 @@ int main(int argc, char **argv)
             sprintf(str, "Time length %02d:%02d\r\n", time_length / 60, time_length % 60);
             fputs(str, fil);
             #endif
-        }
 
         u32 video_ID, video_titleid, video1_ID = 0;
         if(buffer[2]<4)video_ID = be32(header->videos[i].ID);
@@ -1556,29 +1600,29 @@ int main(int argc, char **argv)
 
         if(buffer[2]<4)video_titleid = header->videos[i].titleid;
         if(buffer[2]>=4)video_titleid = header_v4->videos0[i].titleid;
+        title_ptr = NULL;
+        title_ptr_v4 = NULL;
         if(video_titleid!=0)
         {
         sprintf(str, "Rating: ");
         #ifdef USING_LIBFF
         f_puts(str, &fil);
-        if((utf_temp >> 8))putc((u8)(utf_temp >> 8), &fil);
         #else
         fputs(str, fil);
-        if((utf_temp >> 8))putc((u8)(utf_temp >> 8), &fil);
         #endif
 
         u32 ratingID = 0;
         if(buffer[2]<4)
         {
             title_ptr = LookupTitle(header->videos[i].titleid, header);
-            ratingID = title_ptr->ratingID;
+            if(title_ptr)ratingID = title_ptr->ratingID;
         }
         else
         {
             title_ptr_v4 = LookupTitleV4(header_v4->videos0[i].titleid, header_v4);
             ratingID = header_v4->videos0[i].ratingID;
         }
-        if(buffer[2]<4)
+        if(buffer[2]<4 && title_ptr)
         {
             for(ratingi=0; ratingi<header->ratings_total; ratingi++)
             {
@@ -1600,7 +1644,7 @@ int main(int argc, char **argv)
                 }
             }
         }
-        else
+        else if(buffer[2]>=4)
         {
             for(ratingi=0; ratingi<header_v4->ratings_total; ratingi++)
             {
@@ -1629,10 +1673,12 @@ int main(int argc, char **argv)
         fputs("\r\n", fil);
         #endif
 
-        DLlist_company_entry *comp;
-        if(buffer[2]<4)comp = (DLlist_company_entry*)((u32)buffer + (u32)be16(title_ptr->company_offset));
-        if(buffer[2]>=4)comp = (DLlist_company_entry*)((u32)buffer + (u32)be16(title_ptr_v4->company_offset));
-        for(texti=0; texti<31; texti++)
+        DLlist_company_entry *comp = NULL;
+        if(buffer[2]<4 && title_ptr)comp = (DLlist_company_entry*)((u32)buffer + (u32)be16(title_ptr->company_offset));
+        if(buffer[2]>=4 && title_ptr_v4)comp = (DLlist_company_entry*)((u32)buffer + (u32)be16(title_ptr_v4->company_offset));
+        if(title_ptr || title_ptr_v4)
+		{
+		for(texti=0; texti<31; texti++)
         {
                 utf_temp = comp->devtitle[texti];
                 if(utf_temp==0)break;
@@ -1645,27 +1691,57 @@ int main(int argc, char **argv)
                 if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
                 #endif
         }
+		}
         #ifdef USING_LIBFF
         f_puts("\n", &fil);
         #else
         fputs("\r\n", fil);
         #endif
-        if(memcmp(comp->devtitle, comp->pubtitle, 31 * 2)!=0)
+		if(title_ptr || title_ptr_v4)
+		{
+			if(memcmp(comp->devtitle, comp->pubtitle, 31 * 2)!=0)
+			{
+				for(texti=0; texti<31; texti++)
+				{
+						utf_temp = comp->pubtitle[texti];
+						if(utf_temp==0)break;
+						utf_temp = be16(utf_temp);
+						#ifdef USING_LIBFF
+						putc((u8)utf_temp, &fil);
+						if((utf_temp >> 8))putc((u8)(utf_temp >> 8), &fil);
+						#else
+						putc((u8)utf_temp, fil);
+						if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
+						#endif
+				}
+			}
+		}
+		}
+
+        if(title_ptr || title_ptr_v4)
         {
-        for(texti=0; texti<31; texti++)
-        {
-                utf_temp = comp->pubtitle[texti];
-                if(utf_temp==0)break;
-                utf_temp = be16(utf_temp);
+            if(buffer[2]<4)timestamp_u32 = title_ptr->release_date;
+            if(buffer[2]>=4)timestamp_u32 = title_ptr_v4->release_date;
+
+            if(timestamp_u32==0xffffffff)
+            {
                 #ifdef USING_LIBFF
-                putc((u8)utf_temp, &fil);
-                if((utf_temp >> 8))putc((u8)(utf_temp >> 8), &fil);
+                f_puts("\nNo title release date.\n", &fil);
                 #else
-                putc((u8)utf_temp, fil);
-                if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
+                fputs("\r\nNo title release date.\r\n", fil);
                 #endif
-        }
-        }
+            }
+            else
+            {
+                GetTimestamp(timestamp_u32, &timestamp);
+                #ifdef USING_LIBFF
+                sprintf(str, "\nTitle release date: %d/%d/%d\n", timestamp.month + 1, timestamp.day_of_month, timestamp.year);
+                f_puts(str, &fil);
+                #else
+                sprintf(str, "\r\nTitle release date: %d/%d/%d\r\n", timestamp.month + 1, timestamp.day_of_month, timestamp.year);
+                fputs(str, fil);
+                #endif
+            }
         }
 
         #ifdef USING_LIBFF
@@ -1686,6 +1762,7 @@ int main(int argc, char **argv)
         if(buffer[2]<4)
         {
             sprintf(str, "\r\nURL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/movie/%s/%s/%u.3gp\r\n\r\n", region_code, buffer[2], country_code, language_code, video_ID);
+            fputs(str, fil);
         }
         else
         {
@@ -1698,14 +1775,398 @@ int main(int argc, char **argv)
         #endif
     }
 
-    free(buffer);
     #ifdef WII_MINI_APP
     f_close(&fil);
 	fat_umount();
-	print_str_noscroll(112, 274, "Done.");
+
 	#else
 	fclose(fil);
-    printf("Done.\n");
+    if((argc>6 && strncmp(argv[6], "-l", 2)==0) || (argc==3 && strncmp(argv[2], "-l", 2)==0))
+	{
+		char *lsarg;
+		if((argc>6 && strncmp(argv[6], "-l", 2)==0))lsarg = argv[6];
+		if((argc==3 && strncmp(argv[2], "-l", 2)==0))lsarg = argv[2];
+		u32 num_titles = 0;
+		printf("Listing title(s)...\n");
+		sprintf(str, "title%c.txt", region_code);
+		fil = fopen(str, "w");
+		if(buffer[2]<4)num_titles = ((u32)header->videos - (u32)header->titles) / sizeof(DLlist_title_entry);
+		if(buffer[2]>=4)num_titles = header_v4->total_titles;
+		u32 i;
+		u32 typeID = 0;
+		u32 ti, tt_num;
+		if(buffer[2]<4)tt_num = header->total_title_types;
+		if(buffer[2]>=4)tt_num = header_v4->total_title_types;
+		if(strlen(lsarg)==5)
+		{
+			fprintf(fil, "Titles with console model %s:\n", &lsarg[2]);
+		}
+		else if(strlen(lsarg)==4)
+		{
+			sscanf(&lsarg[2], "%02x", &typeID);
+			for(ti = 0; ti<tt_num; ti++)
+			{
+				if(buffer[2]<4)
+				{
+					if(header->main_title_types[ti].typeID==typeID)break;
+				}
+				else
+				{
+					if(header_v4->title_types[ti].typeID==typeID)break;
+				}
+			}
+			if(buffer[2]<4)fprintf(fil, "Titles with title type ID %02x, description ", typeID);
+			if(buffer[2]>=4)fprintf(fil, "Titles with title type ID %02x, model %c%c%c description ", typeID, header_v4->title_types[ti].console_model[0], header_v4->title_types[ti].console_model[1], header_v4->title_types[ti].console_model[2]);
+			for(texti=0; texti<31; texti++)
+			{
+					if(buffer[2]<4)utf_temp = header->main_title_types[ti].title[texti];
+					if(buffer[2]>=4)utf_temp = header_v4->title_types[ti].title[texti];
+					if(utf_temp==0)break;
+					utf_temp = be16(utf_temp);
+					putc((u8)utf_temp, fil);
+					if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
+			}
+			fprintf(fil, "\n");
+		}
+
+		u32 found;
+        u32 numtitles = 0;
+
+		for(i=0; i<num_titles; i++)
+		{
+		    if(buffer[2]<4)title_ptr = &header->titles[i];
+		    if(buffer[2]>=4)title_ptr_v4 = &header_v4->titles[i];
+            found = 0;
+            if(strlen(lsarg)==2)
+            {
+                found = 1;
+                for(ti = 0; ti<tt_num; ti++)
+				{
+				    if(buffer[2]<4)
+				    {
+                        if(header->titles[i].title_type==header->main_title_types[ti].typeID)
+                        {
+                            break;
+                        }
+				    }
+				    else
+                    {
+                        if(header_v4->titles[i].title_type==header_v4->title_types[ti].typeID)
+                        {
+                            break;
+                        }
+                    }
+				}
+            }
+            if(strlen(lsarg)>2)
+            {
+			if(strlen(lsarg)==5 && buffer[2]>=4)
+			{
+				for(ti = 0; ti<tt_num; ti++)
+				{
+				    if(header_v4->titles[i].title_type==header_v4->title_types[ti].typeID)
+				    {
+                        if(memcmp(header_v4->title_types[ti].console_model, &lsarg[2], 3)==0)
+                        {
+                            found = 1;
+                            break;
+                        }
+				    }
+				}
+			}
+			else if(strlen(lsarg)==4)
+			{
+				if(buffer[2]<4)
+				{
+					if(header->titles[i].title_type!=typeID)continue;
+				}
+				else
+				{
+					if(header_v4->titles[i].title_type!=typeID)continue;
+				}
+				found = 1;
+			}
+            }
+            if(!found)continue;
+            numtitles++;
+		}
+
+        fprintf(fil, "Total titles: %u\n\n", numtitles);
+		for(i=0; i<num_titles; i++)
+		{
+		    if(buffer[2]<4)title_ptr = &header->titles[i];
+		    if(buffer[2]>=4)title_ptr_v4 = &header_v4->titles[i];
+            found = 0;
+            if(strlen(lsarg)==2)
+            {
+                found = 1;
+                for(ti = 0; ti<tt_num; ti++)
+				{
+				    if(buffer[2]<4)
+				    {
+                        if(header->titles[i].title_type==header->main_title_types[ti].typeID)
+                        {
+                            break;
+                        }
+				    }
+				    else
+                    {
+                        if(header_v4->titles[i].title_type==header_v4->title_types[ti].typeID)
+                        {
+                            break;
+                        }
+                    }
+				}
+            }
+            if(strlen(lsarg)>2)
+            {
+			if(strlen(lsarg)==5 && buffer[2]>=4)
+			{
+				for(ti = 0; ti<tt_num; ti++)
+				{
+				    if(header_v4->titles[i].title_type==header_v4->title_types[ti].typeID)
+				    {
+                        if(memcmp(header_v4->title_types[ti].console_model, &lsarg[2], 3)==0)
+                        {
+                            found = 1;
+                            break;
+                        }
+				    }
+				}
+			}
+			else if(strlen(lsarg)==4)
+			{
+				if(buffer[2]<4)
+				{
+					if(header->titles[i].title_type!=typeID)continue;
+				}
+				else
+				{
+					if(header_v4->titles[i].title_type!=typeID)continue;
+				}
+				found = 1;
+			}
+            }
+            if(!found)continue;
+
+			for(texti=0; texti<31; texti++)
+			{
+					if(buffer[2]<4)utf_temp = header->titles[i].title[texti];
+					if(buffer[2]>=4)utf_temp = header_v4->titles[i].title[texti];
+					if(utf_temp==0)break;
+					utf_temp = be16(utf_temp);
+					putc((u8)utf_temp, fil);
+					if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
+			}
+			fprintf(fil, "\n");
+			for(texti=0; texti<31; texti++)
+			{
+					if(buffer[2]<4)utf_temp = header->titles[i].subtitle[texti];
+					if(buffer[2]>=4)utf_temp = header_v4->titles[i].subtitle[texti];
+					if(utf_temp==0)break;
+					utf_temp = be16(utf_temp);
+					putc((u8)utf_temp, fil);
+					if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
+			}
+			fprintf(fil, "\n");
+			if(buffer[2]>=4)
+			{
+				if(memcmp(header_v4->titles[i].title, header_v4->titles[i].short_title, 31)!=0 && header_v4->titles[i].short_title[0]!=0)
+				{
+				    fprintf(fil, "Short title: ");
+					for(texti=0; texti<31; texti++)
+					{
+						utf_temp = header_v4->titles[i].short_title[texti];
+						if(utf_temp==0)break;
+						utf_temp = be16(utf_temp);
+						putc((u8)utf_temp, fil);
+						if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
+					}
+					fprintf(fil, "\n");
+				}
+			}
+
+			if(strlen(lsarg)!=4)
+			{
+                for(texti=0; texti<31; texti++)
+                {
+					if(buffer[2]<4)utf_temp = header->main_title_types[ti].title[texti];
+					if(buffer[2]>=4)utf_temp = header_v4->title_types[ti].title[texti];
+					if(utf_temp==0)break;
+					utf_temp = be16(utf_temp);
+					putc((u8)utf_temp, fil);
+					if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
+                }
+                if(buffer[2]<4)fprintf(fil, " (typeID %02x)\n", header->main_title_types[ti].typeID);
+                if(buffer[2]>=4)fprintf(fil, " (typeID %02x)\n", header_v4->title_types[ti].typeID);
+			}
+
+            DLlist_company_entry *comp = NULL;
+        if(buffer[2]<4 && title_ptr)comp = (DLlist_company_entry*)((u32)buffer + (u32)be16(title_ptr->company_offset));
+        if(buffer[2]>=4 && title_ptr_v4)comp = (DLlist_company_entry*)((u32)buffer + (u32)be16(title_ptr_v4->company_offset));
+        if(comp)
+        {
+            for(texti=0; texti<31; texti++)
+            {
+                utf_temp = comp->devtitle[texti];
+                if(utf_temp==0)break;
+                utf_temp = be16(utf_temp);
+                #ifdef USING_LIBFF
+                putc((u8)utf_temp, &fil);
+                if((utf_temp >> 8))putc((u8)(utf_temp >> 8), &fil);
+                #else
+                putc((u8)utf_temp, fil);
+                if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
+                #endif
+            }
+        }
+        #ifdef USING_LIBFF
+        f_puts("\n", &fil);
+        #else
+        fputs("\r\n", fil);
+        #endif
+		if((buffer[2]<4 && title_ptr) || (buffer[2]>=4 && title_ptr_v4))
+		{
+        if(memcmp(comp->devtitle, comp->pubtitle, 31 * 2)!=0)
+        {
+        for(texti=0; texti<31; texti++)
+        {
+                utf_temp = comp->pubtitle[texti];
+                if(utf_temp==0)break;
+                utf_temp = be16(utf_temp);
+                #ifdef USING_LIBFF
+                putc((u8)utf_temp, &fil);
+                if((utf_temp >> 8))putc((u8)(utf_temp >> 8), &fil);
+                #else
+                putc((u8)utf_temp, fil);
+                if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
+                #endif
+        }
+        }
+		}
+
+        sprintf(str, "Rating: ");
+        #ifdef USING_LIBFF
+        f_puts(str, &fil);
+        #else
+        fputs(str, fil);
+        #endif
+
+        u32 ratingID = 0;
+        if(buffer[2]<4)
+        {
+            ratingID = title_ptr->ratingID;
+        }
+        else
+        {
+            ratingID = title_ptr_v4->ratingID;
+        }
+        if(buffer[2]<4)
+        {
+            for(ratingi=0; ratingi<header->ratings_total; ratingi++)
+            {
+                if(header->ratings[ratingi].ratingID==ratingID)
+                {
+                    for(texti=0; texti<11; texti++)
+                    {
+                        utf_temp = header->ratings[ratingi].title[texti];
+                        if(utf_temp==0)break;
+                        utf_temp = be16(utf_temp);
+                        #ifdef USING_LIBFF
+                        putc((u8)utf_temp, &fil);
+                        if((utf_temp >> 8))putc((u8)(utf_temp >> 8), &fil);
+                        #else
+                        putc((u8)utf_temp, fil);
+                        if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
+                        #endif
+                    }
+                }
+            }
+        }
+        else if(buffer[2]>=4)
+        {
+            for(ratingi=0; ratingi<header_v4->ratings_total; ratingi++)
+            {
+                if(header_v4->ratings[ratingi].ratingID==ratingID)
+                {
+                    for(texti=0; texti<11; texti++)
+                    {
+                        utf_temp = header_v4->ratings[ratingi].title[texti];
+                        if(utf_temp==0)break;
+                        utf_temp = be16(utf_temp);
+                        #ifdef USING_LIBFF
+                        putc((u8)utf_temp, &fil);
+                        if((utf_temp >> 8))putc((u8)(utf_temp >> 8), &fil);
+                        #else
+                        putc((u8)utf_temp, fil);
+                        if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
+                        #endif
+                    }
+                }
+            }
+        }
+
+            if(buffer[2]<4)timestamp_u32 = title_ptr->release_date;
+            if(buffer[2]>=4)timestamp_u32 = title_ptr_v4->release_date;
+
+            if(timestamp_u32==0xffffffff)
+            {
+                #ifdef USING_LIBFF
+                f_puts("\nNo title release date.\n", &fil);
+                #else
+                fputs("\r\nNo title release date.\r\n", fil);
+                #endif
+            }
+            else
+            {
+                GetTimestamp(timestamp_u32, &timestamp);
+                #ifdef USING_LIBFF
+                sprintf(str, "\nTitle release date: %d/%d/%d\n", timestamp.month + 1, timestamp.day_of_month, timestamp.year);
+                f_puts(str, &fil);
+                #else
+                sprintf(str, "\r\nTitle release date: %d/%d/%d\r\n", timestamp.month + 1, timestamp.day_of_month, timestamp.year);
+                fputs(str, fil);
+                #endif
+            }
+
+        #ifdef USING_LIBFF
+        f_puts("\n", &fil);
+        #else
+        fputs("\r\n", fil);
+        #endif
+
+        #ifdef USING_LIBFF
+        if(buffer[2]<4)sprintf(str, "ID: %u\n", title_ptr->ID);
+        if(buffer[2]>=4)sprintf(str, "ID: %u\n", title_ptr_v4->ID);
+        f_puts(str, &fil);
+        #else
+        if(buffer[2]<4)sprintf(str, "ID: %u\r\n", title_ptr->ID);
+        if(buffer[2]>=4)sprintf(str, "ID: %u\r\n", title_ptr_v4->ID);
+        fputs(str, fil);
+        #endif
+
+        u32 titleid;
+        if(buffer[2]<4)titleid = title_ptr->titleID;
+        if(buffer[2]>=4)titleid = title_ptr_v4->titleID;
+        #ifdef USING_LIBFF
+        sprintf(str, "titleID: %c%c%c%c\n", (char)titleid, (char)(titleid>>8), (char)(titleid>>16), (char)(titleid>>24));
+        f_puts(str, &fil);
+        #else
+        sprintf(str, "titleID: %c%c%c%c\r\n", (char)titleid, (char)(titleid>>8), (char)(titleid>>16), (char)(titleid>>24));
+        fputs(str, fil);
+        #endif
+
+			fprintf(fil, "\n");
+		}
+		fclose(fil);
+	}
+	#endif
+
+	free(buffer);
+	#ifdef WII_MINI_APP
+	print_str_noscroll(112, 274, "Done.");
+	#else
+	printf("Done.\n");
 	#endif
 	return 0;
 }
