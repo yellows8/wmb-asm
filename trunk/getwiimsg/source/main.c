@@ -19,6 +19,12 @@ void ProcessMail(unsigned int index)
 	char *buffer, *newbuf, *base64, *decodebuf;
 	int filelen, newlen, base64len, base64decode_len;
 	unsigned int bom = 0xfffe;
+	char base64begin[5];
+	base64begin[0] = 0x0d;
+	base64begin[1] = 0x0a;
+	base64begin[2] = 0x0d;
+	base64begin[3] = 0x0a;
+	base64begin[4] = 0x00;
 	sprintf(str, "decrypt%d.txt", index);
 	fmail = fopen(str, "rb");
 	if(fmail==NULL)
@@ -30,7 +36,7 @@ void ProcessMail(unsigned int index)
 	buffer = (char*)malloc(filelen);
 	if(buffer==NULL)
 	{
-		printf("Failed to alloc memory.\n");
+		printf("Failed to alloc memory.(decrypt %d)\n", filelen);
 		fclose(fmail);
 		return;
 	}
@@ -57,13 +63,15 @@ void ProcessMail(unsigned int index)
 	
 	fclose(fmail);
 	
-	base64 = (char*)(((unsigned int)strstr(newbuf, "base64")) + 10);
-	base64len = ((unsigned int)strstr(base64, "------") - (unsigned int)base64 - 2);
+	base64 = (char*)(((unsigned int)strstr(newbuf, "base64")));
+	base64 = strstr(base64, base64begin);
+	base64+= 4;
+	base64len = ((unsigned int)strstr(base64, "--") - (unsigned int)base64 - 2);
 	base64decode_len = (base64len + (base64len * 2)) / 4;
 	decodebuf = (char*)malloc(base64len);
 	if(decodebuf==NULL)
 	{
-		printf("Failed to alloc memory.\n");
+		printf("Failed to alloc memory.(base64 %d)\n", base64len);
 		fclose(fmail);
 		return;
 	}
