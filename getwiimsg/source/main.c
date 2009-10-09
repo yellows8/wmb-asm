@@ -2,17 +2,23 @@
 #include <string.h>
 #include <stdlib.h>
 
+void encode( FILE *infile, FILE *outfile, int linesize );
+void decode( FILE *infile, FILE *outfile );
+
 int GetFileLength(FILE* _pfile);
 unsigned int GetLangCode(char *lang);
+void Base64Decode(unsigned char *data, unsigned char *dest, unsigned char bytes);
 
 char language_codes[7][3] = {{"ja"}, {"en"}, {"de"}, {"fr"}, {"es"}, {"it"}, {"nl"}};
 char str[256];
+char str2[256];
 
 void ProcessMail(unsigned int index)
 {
-	FILE *fmail;
-	char *buffer, *newbuf;
-	int filelen, newlen;
+	FILE *fmail, *fmail2;
+	char *buffer, *newbuf, *base64, *decodebuf;
+	int filelen, newlen, base64len, base64decode_len;
+	unsigned int bom = 0xfffe;
 	sprintf(str, "decrypt%d.txt", index);
 	fmail = fopen(str, "rb");
 	if(fmail==NULL)
@@ -32,17 +38,52 @@ void ProcessMail(unsigned int index)
 	fclose(fmail);
 	
 	newbuf = strstr(buffer, "Date");
+	if(newbuf==NULL)
+	{
+		printf("Empty msg file.\n");
+		free(buffer);
+		return;
+	}
 	newlen = ((unsigned int)strstr(newbuf, "--BoundaryForDL") - (unsigned int)newbuf);
 	sprintf(str, "mail%d.eml", index);
 	fmail = fopen(str, "wb");
 	if(fmail==NULL)
 	{
 		printf("Failed to open %s\n", str);
+		free(buffer);
 		return;
 	}
 	fwrite(newbuf, 1, newlen, fmail);
 	
 	fclose(fmail);
+	
+	base64 = (char*)(((unsigned int)strstr(newbuf, "base64")) + 10);
+	base64len = ((unsigned int)strstr(base64, "------") - (unsigned int)base64 - 2);
+	base64decode_len = (base64len + (base64len * 2)) / 4;
+	decodebuf = (char*)malloc(base64len);
+	if(decodebuf==NULL)
+	{
+		printf("Failed to alloc memory.\n");
+		fclose(fmail);
+		return;
+	}
+	memset(decodebuf, 0, base64len);
+	sprintf(str, "b64_%d.txt", index);
+	fmail = fopen(str, "wb");
+	fwrite(base64, 1, base64len, fmail);
+	
+	sprintf(str2, "msg%d.txt", index);
+	fclose(fmail);
+	fmail = fopen(str, "rb");
+	fmail2 = fopen(str2, "wb");
+	fwrite(&bom, 1, 2, fmail2);
+	decode(fmail, fmail2);
+	
+	
+	fclose(fmail);
+	fclose(fmail2);
+	free(buffer);
+	free(decodebuf);
 }
 
 int GetFileLength(FILE* _pfile)
