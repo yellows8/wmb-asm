@@ -1,67 +1,29 @@
 /*
-        BootMii - a Free Software replacement for the Nintendo/BroadOn bootloader.
-        Requires mini.
+ninchdl-listext is licensed under the MIT license:
+Copyright (c) 2009 yellowstar6
 
-Copyright (C) 2008, 2009        Haxx Enterprises <bushing@gmail.com>
-Copyright (C) 2009              Andre Heider "dhewg" <dhewg@wiibrew.org>
-Copyright (C) 2008, 2009        Hector Martin "marcan" <marcan@marcansoft.com>
-Copyright (C) 2008, 2009        Sven Peter <svenpeter@gmail.com>
-Copyright (C) 2009              John Kelley <wiidev@kelley.ca>
+Permission is hereby granted, free of charge, to any person obtaining a copy of this
+software and associated documentation files (the “Software”), to deal in the Software
+without restriction, including without limitation the rights to use, copy, modify, merge,
+publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
+to whom the Software is furnished to do so, subject to the following conditions:
 
-# This code is licensed to you under the terms of the GNU GPL, version 2;
-# see file COPYING or http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
+The above copyright notice and this permission notice shall be included in all copies
+or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
+FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
 */
 
-//main.c modified by yellows8.
-
-#ifdef WII_MINI_APP
-
-#include "../bootmii_ppc.h"
-#include "../string.h"
-#include "../ipc.h"
-#include "../mini_ipc.h"
-#include "../nandfs.h"
-#include "../fat.h"
-#include "../malloc.h"
-#include "../diskio.h"
-#include "../printf.h"
-#include "../video_low.h"
-#include "../input.h"
-#include "../console.h"
-
-#define MINIMUM_MINI_VERSION 0x00010001
-
-#ifndef BIG_ENDIAN
-#define BIG_ENDIAN 4321
-#endif
-#ifndef LITTLE_ENDIAN
-#define LITTLE_ENDIAN 1234
-#endif
-#define BYTE_ORDER BIG_ENDIAN
-
-int putc (
-	int chr,	/* A character to be output */
-	FIL* fil	/* Ponter to the file object */
-);
-int getc (
-	FIL* fil	/* Ponter to the file object */
-);
-#endif
-
-#ifndef WII_MINI_APP
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
-#endif
 
-#ifdef HW_RVL
-#include <gccore.h>
-#include <wiiuse/wpad.h>
-#endif
-
-#ifndef WII_MINI_APP
-#ifndef HW_RVL
 typedef unsigned char u8;
 typedef unsigned short u16;
 typedef unsigned long u32;
@@ -74,16 +36,8 @@ typedef unsigned long long u64;
 #endif
 #define BYTE_ORDER LITTLE_ENDIAN
 
-#endif
-#endif
-
 int gbalzss_main(int argc, char *argv[]);
 char argv_str[256];
-
-#ifdef HW_RVL
-static void *xfb = NULL;
-static GXRModeObj *rmode = NULL;
-#endif
 
 char country_codes[172][3] = {
 {"JP"}, {"AI"}, {"AG"}, {"AR"}, {"AW"}, {"BS"}, {"BB"}, {"BZ"}, {"BO"}, {"BR"}, {"VG"},
@@ -491,25 +445,8 @@ void GetTimestamp(u32 input, DLlist_timestamp *timestamp)
     timestamp->year = be16(timestamp->year);
 }
 
-#ifdef WII_MINI_APP
-static void dsp_reset(void)
-{
-	write16(0x0c00500a, read16(0x0c00500a) & ~0x01f8);
-	write16(0x0c00500a, read16(0x0c00500a) | 0x0010);
-	write16(0x0c005036, 0);
-}
-#endif
-
-#ifdef WII_MINI_APP
-int main(void)
-#else
 int main(int argc, char **argv)
-#endif
 {
-    #ifdef WII_MINI_APP
-	int vmode = -1;
-	struct nandfs_fp nfs_fil;
-	#endif
 	char str[256];
 	char pstr[256];
 	char vff_dumpfn[256];
@@ -517,125 +454,11 @@ int main(int argc, char **argv)
 	int is_csdata = 0;
 	int is_vff = 1;
 	int version = 3;
-	#ifndef WII_MINI_APP
 	FILE *fil;
-	#endif
-	#ifdef WII_MINI_APP
-	FIL fil;
-	u32 tempsz;
-	exception_init();
-	dsp_reset();
-
-	// clear interrupt mask
-	write32(0x0c003004, 0);
-
-	ipc_initialize();
-	ipc_slowping();
-
-	gecko_init();
-    input_init();
-
-    int fat_init = fat_mount();
-
-    FILINFO idfinfo;
-    char *buf;
-    u32 temp;
-	if(f_stat(str, &idfinfo)==0)
-	{
-	    if(f_open(&fil, "/bootmii/bootmii.ini", FA_READ)==0)
-	    {
-	    buf = (char*)malloc(idfinfo.fsize);
-	    f_read(&fil, buf, idfinfo.fsize, &temp);
-	    f_close(&fil);
-        if(strstr(buf, "NTSC"))vmode = VIDEO_640X480_NTSCi_YUV16;
-        if(strstr(buf, "PAL50"))vmode = VIDEO_640X480_PAL50_YUV16;
-        if(strstr(buf, "PAL60"))vmode = VIDEO_640X480_PAL60_YUV16;
-        if(strstr(buf, "PROGRESSIVE"))vmode = VIDEO_640X480_NTSCp_YUV16;
-        free(buf);
-	    }
-	}
-
-    init_fb(vmode);
-	VIDEO_Init(vmode);
-	VIDEO_SetFrameBuffer(get_xfb());
-	VISetupEncoder();
-
-	u32 version = ipc_getvers();
-	u16 mini_version_major = version >> 16 & 0xFFFF;
-	u16 mini_version_minor = version & 0xFFFF;
-	printf("Mini version: %d.%0d\n", mini_version_major, mini_version_minor);
-
-	if (version < MINIMUM_MINI_VERSION) {
-		printf("Sorry, this version of MINI (armboot.bin)\n"
-			"is too old, please update to at least %d.%0d.\n",
-			(MINIMUM_MINI_VERSION >> 16), (MINIMUM_MINI_VERSION & 0xFFFF));
-		for (;;)
-			; // better ideas welcome!
-	}
-    #endif
-
-    #ifdef HW_RVL
-    // Initialise the video system
-	VIDEO_Init();
-
-	// This function initialises the attached controllers
-	WPAD_Init();
-
-	// Obtain the preferred video mode from the system
-	// This will correspond to the settings in the Wii menu
-	rmode = VIDEO_GetPreferredMode(NULL);
-
-	// Allocate memory for the display in the uncached region
-	xfb = MEM_K0_TO_K1(SYS_AllocateFramebuffer(rmode));
-
-	// Initialise the console, required for printf
-	console_init(xfb,20,20,rmode->fbWidth,rmode->xfbHeight,rmode->fbWidth*VI_DISPLAY_PIX_SZ);
-
-	// Set up the video registers with the chosen mode
-	VIDEO_Configure(rmode);
-
-	// Tell the video hardware where our display memory is
-	VIDEO_SetNextFramebuffer(xfb);
-
-	// Make the display visible
-	VIDEO_SetBlack(FALSE);
-
-	// Flush the video register changes to the hardware
-	VIDEO_Flush();
-
-	// Wait for Video setup to complete
-	VIDEO_WaitVSync();
-	if(rmode->viTVMode&VI_NON_INTERLACE) VIDEO_WaitVSync();
-
-	printf("\x1b[5;5H");
-    #endif
 
     memset(pstr, 0, 256);
 
-    #ifdef WII_MINI_APP
-    print_str_noscroll(112, 96, "ninchdl-listext v1.0 by yellows8.");
-	print_str_noscroll(112, 112, "Mounting FAT and initalizing nandfs...");
-	if(fat_init!=0)
-	{
-		print_str_noscroll(112, 128, "fat_mount failed.");
-		return -1;
-	}
-
-	if(nandfs_initialize()!=0)
-	{
-		print_str_noscroll(112, 128, "nandfs_initialize failed.");
-		return -1;
-	}
-    #else
-
-    printf("ninchdl-listext v1.0 by yellowstar.\n");
-    #ifdef HW_RVL
-    printf("Mounting FAT...\n");
-    if(!fatInitialize())
-    {
-        printf("Failed to mount FAT.\n");
-    }
-    #else
+    printf("ninchdl-listext v1.0 by yellowstar6.\n");
     if(argc==1 || (argc<5 && argc>3) || argc>=8)
     {
         printf("Usage:\n");
@@ -650,112 +473,14 @@ int main(int argc, char **argv)
 		printf("-l<ID> List titles with a title type ID or console model ID. If the ID is ommitted, the whole title list is listed.\n");
         return 0;
     }
-    #endif
-
-    #endif
 
 	memset(str, 0, 256);
 	memset(vff_dumpfn, 0, 256);
-	#ifdef WII_MINI_APP
-	print_str_noscroll(112, 128, "Choose a region via GC/GPIO: A/Pwr for E, B/Rst for P, Y/Ejt for J.");
-	#endif
-	#ifdef HW_RVL
-	WPAD_ScanPads();
-	#endif
-	char region = 'a';
-	#ifdef WII_MINI_APP
-	while(1)
-	{
-    #endif
 
-    #ifdef HW_RVL
-	while(1)
-	{
-    #endif
-
-	    #ifdef HW_RVL
-	    WPAD_ScanPads();
-	    u32 button = WPAD_ButtonsDown(0);
-	    if(button & WPAD_BUTTON_A)region = 'E';
-	    if(button & WPAD_BUTTON_1)region = 'P';
-	    if(button & WPAD_BUTTON_2)region = 'J';
-	    #endif
-
-	    #ifdef WII_MINI_APP
-		u32 button = (u32)input_wait();
-		if(button & PAD_A)region = 'E';
-		if(button & PAD_B)region = 'P';
-		if(button & PAD_Y)region = 'J';
-        #endif
-
-        #ifdef WII_MINI_APP
-		button = gpio_read();
-		if(button & GPIO_POWER)region = 'E';
-		if(button & GPIO_RESET)region = 'P';
-		if(button & GPIO_EJECT)region = 'J';
-        #endif
-
-    #ifdef WII_MINI_APP
-		if(region!='a')break;
-	}
-	#endif
-	#ifdef HW_RVL
-        if(region!='a')break;
-	}
-	#endif
-
-    #ifdef WII_MINI_APP
-    sprintf(vff_dumpfn, "/wc24dl.vff");
-	#else
-        #ifdef HW_RVL
-        sprintf(vff_dumpfn, "/wc24dl.vff");
-        #else
-        strcpy(vff_dumpfn, argv[1]);
-        #endif
-	#endif
-	sprintf(str, "/title/00010001/484154%02x/data/wc24dl.vff", region);
-	#ifdef WII_MINI_APP
-	if(nandfs_open(&nfs_fil, str)!=0)
-	{
-		sprintf(pstr, "Failed to open %s", str);
-		print_str_noscroll(112, 144, pstr);
-		return -3;
-	}
-	buffer = (unsigned char*)malloc(nfs_fil.size);
-	if(buffer==NULL)
-	{
-		sprintf(pstr, "Failed to allocate 0x%x bytes.", nfs_fil.size);
-		print_str_noscroll(112, 160, pstr);
-		return -2;
-	}
-
-	sprintf(pstr, "Reading %s...", str);
-	print_str_noscroll(112, 178, pstr);
-	tempsz = nandfs_read(buffer, 1, nfs_fil.size, &nfs_fil);
-	if(tempsz!=nfs_fil.size)
-	{
-		sprintf(pstr, "Read invalid num bytes %x(%d)", tempsz, tempsz);
-		print_str_noscroll(112, 194, pstr);
-		return -4;
-	}
-
-	if(strncmp((char*)buffer, "VFF ", 4)!=0)
-	{
-	    if(buffer[0]!=0x10)
-		{
-            print_str_noscroll(112, 194, "Invalid VFF, and input file is not raw compressed data.");
-            return -4;
-		}
-		else
-		{
-		    is_vff = 0;
-		}
-	}
-    #else
-        #ifndef HW_RVL
-        struct stat fstats;
-        if(strstr(vff_dumpfn, ".vff"))
-        {
+    strcpy(vff_dumpfn, argv[1]);
+    struct stat fstats;
+    if(strstr(vff_dumpfn, ".vff"))
+    {
         FILE *fil = fopen(vff_dumpfn, "rb");
         if(fil==NULL)
         {
@@ -764,26 +489,22 @@ int main(int argc, char **argv)
             return -3;
         }
 
-        stat(vff_dumpfn, &fstats);
-        buffer = (unsigned char*)malloc(fstats.st_size);
-        if(buffer==NULL)
-        {
-            sprintf(pstr, "Failed to allocate 0x%x bytes.\n", (int)fstats.st_size);
-            printf(pstr);
-            return -2;
-        }
-        fread(buffer, 1, fstats.st_size, fil);
-        fclose(fil);
+    stat(vff_dumpfn, &fstats);
+    buffer = (unsigned char*)malloc(fstats.st_size);
+    if(buffer==NULL)
+    {
+        sprintf(pstr, "Failed to allocate 0x%x bytes.\n", (int)fstats.st_size);
+        printf(pstr);
+        return -2;
+    }
+    fread(buffer, 1, fstats.st_size, fil);
+    fclose(fil);
 
-        if(strncmp((char*)buffer, "VFF ", 4)!=0)
-        {
+    if(strncmp((char*)buffer, "VFF ", 4)!=0)
+    {
             if(buffer[0]!=0x10)
             {
-                #ifdef WII_MINI_APP
-                print_str_noscroll(112, 194, "Invalid VFF, and input file is not raw compressed data.\n");
-                #else
                 printf("Invalid VFF, and input file is not raw compressed data.\n");
-                #endif
                 return -4;
             }
             else
@@ -792,64 +513,31 @@ int main(int argc, char **argv)
                 return -4;
             }
         }
-        }
-        else
-        {
-            is_vff = 0;
-        }
-        #endif
-    #endif
-
-    #ifdef WII_MINI_APP
-    if(is_vff)
-    {
-        print_str_noscroll(112, 194, "Writing to SD...");
-        if(f_open(&fil, vff_dumpfn, FA_WRITE | FA_CREATE_ALWAYS)!=0)
-        {
-            sprintf(str, "Failed to open %s", vff_dumpfn);
-            print_str_noscroll(112, 110, str);
-            return -3;
-        }
-
-        f_write(&fil, buffer, nfs_fil.size, &tempsz);
-
-        f_close(&fil);
-        print_str_noscroll(112, 210, "Done.");
     }
-    #endif
+    else
+    {
+        is_vff = 0;
+    }
 
     if(is_vff)
     {
         if(memcmp(&buffer[0x2080], "WC24DATABIN", 11)==0)
         {
-            #ifdef WII_MINI_APP
-            print_str_noscroll(112, 110, "Found WC24Data.bin in VFF.");
-            #else
             printf("Found WC24Data.bin in VFF.\n");
-            #endif
         }
         else if(memcmp(&buffer[0x480], "CSDATA  BIN", 11)==0)
         {
-            #ifdef WII_MINI_APP
-            print_str_noscroll(112, 110, "Found CSData.bin in VFF; only decompression is supported.");
-            #else
             printf("Found CSData.bin in VFF; only decompression is supported.\n");
-            #endif
             is_csdata = 1;
         }
         else
         {
-            #ifdef WII_MINI_APP
-            print_str_noscroll(112, 110, "WC24 dl list not found in VFF.");
-            #else
-            printf("WC24 dl list not found in VFF.\n");
-            #endif
+            printf("NinCh dl list not found in VFF.\n");
             return -3;
         }
     }
 
     u32 DlListID = 0;
-    #ifndef WII_MINI_APP
     if(!is_vff && strstr(argv[1], ".LZ")==NULL)
     {
         memset(pstr, 0, 256);
@@ -900,45 +588,24 @@ int main(int argc, char **argv)
             fread(&DlListID, 1, 4, f);
             fclose(f);
             DlListID = be32(DlListID);
-            sprintf(str, "curl -k --output %u.LZ https://ent%cs.wapp.wii.com/%s/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/list/%s/%s/%u.LZ", DlListID, argv[3][0], argv[4], argv[1], argv[2], DlListID);
+            sprintf(str, "curl -k --output %u.LZ https://ent%cs.wapp.wii.com/%s/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/list/%s/%s/%u.LZ", (unsigned int)DlListID, argv[3][0], argv[4], argv[1], argv[2], (unsigned int)DlListID);
             printf("%s\n", str);
             system(str);
         }
     }
-    #endif
 
     if(is_vff)
     {
         sprintf(str, "Extracting %s...\n", is_csdata==0?"WC24Data.bin":"CSData.bin");
-        #ifdef WII_MINI_APP
-        print_str_noscroll(112, 226, str);
-        #else
         printf(str);
-        #endif
 
         u32 datasize;
         if(is_csdata)memcpy(&datasize, &buffer[0x49c], 4);
         if(!is_csdata)memcpy(&datasize, &buffer[0x209c], 4);
         datasize = le32(datasize);
         memset(str, 0, 256);
-        #ifdef WII_MINI_APP
-        sprintf(str, "/%s", is_csdata==0?"WC24Data.bin":"CSData.bin");
-        #else
-            #ifdef HW_RVL
-            sprintf(str, "/%s", is_csdata==0?"WC24Data.bin":"CSData.bin");
-            #else
-                sprintf(str, "%s", is_csdata==0?"WC24Data.bin":"CSData.bin");
-            #endif
-        #endif
+        sprintf(str, "%s", is_csdata==0?"WC24Data.bin":"CSData.bin");
 
-        #ifdef USING_LIBFF
-        if(f_open(&fil, str, FA_WRITE | FA_CREATE_ALWAYS)!=0)
-        {
-            sprintf(pstr, "Failed to open %s", str);
-            print_str_noscroll(112, 242, pstr);
-            return -3;
-        }
-        #else
         fil = fopen(str, "wb");
         if(fil==NULL)
         {
@@ -946,19 +613,9 @@ int main(int argc, char **argv)
             printf(pstr);
             return -3;
         }
-        #endif
 
-        #ifdef USING_LIBFF
-        f_write(&fil, &buffer[is_csdata==0?0x3220:0x1620], datasize, &tempsz);
-        #else
         fwrite(&buffer[is_csdata==0?0x3220:0x1620], 1, datasize, fil);
-        #endif
-
-        #ifdef USING_LIBFF
-        f_close(&fil);
-        #else
         fclose(fil);
-        #endif
         free(buffer);
     }
     else
@@ -967,7 +624,7 @@ int main(int argc, char **argv)
         if(strstr(argv[1], ".LZ")==NULL && strstr(argv[1], ".")==NULL)
         {
             if(version<4)strcpy(str, "WC24Data.bin");
-            if(version>=4)sprintf(str, "%u.LZ", DlListID);
+            if(version>=4)sprintf(str, "%u.LZ", (unsigned int)DlListID);
         }
         else if(strstr(argv[1], "."))
         {
@@ -975,22 +632,10 @@ int main(int argc, char **argv)
         }
     }
 
-    #ifdef WII_MINI_APP
-    print_str_noscroll(112, 242, "Decompressing...");
-    #else
     printf("Decompressing...\n");
-    #endif
     memset(argv_str, 0, 256);
     memset(pstr, 0, 256);
-    #ifdef WII_MINI_APP
-    sprintf(pstr, "/decom.bin");
-    #else
-        #ifdef HW_RVL
-            sprintf(pstr, "/decom.bin");
-        #else
-        sprintf(pstr, "decom.bin");
-        #endif
-    #endif
+    sprintf(pstr, "decom.bin");
     sprintf(argv_str, "gbalzss%cd%c%s%c%s", 0, 0, str, 0, pstr);
     unsigned int Argv[4];
     Argv[0] = (unsigned int)&argv_str[0];
@@ -1001,53 +646,40 @@ int main(int argc, char **argv)
 
 	if(is_csdata)
 	{
-		#ifdef WII_MINI_APP
-		fat_umount();
-		print_str_noscroll(112, 258, "Done.");
-		#else
 		printf("Done.\n");
-		#endif
 		return 0;
 	}
 
 
     DLlist_header_wrapper *header = NULL;
     DLlist_header_wrapper_v4 *header_v4 = NULL;
+    sprintf(str, "decom.bin");
 
-    #ifdef WII_MINI_APP
-    sprintf(str, "/decom.bin");
-    #else
-        #ifdef HW_RVL
-        sprintf(str, "/decom.bin");
-        #else
-        sprintf(str, "decom.bin");
-        #endif
-    #endif
+    printf("Parsing...\n");
+    fil = fopen(str, "rb");
+    if(fil==NULL)
+    {
+        sprintf(pstr, "Failed to open %s\n", str);
+        printf(pstr);
+        return -3;
+    }
 
-    #ifdef WII_MINI_APP
-	FILINFO dfinfo;
-	print_str_noscroll(112, 258, "Parsing...");
-	if(f_stat(str, &dfinfo)!=0)
-	{
-		print_str_noscroll(112, 274, "f_stat decom failed.");
-		fat_umount();
-		return 0;
-	}
-	if(f_open(&fil, str, FA_READ)!=0)
-	{
-		print_str_noscroll(112, 274, "f_open decom failed.");
-		fat_umount();
-		return 0;
-	}
+    stat(str, &fstats);
+    buffer = (unsigned char*)malloc(fstats.st_size);
+    if(buffer==NULL)
+    {
+        sprintf(pstr, "Failed to allocate 0x%x bytes.\n", (int)fstats.st_size);
+        printf(pstr);
+        return -2;
+    }
+    fread(buffer, 1, fstats.st_size, fil);
+    fclose(fil);
 
-	buffer = (unsigned char*)malloc(dfinfo.fsize);
-	f_read(&fil, buffer, dfinfo.fsize, &tempsz);
-	f_close(&fil);
-	char *country_code;
+    if(buffer[2]<4)header = (DLlist_header_wrapper*)buffer;
+    if(buffer[2]>=4)header_v4 = (DLlist_header_wrapper_v4*)buffer;
+    char *country_code;
    	char *language_code;
    	char region_code;
-	if(buffer[2]<4)header = (DLlist_header_wrapper*)buffer;
-	if(buffer[2]>=4)header_v4 = (DLlist_header_wrapper_v4*)buffer;
 
 	if(buffer[2]<4)
 	{
@@ -1072,122 +704,32 @@ int main(int argc, char **argv)
    	}
 
 	if(country_code==NULL)
-    	{
-        	free(buffer);
-        	sprintf(pstr, "Unknown country code: %d\n", (int)header->country_code);
-        	#ifdef WII_MINI_APP
-        	fat_umount();
-        	print_str_noscroll(112, 274, pstr);
-        	#else
-        	printf(pstr);
-        	#endif
-        	return -4;
-    	}
+    {
+        free(buffer);
+        sprintf(pstr, "Unknown country code: %d\n", (int)header->country_code);
+        printf(pstr);
+        return -4;
+    }
 
     if(buffer[2]<4)region_code = GetRegionCode(header->country_code);
     if(buffer[2]>=4)region_code = GetRegionCode(header_v4->country_code);
-	memset(str, 0, 256);
-	sprintf(str, "/dump%c.txt", region_code);
-	if(f_open(&fil, str, FA_WRITE | FA_CREATE_ALWAYS)!=0)
-	{
-		free(buffer);
-		fat_umount();
-		sprintf(str, "Failed to open %s", "/dump.txt");
-		print_str_noscroll(112, 274, str);
-		return -3;
-	}
-    #else
-        printf("Parsing...\n");
-        fil = fopen(str, "rb");
-        if(fil==NULL)
-        {
-            sprintf(pstr, "Failed to open %s\n", str);
-            printf(pstr);
-            return -3;
-        }
-
-        stat(str, &fstats);
-        buffer = (unsigned char*)malloc(fstats.st_size);
-        if(buffer==NULL)
-        {
-            sprintf(pstr, "Failed to allocate 0x%x bytes.\n", (int)fstats.st_size);
-            printf(pstr);
-            return -2;
-        }
-        fread(buffer, 1, fstats.st_size, fil);
-        fclose(fil);
-
-        if(buffer[2]<4)header = (DLlist_header_wrapper*)buffer;
-        if(buffer[2]>=4)header_v4 = (DLlist_header_wrapper_v4*)buffer;
-        char *country_code;
-   	char *language_code;
-   	char region_code;
-
-	if(buffer[2]<4)
-	{
-        header->country_code = be32(header->country_code);
-        header->language_code = be32(header->language_code);
-	}
-	else
-	{
-	    header_v4->country_code = be32(header_v4->country_code);
-        header_v4->language_code = be32(header_v4->language_code);
-	}
-
-   	if(buffer[2]<4)
-   	{
-        country_code = GetCountryCode(header->country_code);
-        language_code = (char*)language_codes[header->language_code];
-   	}
-   	else
-   	{
-        country_code = GetCountryCode(header_v4->country_code);
-        language_code = (char*)language_codes[header_v4->language_code];
-   	}
-
-	if(country_code==NULL)
-    	{
-        	free(buffer);
-        	sprintf(pstr, "Unknown country code: %d\n", (int)header->country_code);
-        	#ifdef WII_MINI_APP
-        	fat_umount();
-        	print_str_noscroll(112, 274, pstr);
-        	#else
-        	printf(pstr);
-        	#endif
-        	return -4;
-    	}
-
-        if(buffer[2]<4)region_code = GetRegionCode(header->country_code);
-        if(buffer[2]>=4)region_code = GetRegionCode(header_v4->country_code);
-        memset(str, 0, 256);
-        #ifdef HW_RVL
-        sprintf(str, "/dump%c.txt", region_code);
-        #else
-        sprintf(str, "dump%c.txt", region_code);
-        #endif
-        fil = fopen(str, "wb");
-        if(fil==NULL)
-        {
+    memset(str, 0, 256);
+    sprintf(str, "dump%c.txt", region_code);
+    fil = fopen(str, "wb");
+    if(fil==NULL)
+    {
 		sprintf(pstr, "Failed to open %s", str);
 		printf(pstr);
 		return -3;
-        }
-    #endif
+    }
 
     if(buffer[2]>4)
     {
         sprintf(pstr, "Unsupported dl list version for parser: %d\n", header->version);
         free(buffer);
 
-        #ifdef WII_MINI_APP
-        print_str_noscroll(112, 274, pstr);
-        f_close(&fil);
-        fat_umount();
-        #else
         printf(pstr);
         fclose(fil);
-        #endif
         return 0;
     }
 
@@ -1244,19 +786,8 @@ int main(int argc, char **argv)
 	    header_v4->total_titles = be32(header_v4->total_titles);
     }
 
-    #ifdef USING_LIBFF
-    f_puts("Demos:\n", &fil);
-    #else
-    fputs("Demos:\r\n", fil);
-    #endif
-
-    #ifdef USING_LIBFF
-    sprintf(str, "Number of demos: %d\n\n", total_demos);
-    f_puts(str, &fil);
-    #else
-    sprintf(str, "Number of demos: %d\r\n\r\n", total_demos);
-    fputs(str, fil);
-    #endif
+    fprintf(fil, "Demos:\r\n");
+    fprintf(fil, "Number of demos: %d\r\n\r\n", (unsigned int)total_demos);
 
     DLlist_title_entry *title_ptr = NULL;
     DLlist_title_entry_v4 *title_ptr_v4 = NULL;
@@ -1270,63 +801,34 @@ int main(int argc, char **argv)
             if(buffer[2]>=4)utf_temp = header_v4->demos[i].title[texti];
             if(utf_temp==0)break;
             utf_temp = be16(utf_temp);
-            #ifdef USING_LIBFF
-            putc((u8)utf_temp, &fil);
-            if((utf_temp >> 8))putc((u8)(utf_temp >> 8), &fil);
-            #else
             putc((u8)utf_temp, fil);
             if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
-            #endif
         }
-        #ifdef USING_LIBFF
-        f_puts("\n", &fil);
-        #else
-        fputs("\r\n", fil);
-        #endif
+        fprintf(fil, "\r\n");
         for(texti=0; texti<31; texti++)
         {
             if(buffer[2]<4)utf_temp = header->demos[i].subtitle[texti];
             if(buffer[2]>=4)utf_temp = header_v4->demos[i].subtitle[texti];
             if(utf_temp==0)break;
             utf_temp = be16(utf_temp);
-            #ifdef USING_LIBFF
-            putc((u8)utf_temp, &fil);
-            if((utf_temp >> 8))putc((u8)(utf_temp >> 8), &fil);
-            #else
             putc((u8)utf_temp, fil);
             if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
-            #endif
         }
-        #ifdef USING_LIBFF
-        f_puts("\n", &fil);
-        #else
-        fputs("\r\n", fil);
-        #endif
+        fprintf(fil, "\r\n");
 
         if(buffer[2]>=4)
         {
             if(header_v4->demos[i].new_tag)
             {
-                #ifdef USING_LIBFF
-                sprintf(str, "NEW (index %d)\n", header_v4->demos[i].new_tag_index);
-                f_puts(str, &fil);
-                #else
                 sprintf(str, "NEW (index %d)\r\n", header_v4->demos[i].new_tag_index);
                 fputs(str, fil);
-                #endif
             }
         }
 
         u32 demo_ID = 0;
         if(buffer[2]<4)demo_ID = be32(header->demos[i].ID);
         if(buffer[2]>=4)demo_ID = be32(header_v4->demos[i].ID);
-        #ifdef USING_LIBFF
-        sprintf(str, "ID: %u\n", demo_ID);
-        f_puts(str, &fil);
-        #else
-        sprintf(str, "ID: %u\r\n", demo_ID);
-        fputs(str, fil);
-        #endif
+        fprintf(fil, "ID: %u\r\n", (unsigned int)demo_ID);
 
         u32 ratingID = 0;
         if(buffer[2]<4)
@@ -1341,12 +843,7 @@ int main(int argc, char **argv)
         }
         if((buffer[2]<4 && title_ptr) || buffer[2]>=4)
         {
-            sprintf(str, "Rating: ");
-            #ifdef USING_LIBFF
-            f_puts(str, &fil);
-            #else
-            fputs(str, fil);
-            #endif
+            fprintf(fil, "Rating: ");
         }
         if(buffer[2]<4 && title_ptr)
         {
@@ -1359,13 +856,8 @@ int main(int argc, char **argv)
                         utf_temp = header->ratings[ratingi].title[texti];
                         if(utf_temp==0)break;
                         utf_temp = be16(utf_temp);
-                        #ifdef USING_LIBFF
-                        putc((u8)utf_temp, &fil);
-                        if((utf_temp >> 8))putc((u8)(utf_temp >> 8), &fil);
-                        #else
                         putc((u8)utf_temp, fil);
                         if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
-                        #endif
                     }
                     break;
                 }
@@ -1382,22 +874,13 @@ int main(int argc, char **argv)
                         utf_temp = header_v4->ratings[ratingi].title[texti];
                         if(utf_temp==0)break;
                         utf_temp = be16(utf_temp);
-                        #ifdef USING_LIBFF
-                        putc((u8)utf_temp, &fil);
-                        if((utf_temp >> 8))putc((u8)(utf_temp >> 8), &fil);
-                        #else
                         putc((u8)utf_temp, fil);
                         if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
-                        #endif
                     }
                 }
             }
         }
-        #ifdef USING_LIBFF
-        f_puts("\n", &fil);
-        #else
-        fputs("\r\n", fil);
-        #endif
+        fprintf(fil, "\r\n");
 
         DLlist_company_entry *comp;
         if(buffer[2]<4 && title_ptr)comp = (DLlist_company_entry*)((u32)buffer + (u32)be16(title_ptr->company_offset));
@@ -1409,62 +892,41 @@ int main(int argc, char **argv)
                 utf_temp = comp->devtitle[texti];
                 if(utf_temp==0)break;
                 utf_temp = be16(utf_temp);
-                #ifdef USING_LIBFF
-                putc((u8)utf_temp, &fil);
-                if((utf_temp >> 8))putc((u8)(utf_temp >> 8), &fil);
-                #else
                 putc((u8)utf_temp, fil);
                 if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
-                #endif
             }
         }
-        #ifdef USING_LIBFF
-        f_puts("\n", &fil);
-        #else
-        fputs("\r\n", fil);
-        #endif
+        fprintf(fil, "\r\n");
+
 		if((buffer[2]<4 && title_ptr) || (buffer[2]>=4))
 		{
-        if(memcmp(comp->devtitle, comp->pubtitle, 31 * 2)!=0)
-        {
-        for(texti=0; texti<31; texti++)
-        {
-                utf_temp = comp->pubtitle[texti];
-                if(utf_temp==0)break;
-                utf_temp = be16(utf_temp);
-                #ifdef USING_LIBFF
-                putc((u8)utf_temp, &fil);
-                if((utf_temp >> 8))putc((u8)(utf_temp >> 8), &fil);
-                #else
-                putc((u8)utf_temp, fil);
-                if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
-                #endif
-        }
-        }
+            if(memcmp(comp->devtitle, comp->pubtitle, 31 * 2)!=0)
+            {
+                for(texti=0; texti<31; texti++)
+                {
+                    utf_temp = comp->pubtitle[texti];
+                    if(utf_temp==0)break;
+                    utf_temp = be16(utf_temp);
+                    putc((u8)utf_temp, fil);
+                    if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
+                }
+            }
 		}
+        fprintf(fil, "\r\n");
 
         if(buffer[2]<4)timestamp_u32 = header->demos[i].removal_timestamp;
         if(buffer[2]>=4)timestamp_u32 = header_v4->demos[i].removal_timestamp;
 
         if(timestamp_u32==0xffffffff)
         {
-            #ifdef USING_LIBFF
-            f_puts("\nNo removal date.", &fil);
-            #else
-            fputs("\r\nNo removal date.", fil);
-            #endif
+            fprintf(fil, "No removal date.");
         }
         else
         {
             GetTimestamp(timestamp_u32, &timestamp);
-            #ifdef USING_LIBFF
-            sprintf(str, "\nRemoval date: %d/%d/%d\n", timestamp.month + 1, timestamp.day_of_month, timestamp.year);
-            f_puts(str, &fil);
-            #else
-            sprintf(str, "\r\nRemoval date: %d/%d/%d\r\n", timestamp.month + 1, timestamp.day_of_month, timestamp.year);
-            fputs(str, fil);
-            #endif
+            fprintf(fil, "Removal date: %d/%d/%d", timestamp.month + 1, timestamp.day_of_month, timestamp.year);
         }
+        fprintf(fil, "\r\n");
 
         if(title_ptr || title_ptr_v4)
         {
@@ -1473,49 +935,23 @@ int main(int argc, char **argv)
 
             if(timestamp_u32==0xffffffff)
             {
-                #ifdef USING_LIBFF
-                f_puts("\nNo title release date.\n", &fil);
-                #else
-                fputs("\r\nNo title release date.\r\n", fil);
-                #endif
+                fprintf(fil, "No title release date.");
             }
             else
             {
                 GetTimestamp(timestamp_u32, &timestamp);
-                #ifdef USING_LIBFF
-                sprintf(str, "\nTitle release date: %d/%d/%d\n", timestamp.month + 1, timestamp.day_of_month, timestamp.year);
-                f_puts(str, &fil);
-                #else
-                sprintf(str, "\r\nTitle release date: %d/%d/%d\r\n", timestamp.month + 1, timestamp.day_of_month, timestamp.year);
-                fputs(str, fil);
-                #endif
+                fprintf(fil, "Title release date: %d/%d/%d", timestamp.month + 1, timestamp.day_of_month, timestamp.year);
             }
         }
+        fprintf(fil, "\r\n\r\n");
 
-        #ifdef USING_LIBFF
-        sprintf(str, "\nURL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/dstrial/%s/%s/%u.bin\n\n", region_code, (int)buffer[2], country_code, language_code, demo_ID);
-        f_puts(str, &fil);
-        f_sync(&fil);
-        #else
-        sprintf(str, "\r\nURL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/dstrial/%s/%s/%u.bin\r\n\r\n", region_code, (int)buffer[2], country_code, language_code, demo_ID);
-        fputs(str, fil);
+        fprintf(fil, "URL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/dstrial/%s/%s/%u.bin\r\n\r\n", region_code, (int)buffer[2], country_code, language_code, (unsigned int)demo_ID);
         fflush(fil);
-        #endif
     }
 
-    #ifdef USING_LIBFF
-    f_puts("Videos:\n", &fil);
-    #else
-    fputs("Videos:\r\n", fil);
-    #endif
+    fprintf(fil, "Videos:\r\n");
+    fprintf(fil, "Number of videos: %d\r\n\r\n", (unsigned int)total_videos);
 
-    #ifdef USING_LIBFF
-    sprintf(str, "Number of videos: %d\n\n", total_videos);
-    f_puts(str, &fil);
-    #else
-    sprintf(str, "Number of videos: %d\r\n\r\n", total_videos);
-    fputs(str, fil);
-    #endif
     for(i=0; i<total_videos; i++)
     {
         u32 txt_len = 0;
@@ -1527,45 +963,24 @@ int main(int argc, char **argv)
             if(buffer[2]>=4)utf_temp = header_v4->videos0[i].title[texti];
             if(utf_temp==0)break;
             utf_temp = be16(utf_temp);
-            #ifdef USING_LIBFF
-            if(((u8)utf_temp)==0x0A)putc(0x0D, &fil);
-            putc((u8)utf_temp, &fil);
-            if((utf_temp >> 8))putc((u8)(utf_temp >> 8), &fil);
-            #else
             if(((u8)utf_temp)==0x0A)putc(0x0D, fil);
             putc((u8)utf_temp, fil);
             if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
-            #endif
         }
-        #ifdef USING_LIBFF
-        f_puts("\n", &fil);
-        #else
-        fputs("\r\n", fil);
-        #endif
+        fprintf(fil, "\r\n");
 
         if(buffer[2]>=4)
         {
             if(header_v4->videos0[i].new_tag)
             {
-                #ifdef USING_LIBFF
-                sprintf(str, "NEW\n");
-                f_puts(str, &fil);
-                #else
-                sprintf(str, "NEW\r\n");
-                fputs(str, fil);
-                #endif
+                fprintf(fil, "NEW\r\n");
             }
         }
-            u16 time_length;
-            if(buffer[2]<4)time_length = be16(header->videos[i].time_length);
-            if(buffer[2]>=4)time_length = be16(header_v4->videos0[i].time_length);
-            #ifdef USING_LIBFF
-            sprintf(str, "Time length %02d:%02d\n", time_length / 60, time_length % 60);
-            f_puts(str, &fil);
-            #else
-            sprintf(str, "Time length %02d:%02d\r\n", time_length / 60, time_length % 60);
-            fputs(str, fil);
-            #endif
+
+        u16 time_length;
+        if(buffer[2]<4)time_length = be16(header->videos[i].time_length);
+        if(buffer[2]>=4)time_length = be16(header_v4->videos0[i].time_length);
+        fprintf(fil, "Time length %02d:%02d\r\n", time_length / 60, time_length % 60);
 
         u32 video_ID, video_titleid, video1_ID = 0;
         if(buffer[2]<4)video_ID = be32(header->videos[i].ID);
@@ -1574,29 +989,14 @@ int main(int argc, char **argv)
             video_ID = be32(header_v4->videos0[i].ID);
             video1_ID = be32(header_v4->videos1[i].ID);
         }
-        #ifdef USING_LIBFF
         if(buffer[2]<4)
         {
-            sprintf(str, "ID: %u\n", video_ID);
-            f_puts(str, &fil);
+            fprintf(fil, "ID: %u\r\n", (unsigned int)video_ID);
         }
         else
         {
-            sprintf(str, "ID: %u\n", video_ID);
-            f_puts(str, &fil);
+            fprintf(fil, "ID: %u\r\n", (unsigned int)video_ID);
         }
-        #else
-        if(buffer[2]<4)
-        {
-            sprintf(str, "ID: %u\r\n", video_ID);
-            fputs(str, fil);
-        }
-        else
-        {
-            sprintf(str, "ID: %u\r\n", video_ID);
-            fputs(str, fil);
-        }
-        #endif
 
         if(buffer[2]<4)video_titleid = header->videos[i].titleid;
         if(buffer[2]>=4)video_titleid = header_v4->videos0[i].titleid;
@@ -1604,119 +1004,89 @@ int main(int argc, char **argv)
         title_ptr_v4 = NULL;
         if(video_titleid!=0)
         {
-        sprintf(str, "Rating: ");
-        #ifdef USING_LIBFF
-        f_puts(str, &fil);
-        #else
-        fputs(str, fil);
-        #endif
+            fprintf(fil, "Rating: ");
 
-        u32 ratingID = 0;
-        if(buffer[2]<4)
-        {
-            title_ptr = LookupTitle(header->videos[i].titleid, header);
-            if(title_ptr)ratingID = title_ptr->ratingID;
-        }
-        else
-        {
-            title_ptr_v4 = LookupTitleV4(header_v4->videos0[i].titleid, header_v4);
-            ratingID = header_v4->videos0[i].ratingID;
-        }
-        if(buffer[2]<4 && title_ptr)
-        {
-            for(ratingi=0; ratingi<header->ratings_total; ratingi++)
+            u32 ratingID = 0;
+            if(buffer[2]<4)
             {
-                if(header->ratings[ratingi].ratingID==ratingID)
+                title_ptr = LookupTitle(header->videos[i].titleid, header);
+                if(title_ptr)ratingID = title_ptr->ratingID;
+            }
+            else
+            {
+                title_ptr_v4 = LookupTitleV4(header_v4->videos0[i].titleid, header_v4);
+                ratingID = header_v4->videos0[i].ratingID;
+            }
+
+            if(buffer[2]<4 && title_ptr)
+            {
+                for(ratingi=0; ratingi<header->ratings_total; ratingi++)
                 {
-                    for(texti=0; texti<11; texti++)
+                    if(header->ratings[ratingi].ratingID==ratingID)
                     {
-                        utf_temp = header->ratings[ratingi].title[texti];
-                        if(utf_temp==0)break;
-                        utf_temp = be16(utf_temp);
-                        #ifdef USING_LIBFF
-                        putc((u8)utf_temp, &fil);
-                        if((utf_temp >> 8))putc((u8)(utf_temp >> 8), &fil);
-                        #else
-                        putc((u8)utf_temp, fil);
-                        if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
-                        #endif
+                        for(texti=0; texti<11; texti++)
+                        {
+                            utf_temp = header->ratings[ratingi].title[texti];
+                            if(utf_temp==0)break;
+                            utf_temp = be16(utf_temp);
+                            putc((u8)utf_temp, fil);
+                            if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
+                        }
                     }
                 }
             }
-        }
-        else if(buffer[2]>=4)
-        {
-            for(ratingi=0; ratingi<header_v4->ratings_total; ratingi++)
+            else if(buffer[2]>=4)
             {
-                if(header_v4->ratings[ratingi].ratingID==ratingID)
+                for(ratingi=0; ratingi<header_v4->ratings_total; ratingi++)
                 {
-                    for(texti=0; texti<11; texti++)
+                    if(header_v4->ratings[ratingi].ratingID==ratingID)
                     {
-                        utf_temp = header_v4->ratings[ratingi].title[texti];
-                        if(utf_temp==0)break;
-                        utf_temp = be16(utf_temp);
-                        #ifdef USING_LIBFF
-                        putc((u8)utf_temp, &fil);
-                        if((utf_temp >> 8))putc((u8)(utf_temp >> 8), &fil);
-                        #else
-                        putc((u8)utf_temp, fil);
-                        if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
-                        #endif
+                        for(texti=0; texti<11; texti++)
+                        {
+                            utf_temp = header_v4->ratings[ratingi].title[texti];
+                            if(utf_temp==0)break;
+                            utf_temp = be16(utf_temp);
+                            putc((u8)utf_temp, fil);
+                            if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
+                        }
                     }
                 }
             }
-        }
 
-        #ifdef USING_LIBFF
-        f_puts("\n", &fil);
-        #else
-        fputs("\r\n", fil);
-        #endif
+            fprintf(fil, "\r\n");
 
-        DLlist_company_entry *comp = NULL;
-        if(buffer[2]<4 && title_ptr)comp = (DLlist_company_entry*)((u32)buffer + (u32)be16(title_ptr->company_offset));
-        if(buffer[2]>=4 && title_ptr_v4)comp = (DLlist_company_entry*)((u32)buffer + (u32)be16(title_ptr_v4->company_offset));
-        if(title_ptr || title_ptr_v4)
-		{
-		for(texti=0; texti<31; texti++)
-        {
-                utf_temp = comp->devtitle[texti];
-                if(utf_temp==0)break;
-                utf_temp = be16(utf_temp);
-                #ifdef USING_LIBFF
-                putc((u8)utf_temp, &fil);
-                if((utf_temp >> 8))putc((u8)(utf_temp >> 8), &fil);
-                #else
-                putc((u8)utf_temp, fil);
-                if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
-                #endif
-        }
-		}
-        #ifdef USING_LIBFF
-        f_puts("\n", &fil);
-        #else
-        fputs("\r\n", fil);
-        #endif
-		if(title_ptr || title_ptr_v4)
-		{
-			if(memcmp(comp->devtitle, comp->pubtitle, 31 * 2)!=0)
-			{
-				for(texti=0; texti<31; texti++)
-				{
+            DLlist_company_entry *comp = NULL;
+            if(buffer[2]<4 && title_ptr)comp = (DLlist_company_entry*)((u32)buffer + (u32)be16(title_ptr->company_offset));
+            if(buffer[2]>=4 && title_ptr_v4)comp = (DLlist_company_entry*)((u32)buffer + (u32)be16(title_ptr_v4->company_offset));
+            if(title_ptr || title_ptr_v4)
+            {
+                for(texti=0; texti<31; texti++)
+                {
+                    utf_temp = comp->devtitle[texti];
+                    if(utf_temp==0)break;
+                    utf_temp = be16(utf_temp);
+                    putc((u8)utf_temp, fil);
+                    if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
+                }
+            }
+
+            fprintf(fil, "\r\n");
+            if(title_ptr || title_ptr_v4)
+            {
+                if(memcmp(comp->devtitle, comp->pubtitle, 31 * 2)!=0)
+                {
+                    for(texti=0; texti<31; texti++)
+                    {
 						utf_temp = comp->pubtitle[texti];
 						if(utf_temp==0)break;
 						utf_temp = be16(utf_temp);
-						#ifdef USING_LIBFF
-						putc((u8)utf_temp, &fil);
-						if((utf_temp >> 8))putc((u8)(utf_temp >> 8), &fil);
-						#else
 						putc((u8)utf_temp, fil);
 						if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
-						#endif
-				}
-			}
+                    }
+                }
+            }
 		}
-		}
+        fprintf(fil, "\r\n");
 
         if(title_ptr || title_ptr_v4)
         {
@@ -1725,61 +1095,28 @@ int main(int argc, char **argv)
 
             if(timestamp_u32==0xffffffff)
             {
-                #ifdef USING_LIBFF
-                f_puts("\nNo title release date.\n", &fil);
-                #else
-                fputs("\r\nNo title release date.\r\n", fil);
-                #endif
+                fprintf(fil, "No title release date.");
             }
             else
             {
                 GetTimestamp(timestamp_u32, &timestamp);
-                #ifdef USING_LIBFF
-                sprintf(str, "\nTitle release date: %d/%d/%d\n", timestamp.month + 1, timestamp.day_of_month, timestamp.year);
-                f_puts(str, &fil);
-                #else
-                sprintf(str, "\r\nTitle release date: %d/%d/%d\r\n", timestamp.month + 1, timestamp.day_of_month, timestamp.year);
-                fputs(str, fil);
-                #endif
+                fprintf(fil, "Title release date: %d/%d/%d", timestamp.month + 1, timestamp.day_of_month, timestamp.year);
             }
         }
+        fprintf(fil, "\r\n\r\n");
 
-        #ifdef USING_LIBFF
         if(buffer[2]<4)
         {
-            sprintf(str, "\nURL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/movie/%s/%s/%u.3gp\n\n", GetRegionCode(header->country_code), (int)header->version, country_code, language_code, video_ID);
-            f_puts(str, &fil);
+            fprintf(fil, "URL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/movie/%s/%s/%u.3gp\r\n\r\n", region_code, buffer[2], country_code, language_code, (unsigned int)video_ID);
         }
         else
         {
-            sprintf(str, "\nLow Quality URL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/movie/%s/%s/%u-l.mo", region_code, buffer[2], country_code, language_code, video_ID);
-            f_puts(str, &fil);
-            sprintf(str, "\nHigh Quality URL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/movie/%s/%s/%u-h.mo\n\n", region_code, buffer[2], country_code, language_code, video_ID);
-            f_puts(str, &fil);
-        }
-        f_sync(&fil);
-        #else
-        if(buffer[2]<4)
-        {
-            sprintf(str, "\r\nURL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/movie/%s/%s/%u.3gp\r\n\r\n", region_code, buffer[2], country_code, language_code, video_ID);
-            fputs(str, fil);
-        }
-        else
-        {
-            sprintf(str, "\r\nLow Quality URL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/movie/%s/%s/%u-l.mo", region_code, buffer[2], country_code, language_code, video_ID);
-            fputs(str, fil);
-            sprintf(str, "\r\nHigh Quality URL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/movie/%s/%s/%u-h.mo\r\n\r\n", region_code, buffer[2], country_code, language_code, video_ID);
-            fputs(str, fil);
+            fprintf(fil, "Low Quality URL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/movie/%s/%s/%u-l.mo\r\n", region_code, buffer[2], country_code, language_code, (unsigned int)video_ID);
+            fprintf(fil, "High Quality URL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/movie/%s/%s/%u-h.mo\r\n\r\n", region_code, buffer[2], country_code, language_code, (unsigned int)video_ID);
         }
         fflush(fil);
-        #endif
     }
 
-    #ifdef WII_MINI_APP
-    f_close(&fil);
-	fat_umount();
-
-	#else
 	fclose(fil);
     if((argc>6 && strncmp(argv[6], "-l", 2)==0) || (argc==3 && strncmp(argv[2], "-l", 2)==0))
 	{
@@ -1793,7 +1130,7 @@ int main(int argc, char **argv)
 		if(buffer[2]<4)num_titles = ((u32)header->videos - (u32)header->titles) / sizeof(DLlist_title_entry);
 		if(buffer[2]>=4)num_titles = header_v4->total_titles;
 		u32 i;
-		u32 typeID = 0;
+		unsigned int typeID = 0;
 		u32 ti, tt_num;
 		if(buffer[2]<4)tt_num = header->total_title_types;
 		if(buffer[2]>=4)tt_num = header_v4->total_title_types;
@@ -1815,8 +1152,8 @@ int main(int argc, char **argv)
 					if(header_v4->title_types[ti].typeID==typeID)break;
 				}
 			}
-			if(buffer[2]<4)fprintf(fil, "Titles with title type ID %02x, description ", typeID);
-			if(buffer[2]>=4)fprintf(fil, "Titles with title type ID %02x, model %c%c%c description ", typeID, header_v4->title_types[ti].console_model[0], header_v4->title_types[ti].console_model[1], header_v4->title_types[ti].console_model[2]);
+			if(buffer[2]<4)fprintf(fil, "Titles with title type ID %02x, description ", (unsigned int)typeID);
+			if(buffer[2]>=4)fprintf(fil, "Titles with title type ID %02x, model %c%c%c description ", (unsigned int)typeID, header_v4->title_types[ti].console_model[0], header_v4->title_types[ti].console_model[1], header_v4->title_types[ti].console_model[2]);
 			for(texti=0; texti<31; texti++)
 			{
 					if(buffer[2]<4)utf_temp = header->main_title_types[ti].title[texti];
@@ -1891,7 +1228,7 @@ int main(int argc, char **argv)
             numtitles++;
 		}
 
-        fprintf(fil, "Total titles: %u\n\n", numtitles);
+        fprintf(fil, "Total titles: %u\n\n", (unsigned int)numtitles);
 		for(i=0; i<num_titles; i++)
 		{
 		    if(buffer[2]<4)title_ptr = &header->titles[i];
@@ -1920,54 +1257,57 @@ int main(int argc, char **argv)
             }
             if(strlen(lsarg)>2)
             {
-			if(strlen(lsarg)==5 && buffer[2]>=4)
-			{
-				for(ti = 0; ti<tt_num; ti++)
-				{
-				    if(header_v4->titles[i].title_type==header_v4->title_types[ti].typeID)
-				    {
-                        if(memcmp(header_v4->title_types[ti].console_model, &lsarg[2], 3)==0)
+                if(strlen(lsarg)==5 && buffer[2]>=4)
+                {
+                    for(ti = 0; ti<tt_num; ti++)
+                    {
+                        if(header_v4->titles[i].title_type==header_v4->title_types[ti].typeID)
                         {
-                            found = 1;
-                            break;
+                            if(memcmp(header_v4->title_types[ti].console_model, &lsarg[2], 3)==0)
+                            {
+                                found = 1;
+                                break;
+                            }
                         }
-				    }
-				}
-			}
-			else if(strlen(lsarg)==4)
-			{
-				if(buffer[2]<4)
-				{
-					if(header->titles[i].title_type!=typeID)continue;
-				}
-				else
-				{
-					if(header_v4->titles[i].title_type!=typeID)continue;
-				}
-				found = 1;
-			}
+                    }
+                }
+                else if(strlen(lsarg)==4)
+                {
+                    if(buffer[2]<4)
+                    {
+                        if(header->titles[i].title_type!=typeID)continue;
+                    }
+                    else
+                    {
+                        if(header_v4->titles[i].title_type!=typeID)continue;
+                    }
+
+                    found = 1;
+                }
             }
             if(!found)continue;
 
 			for(texti=0; texti<31; texti++)
 			{
-					if(buffer[2]<4)utf_temp = header->titles[i].title[texti];
-					if(buffer[2]>=4)utf_temp = header_v4->titles[i].title[texti];
-					if(utf_temp==0)break;
-					utf_temp = be16(utf_temp);
-					putc((u8)utf_temp, fil);
-					if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
+                if(buffer[2]<4)utf_temp = header->titles[i].title[texti];
+                if(buffer[2]>=4)utf_temp = header_v4->titles[i].title[texti];
+                if(utf_temp==0)break;
+                utf_temp = be16(utf_temp);
+                putc((u8)utf_temp, fil);
+                if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
 			}
+
 			fprintf(fil, "\n");
 			for(texti=0; texti<31; texti++)
 			{
-					if(buffer[2]<4)utf_temp = header->titles[i].subtitle[texti];
-					if(buffer[2]>=4)utf_temp = header_v4->titles[i].subtitle[texti];
-					if(utf_temp==0)break;
-					utf_temp = be16(utf_temp);
-					putc((u8)utf_temp, fil);
-					if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
+                if(buffer[2]<4)utf_temp = header->titles[i].subtitle[texti];
+                if(buffer[2]>=4)utf_temp = header_v4->titles[i].subtitle[texti];
+                if(utf_temp==0)break;
+                utf_temp = be16(utf_temp);
+                putc((u8)utf_temp, fil);
+                if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
 			}
+
 			fprintf(fil, "\n");
 			if(buffer[2]>=4)
 			{
@@ -2002,172 +1342,114 @@ int main(int argc, char **argv)
 			}
 
             DLlist_company_entry *comp = NULL;
-        if(buffer[2]<4 && title_ptr)comp = (DLlist_company_entry*)((u32)buffer + (u32)be16(title_ptr->company_offset));
-        if(buffer[2]>=4 && title_ptr_v4)comp = (DLlist_company_entry*)((u32)buffer + (u32)be16(title_ptr_v4->company_offset));
-        if(comp)
-        {
-            for(texti=0; texti<31; texti++)
+            if(buffer[2]<4 && title_ptr)comp = (DLlist_company_entry*)((u32)buffer + (u32)be16(title_ptr->company_offset));
+            if(buffer[2]>=4 && title_ptr_v4)comp = (DLlist_company_entry*)((u32)buffer + (u32)be16(title_ptr_v4->company_offset));
+            if(comp)
             {
-                utf_temp = comp->devtitle[texti];
-                if(utf_temp==0)break;
-                utf_temp = be16(utf_temp);
-                #ifdef USING_LIBFF
-                putc((u8)utf_temp, &fil);
-                if((utf_temp >> 8))putc((u8)(utf_temp >> 8), &fil);
-                #else
-                putc((u8)utf_temp, fil);
-                if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
-                #endif
-            }
-        }
-        #ifdef USING_LIBFF
-        f_puts("\n", &fil);
-        #else
-        fputs("\r\n", fil);
-        #endif
-		if((buffer[2]<4 && title_ptr) || (buffer[2]>=4 && title_ptr_v4))
-		{
-        if(memcmp(comp->devtitle, comp->pubtitle, 31 * 2)!=0)
-        {
-        for(texti=0; texti<31; texti++)
-        {
-                utf_temp = comp->pubtitle[texti];
-                if(utf_temp==0)break;
-                utf_temp = be16(utf_temp);
-                #ifdef USING_LIBFF
-                putc((u8)utf_temp, &fil);
-                if((utf_temp >> 8))putc((u8)(utf_temp >> 8), &fil);
-                #else
-                putc((u8)utf_temp, fil);
-                if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
-                #endif
-        }
-        }
-		}
-
-        sprintf(str, "Rating: ");
-        #ifdef USING_LIBFF
-        f_puts(str, &fil);
-        #else
-        fputs(str, fil);
-        #endif
-
-        u32 ratingID = 0;
-        if(buffer[2]<4)
-        {
-            ratingID = title_ptr->ratingID;
-        }
-        else
-        {
-            ratingID = title_ptr_v4->ratingID;
-        }
-        if(buffer[2]<4)
-        {
-            for(ratingi=0; ratingi<header->ratings_total; ratingi++)
-            {
-                if(header->ratings[ratingi].ratingID==ratingID)
+                for(texti=0; texti<31; texti++)
                 {
-                    for(texti=0; texti<11; texti++)
+                    utf_temp = comp->devtitle[texti];
+                    if(utf_temp==0)break;
+                    utf_temp = be16(utf_temp);
+                    putc((u8)utf_temp, fil);
+                    if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
+                }
+            }
+
+            fputs("\r\n", fil);
+            if((buffer[2]<4 && title_ptr) || (buffer[2]>=4 && title_ptr_v4))
+            {
+                if(memcmp(comp->devtitle, comp->pubtitle, 31 * 2)!=0)
+                {
+                    for(texti=0; texti<31; texti++)
                     {
-                        utf_temp = header->ratings[ratingi].title[texti];
+                        utf_temp = comp->pubtitle[texti];
                         if(utf_temp==0)break;
                         utf_temp = be16(utf_temp);
-                        #ifdef USING_LIBFF
-                        putc((u8)utf_temp, &fil);
-                        if((utf_temp >> 8))putc((u8)(utf_temp >> 8), &fil);
-                        #else
                         putc((u8)utf_temp, fil);
                         if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
-                        #endif
                     }
                 }
             }
-        }
-        else if(buffer[2]>=4)
-        {
-            for(ratingi=0; ratingi<header_v4->ratings_total; ratingi++)
+
+            sprintf(str, "Rating: ");
+            fputs(str, fil);
+
+            u32 ratingID = 0;
+            if(buffer[2]<4)
             {
-                if(header_v4->ratings[ratingi].ratingID==ratingID)
+                ratingID = title_ptr->ratingID;
+            }
+            else
+            {
+                ratingID = title_ptr_v4->ratingID;
+            }
+
+            if(buffer[2]<4)
+            {
+                for(ratingi=0; ratingi<header->ratings_total; ratingi++)
                 {
-                    for(texti=0; texti<11; texti++)
+                    if(header->ratings[ratingi].ratingID==ratingID)
                     {
-                        utf_temp = header_v4->ratings[ratingi].title[texti];
-                        if(utf_temp==0)break;
-                        utf_temp = be16(utf_temp);
-                        #ifdef USING_LIBFF
-                        putc((u8)utf_temp, &fil);
-                        if((utf_temp >> 8))putc((u8)(utf_temp >> 8), &fil);
-                        #else
-                        putc((u8)utf_temp, fil);
-                        if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
-                        #endif
+                        for(texti=0; texti<11; texti++)
+                        {
+                            utf_temp = header->ratings[ratingi].title[texti];
+                            if(utf_temp==0)break;
+                            utf_temp = be16(utf_temp);
+                            putc((u8)utf_temp, fil);
+                            if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
+                        }
                     }
                 }
             }
-        }
+            else if(buffer[2]>=4)
+            {
+                for(ratingi=0; ratingi<header_v4->ratings_total; ratingi++)
+                {
+                    if(header_v4->ratings[ratingi].ratingID==ratingID)
+                    {
+                        for(texti=0; texti<11; texti++)
+                        {
+                            utf_temp = header_v4->ratings[ratingi].title[texti];
+                            if(utf_temp==0)break;
+                            utf_temp = be16(utf_temp);
+                            putc((u8)utf_temp, fil);
+                            if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
+                        }
+                    }
+                }
+            }
+            fprintf(fil, "\r\n");
 
             if(buffer[2]<4)timestamp_u32 = title_ptr->release_date;
             if(buffer[2]>=4)timestamp_u32 = title_ptr_v4->release_date;
 
             if(timestamp_u32==0xffffffff)
             {
-                #ifdef USING_LIBFF
-                f_puts("\nNo title release date.\n", &fil);
-                #else
-                fputs("\r\nNo title release date.\r\n", fil);
-                #endif
+                fprintf(fil, "No title release date.");
             }
             else
             {
                 GetTimestamp(timestamp_u32, &timestamp);
-                #ifdef USING_LIBFF
-                sprintf(str, "\nTitle release date: %d/%d/%d\n", timestamp.month + 1, timestamp.day_of_month, timestamp.year);
-                f_puts(str, &fil);
-                #else
-                sprintf(str, "\r\nTitle release date: %d/%d/%d\r\n", timestamp.month + 1, timestamp.day_of_month, timestamp.year);
-                fputs(str, fil);
-                #endif
+                fprintf(fil, "Title release date: %d/%d/%d", timestamp.month + 1, timestamp.day_of_month, timestamp.year);
             }
 
-        #ifdef USING_LIBFF
-        f_puts("\n", &fil);
-        #else
-        fputs("\r\n", fil);
-        #endif
+            fprintf(fil, "\r\n");
+            if(buffer[2]<4)fprintf(fil, "ID: %u\r\n", (unsigned int)title_ptr->ID);
+            if(buffer[2]>=4)fprintf(fil, "ID: %u\r\n", (unsigned int)title_ptr_v4->ID);
 
-        #ifdef USING_LIBFF
-        if(buffer[2]<4)sprintf(str, "ID: %u\n", title_ptr->ID);
-        if(buffer[2]>=4)sprintf(str, "ID: %u\n", title_ptr_v4->ID);
-        f_puts(str, &fil);
-        #else
-        if(buffer[2]<4)sprintf(str, "ID: %u\r\n", title_ptr->ID);
-        if(buffer[2]>=4)sprintf(str, "ID: %u\r\n", title_ptr_v4->ID);
-        fputs(str, fil);
-        #endif
-
-        u32 titleid;
-        if(buffer[2]<4)titleid = title_ptr->titleID;
-        if(buffer[2]>=4)titleid = title_ptr_v4->titleID;
-        #ifdef USING_LIBFF
-        sprintf(str, "titleID: %c%c%c%c\n", (char)titleid, (char)(titleid>>8), (char)(titleid>>16), (char)(titleid>>24));
-        f_puts(str, &fil);
-        #else
-        sprintf(str, "titleID: %c%c%c%c\r\n", (char)titleid, (char)(titleid>>8), (char)(titleid>>16), (char)(titleid>>24));
-        fputs(str, fil);
-        #endif
-
+            u32 titleid;
+            if(buffer[2]<4)titleid = title_ptr->titleID;
+            if(buffer[2]>=4)titleid = title_ptr_v4->titleID;
+            sprintf(str, "titleID: %c%c%c%c\r\n", (char)titleid, (char)(titleid>>8), (char)(titleid>>16), (char)(titleid>>24));
+            fputs(str, fil);
 			fprintf(fil, "\n");
 		}
 		fclose(fil);
 	}
-	#endif
 
 	free(buffer);
-	#ifdef WII_MINI_APP
-	print_str_noscroll(112, 274, "Done.");
-	#else
 	printf("Done.\n");
-	#endif
 	return 0;
 }
 

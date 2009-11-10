@@ -9,6 +9,8 @@
 
 */
 
+//Modified by yellowstar6 to add OFB mode decryption support.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

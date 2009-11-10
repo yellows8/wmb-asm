@@ -22,6 +22,7 @@
 // Also tribute to gbadev.org & cowbite & no$gba's gbatek without those I couldnt
 // do much on gba :p
 
+//Only change by yellowstar6 was a rename of main to gbalzss_main for compiling with ninchdl-listext.
 
 /**************************************************************
 	LZSS.C -- A Data Compression Program
@@ -34,53 +35,16 @@
 		NIFTY-Serve	PAF01022
 		CompuServe	74050,1022
 **************************************************************/
-
-//Modifications added by yellowstar for compatiblity with MINI app.
-
-#ifndef WII_MINI_APP
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <ctype.h>
-#include <string.h>
-
-#ifndef BIG_ENDIAN
-#define BIG_ENDIAN 4321
-#endif
-#ifndef LITTLE_ENDIAN
-#define LITTLE_ENDIAN 1234
-#endif
-#define BYTE_ORDER LITTLE_ENDIAN
-#endif
-
-#ifdef WII_MINI_APP
-#include "../string.h"
-#include "../console.h"
-#ifndef EOF
-#define EOF -1
-#endif
-
-#ifndef BIG_ENDIAN
-#define BIG_ENDIAN 4321
-#endif
-#ifndef LITTLE_ENDIAN
-#define LITTLE_ENDIAN 1234
-#endif
-#define BYTE_ORDER BIG_ENDIAN
-#endif
-
-#ifdef USING_LIBFF
-#include "../ff.h"
-#endif
-#ifndef USING_LIBFF
-struct stat finfo;
 typedef unsigned long u32;
-#endif
-#ifdef USING_LIBFF
-FILINFO finfo;
-#endif
+struct stat finfo;
 
 #define N		 4096	/* size of ring buffer */
 #define F		   18	/* upper limit for match_length */
@@ -99,41 +63,7 @@ int		match_position, match_length,  /* of longest match.  These are
 			set by the InsertNode() procedure. */
 		lson[N + 1], rson[N + 257], dad[N + 1];  /* left & right children &
 			parents -- These constitute binary search trees. */
-#ifndef USING_LIBFF
 FILE	*infile, *outfile;  /* input & output files */
-#endif
-#ifdef USING_LIBFF
-FIL _ifile, _ofile;
-FIL *infile = &_ifile, *outfile = &_ofile;
-//Based on f_putc from ff.c.
-/*-----------------------------------------------------------------------*/
-/* Put a character to the file                                           */
-/*-----------------------------------------------------------------------*/
-int putc (
-	int chr,	/* A character to be output */
-	FIL* fil	/* Ponter to the file object */
-)
-{
-	UINT bw;
-	char c;
-	c = (char)chr;
-	f_write(fil, &c, 1, &bw);	/* Write a byte to the file */
-	return bw ? chr : EOF;		/* Return the result */
-}
-
-int getc (
-	FIL* fil	/* Ponter to the file object */
-)
-{
-	UINT bw;
-	char c;
-	f_read(fil, &c, 1, &bw);	/* Write a byte to the file */
-	return bw ? c : EOF;		/* Return the result */
-}
-#endif
-
-u32 be32(u32 x);//From update_download by SquidMan.
-u32 le32(u32 x);//From be32 from update_download by SquidMan.
 
 void InitTree(void)  /* initialize trees */
 {
@@ -221,19 +151,9 @@ void Encode(void)
 	// Bit 0-3   Reserved
 	// Bit 4-7   Compressed type (must be 1 for LZ77)
 	// Bit 8-31  Size of decompressed data
-	#ifndef USING_LIBFF
 	u32 gbaheader = 0x10 + (finfo.st_size<<8);
-	#endif
-	#ifdef USING_LIBFF
-	u32 gbaheader = 0x10 + (finfo.fsize<<8);
-	#endif
 	unsigned char* tmp = (unsigned char*)&gbaheader;
-	#ifdef WII_MINI_APP
-	gfx_printf("gba header: %x\n", gbaheader );
-	#endif
-	#ifndef WII_MINI_APP
-	printf("gba header: %x\n", (int)gbaheader );
-	#endif
+	printf("gba header: %x\n", gbaheader );
 	for(i=0; i<4; i++) putc( tmp[i], outfile );
 
 
@@ -311,13 +231,7 @@ void Encode(void)
 			InsertNode(r);	/* Register the string in text_buf[r..r+F-1] */
 		}
 		if ((textsize += i) > printcount) {
-			#ifdef WII_MINI_APP
-			gfx_printf("%12ld\r", textsize);
-			#endif
-			#ifndef WII_MINI_APP
-            printf("%12ld\r", textsize);
-			#endif
-			printcount += 1024;
+			printf("%12ld\r", textsize);  printcount += 1024;
 				/* Reports progress each time the textsize exceeds
 				   multiples of 1024. */
 		}
@@ -336,21 +250,14 @@ void Encode(void)
 
 	// pad output with zeros to make it a multiply of 4
 	if(codesize%4)
-		for(i=0; i<4-((int)codesize%4); i++)
+		for(i=0; i<4-(codesize%4); i++)
 			putc(0x00, outfile);
 
 	codesize += 4-(codesize%4);
 
-    #ifdef WII_MINI_APP
-	gfx_printf("In : %ld bytes\n", textsize);	/* Encoding is done. */
-	gfx_printf("Out: %ld bytes\n", codesize);
-	gfx_printf("Out/In: %.3f\n", (double)codesize / textsize);
-    #endif
-    #ifndef WII_MINI_APP
 	printf("In : %ld bytes\n", textsize);	/* Encoding is done. */
 	printf("Out: %ld bytes\n", codesize);
 	printf("Out/In: %.3f\n", (double)codesize / textsize);
-    #endif
 }
 
 
@@ -367,19 +274,8 @@ void Decode(void)	/* Just the reverse of Encode(). */
 	u32 gbaheader;
 	unsigned char* tmp = (unsigned char*)&gbaheader;
 	for(i=0; i<4; i++) tmp[i] = getc(infile);
-	#if BYTE_ORDER==BIG_ENDIAN
-	decomp_size = (gbaheader<<8)>>8;
-	#else
-    decomp_size = gbaheader>>8;
-	#endif
-	decomp_size = le32(decomp_size);
-
-    #ifdef WII_MINI_APP
-	gfx_printf("gba header: %x, decompressed size: %d\n", gbaheader, decomp_size );
-    #endif
-    #ifndef WII_MINI_APP
-    printf("gba header: %x, decompressed size: %d\n", (int)gbaheader, (int)decomp_size );
-    #endif
+	decomp_size = gbaheader>>8;
+	printf("gba header: %x, decompressed size: %d\n", gbaheader, decomp_size );
 
 	for (i = 0; i < N - F; i++) text_buf[i] = 0xff;
 	r = N - F;  flags = z = 7;
@@ -393,7 +289,6 @@ void Decode(void)	/* Just the reverse of Encode(). */
 		}
 		if (!(flags&0x80)) {			// flag bit zero => uncompressed
 			if ((c = getc(infile)) == EOF) break;
-
 			if(cur_size<decomp_size) putc(c, outfile);  text_buf[r++] = c;  r &= (N - 1); cur_size++;
 		} else {
 			if ((i = getc(infile)) == EOF) break;
@@ -408,51 +303,23 @@ void Decode(void)	/* Just the reverse of Encode(). */
 	}
 }
 
+
 int gbalzss_main(int argc, char *argv[])
 {
 	char  *s = argv[1];
 
 	if (argc != 4) {
-	    #ifdef WII_MINI_APP
-		gfx_printf("'gbalzss e file1 file2' encodes file1 into file2.\n"
+		printf("'gbalzss e file1 file2' encodes file1 into file2.\n"
 			"'gbalzss d file1 file2' decodes file1 into file2.\n");
-        #else
-        printf("'gbalzss e file1 file2' encodes file1 into file2.\n"
-			"'gbalzss d file1 file2' decodes file1 into file2.\n");
-        #endif
-		return 1;//EXIT_FAILURE
+		return EXIT_FAILURE;
 	}
-
-	#ifndef USING_LIBFF
 	if ((strcmp(argv[1], argv[2])==0)
 	|| (s = argv[1], s[1] || strpbrk(s, "DEde") == NULL)
 	|| (s = argv[2], (infile  = fopen(s, "rb")) == NULL)
 	|| (s = argv[3], (outfile = fopen(s, "wb")) == NULL)) {
-		printf("??? %s\n", s);  return 1;//EXIT_FAILURE
+		printf("??? %s\n", s);  return EXIT_FAILURE;
 	}
-	#endif
-	#ifdef USING_LIBFF
-    if ((strcmp(argv[1], argv[2])==0)
-	|| (s = argv[1], s[1] || strpbrk(s, "DEde") == NULL)
-	|| (s = argv[2], (f_open(infile, s, FA_READ)) != FR_OK)
-	|| (s = argv[3], (f_open(outfile, s, FA_WRITE | FA_CREATE_ALWAYS)) != FR_OK)) {
-		#ifdef WII_MINI_APP
-		gfx_printf("??? %s\n", s);
-		#endif
-		#ifndef WII_MINI_APP
-		printf("??? %s\n", s);
-		#endif
-
-		return 1;//EXIT_FAILURE
-	}
-	#endif
-
-	#ifndef USING_LIBFF
 	stat( argv[2], &finfo );	// get filesize for gba header
-    #endif
-    #ifdef USING_LIBFF
-    f_stat( argv[2], &finfo );	// get filesize for gba header
-    #endif
 
 	if (toupper(*argv[1]) == 'E') Encode();  else Decode();
 
@@ -463,12 +330,6 @@ int gbalzss_main(int argc, char *argv[])
 	Encode();
 	Decode();
 */
-    #ifndef USING_LIBFF
 	fclose(infile);  fclose(outfile);
-	#endif
-	#ifdef USING_LIBFF
-	f_close(infile); f_close(outfile);
-	#endif
-
-	return 0;//EXIT_SUCCESS
+	return EXIT_SUCCESS;
 }
