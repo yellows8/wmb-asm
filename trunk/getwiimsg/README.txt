@@ -5,6 +5,8 @@ Usage:
 getwiimsg <country code number> <language code> <wc24msgboardkey.bin> <optional list of alternate msg files to process from a server or locally>
 language code can be one of the following: ja, en, de, fr, es, it, nl.
 
+Source is available on SVN at http://wmb-asm.googlecode.com/svn/trunk/getwiimsg/
+
 Credits:
 Bob Trower for his Base 64 implementation.
 

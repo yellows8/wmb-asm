@@ -7,6 +7,7 @@ The wc24pubk.mod can also by a 16 byte key.
 The mod/key filename can be excluded if the content is not encrypted.
 The content.bin filename can be a http(s) URL to download and decrypt.
 
-Credits:
-patchmii-core refrence for Mike Scott's rijndeal.c
+Source is available on SVN at http://wmb-asm.googlecode.com/svn/trunk/wc24decrypt/
 
+Credits:
+Mike Scott for his rijndeal.c

@@ -1,6 +1,6 @@
 /*
-Binconv and all software in the Wmb Asm package are licensed under the MIT license:
-Copyright (c) 2008 yellowstar
+binconv is licensed under the MIT license:
+Copyright (c) 2008 and 2009 yellowstar6
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this
 software and associated documentation files (the “Software”), to deal in the Software
@@ -41,6 +41,8 @@ typedef struct _NCBin_Header
     unsigned char padding;
     unsigned char unk[12];
 } __attribute__ ((__packed__)) NCBin_Header;
+
+//v4 header notes: u32 at offset 0x4 is filesize. u32 at 0x14 is size of header. u32 at offset 0x18 is size of the .nds.(bin size minus header size.) u32 at 0x140 is removal date timestamp. Next u32 is company ID. Next u32 is titleid.
 
 #define ENDIAN_LITTLE 0
 #define ENDIAN_BIG 1
@@ -384,7 +386,7 @@ int main(int argc, char *argv[])
     int i;
     if(argc==1)
     {
-        printf("Binconv by yellowstar 08/24/08\n");
+        printf("Binconv v1.0 by yellowstar6 08/24/08\n");
         printf("Convert Nintendo Channel DS Demo .bin files to an .nds.\n");
         printf("Usage:\n");
         printf("binconv <list of input demo.bin>\n");
