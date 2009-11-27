@@ -139,7 +139,11 @@ typedef struct _DLlist_video_entry//v3
 	u32 ID;//Decimal ID for URL filename.
 	u16 time_length;//Length of video measured in seconds.
 	u32 titleid;//The assocaited title entry's ID.
-	u8 unk2[0x5];
+	u8 icon;//0=Circle, 1=Wii, 2=WiiWare, 3=VC, 4=DS, 5=DS (DSiWare), 6=Blank
+	u8 unk;
+	u8 is_wide;
+	u8 new_tag;
+	u8 unk2;
 	u16 title[51];
 } __attribute((packed)) DLlist_video_entry;
 
@@ -149,10 +153,10 @@ typedef struct _DLlist_video_entry_v4//v4
 	u16 time_length;//Length of video measured in seconds.
 	u32 titleid;//The assocaited title entry's ID.
 	u8 unk2[0xf];
-	u8 icon;//0=Circle, 1=Wii, 2=WiiWare, 3=VC, 4=DS, 5=DS (DSiWare), 6=Blank
+	u8 unk0;
 	u8 ratingID;
-	u8 is_wide;
-	u8 new_tag;
+	u8 unk1;
+	u8 unk;
 	u8 video_index;
 	u8 unk4[2];
 	u16 title[123];
