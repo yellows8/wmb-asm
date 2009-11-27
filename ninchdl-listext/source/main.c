@@ -148,9 +148,10 @@ typedef struct _DLlist_video_entry_v4//v4
 	u32 ID;//Decimal ID for URL filename.
 	u16 time_length;//Length of video measured in seconds.
 	u32 titleid;//The assocaited title entry's ID.
-	u8 unk2[0x10];
+	u8 unk2[0xf];
+	u8 icon;//0=Circle, 1=Wii, 2=WiiWare, 3=VC, 4=DS, 5=DS (DSiWare), 6=Blank
 	u8 ratingID;
-	u8 unk3;
+	u8 is_wide;
 	u8 new_tag;
 	u8 video_index;
 	u8 unk4[2];
