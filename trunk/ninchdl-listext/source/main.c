@@ -156,7 +156,7 @@ typedef struct _DLlist_video_entry_v4//v4
 	u8 unk0;
 	u8 ratingID;
 	u8 unk1;
-	u8 unk;
+	u8 new_tag;
 	u8 video_index;
 	u8 unk4[2];
 	u16 title[123];
@@ -455,7 +455,7 @@ int main(int argc, char **argv)
 	char str[256];
 	char pstr[256];
 	char vff_dumpfn[256];
-	unsigned char *buffer;
+	unsigned char *buffer = NULL;
 	int is_csdata = 0;
 	int is_vff = 1;
 	int version = 3;
@@ -463,7 +463,7 @@ int main(int argc, char **argv)
 
     memset(pstr, 0, 256);
 
-    printf("ninchdl-listext v1.0 by yellowstar6.\n");
+    printf("ninchdl-listext v1.1 by yellowstar6.\n");
     if(argc==1 || (argc<5 && argc>3) || argc>=8)
     {
         printf("Usage:\n");
@@ -494,19 +494,19 @@ int main(int argc, char **argv)
             return -3;
         }
 
-    stat(vff_dumpfn, &fstats);
-    buffer = (unsigned char*)malloc(fstats.st_size);
-    if(buffer==NULL)
-    {
-        sprintf(pstr, "Failed to allocate 0x%x bytes.\n", (int)fstats.st_size);
-        printf(pstr);
-        return -2;
-    }
-    fread(buffer, 1, fstats.st_size, fil);
-    fclose(fil);
-
-    if(strncmp((char*)buffer, "VFF ", 4)!=0)
-    {
+		stat(vff_dumpfn, &fstats);
+		buffer = (unsigned char*)malloc(fstats.st_size);
+		if(buffer==NULL)
+		{
+			sprintf(pstr, "Failed to allocate 0x%x bytes.\n", (int)fstats.st_size);
+			printf(pstr);
+			return -2;
+		}
+		fread(buffer, 1, fstats.st_size, fil);
+		fclose(fil);
+		
+		if(strncmp((char*)buffer, "VFF ", 4)!=0)
+		{
             if(buffer[0]!=0x10)
             {
                 printf("Invalid VFF, and input file is not raw compressed data.\n");
@@ -680,13 +680,23 @@ int main(int argc, char **argv)
     fread(buffer, 1, fstats.st_size, fil);
     fclose(fil);
 
-    if(buffer[2]<4)header = (DLlist_header_wrapper*)buffer;
-    if(buffer[2]>=4)header_v4 = (DLlist_header_wrapper_v4*)buffer;
+	if(strstr(argv[1], ".LZ") ||  strstr(argv[1], ".bin"))
+	{
+		version = (int)buffer[2];
+		if(version==0xfe)
+		{
+			printf("Unknown version, this dl list is outdated and a newer version of NinCh was released for this region.\n");
+			free(buffer);
+			return -4;
+		}
+    }
+	if(version<4)header = (DLlist_header_wrapper*)buffer;
+    if(version>=4)header_v4 = (DLlist_header_wrapper_v4*)buffer;
     char *country_code;
    	char *language_code;
    	char region_code;
 
-	if(buffer[2]<4)
+	if(version<4)
 	{
         header->country_code = be32(header->country_code);
         header->language_code = be32(header->language_code);
@@ -697,7 +707,7 @@ int main(int argc, char **argv)
         header_v4->language_code = be32(header_v4->language_code);
 	}
 
-   	if(buffer[2]<4)
+   	if(version<4)
    	{
         country_code = GetCountryCode(header->country_code);
         language_code = (char*)language_codes[header->language_code];
@@ -716,8 +726,8 @@ int main(int argc, char **argv)
         return -4;
     }
 
-    if(buffer[2]<4)region_code = GetRegionCode(header->country_code);
-    if(buffer[2]>=4)region_code = GetRegionCode(header_v4->country_code);
+    if(version<4)region_code = GetRegionCode(header->country_code);
+    if(version>=4)region_code = GetRegionCode(header_v4->country_code);
     memset(str, 0, 256);
     sprintf(str, "dump%c.txt", region_code);
     fil = fopen(str, "wb");
@@ -728,21 +738,39 @@ int main(int argc, char **argv)
 		return -3;
     }
 
-    if(buffer[2]>4)
+	fprintf(fil, "Dl list version: ");
+	printf("Dl list version: ");
+	if(strstr(argv[1], ".LZ")==NULL && strstr(argv[1], ".bin")==NULL)
+	{
+		if(buffer[2]==0xfe)
+		{
+			fprintf(fil, "This dl list is outdated, a newer version of NinCh was released for this region.\r\n");
+			printf("This dl list is outdated, a newer version of NinCh was released for this region.\r\n");
+		}
+	}
+	if(buffer[2]!=0xfe)
+	{
+		fprintf(fil, "%d\n", version);
+		printf("%d\n", version);
+	}
+
+    if(version>4)
     {
-        sprintf(pstr, "Unsupported dl list version for parser: %d\n", header->version);
+        sprintf(pstr, "Unsupported dl list version for parser: %d\r\n", header->version);
         free(buffer);
 
         printf(pstr);
         fclose(fil);
         return 0;
     }
-
+	fprintf(fil, "Dl list ID: %u\r\nCountry code: %s\r\nLanguage code: %s\r\nRegion code: %c\r\n\r\n", be32(*((u32*)&buffer[0xc])), country_code, language_code, region_code);
+	printf("Dl list ID: %u\nCountry code: %s\nLanguage code: %s\nRegion code: %c\n", be32(*((u32*)&buffer[0xc])), country_code, language_code, region_code);
+	
     u16 utf_temp;
     u32 i, texti, ratingi;
     u32 total_demos, total_videos;
 
-    if(buffer[2]<4)
+    if(version<4)
     {
         header->ratings = (DLlist_rating_entry*)(be32((u32)header->ratings) + (u32)buffer);
         header->main_title_types = (DLlist_title_type_entry*)(be32((u32)header->main_title_types) + (u32)buffer);
@@ -766,7 +794,7 @@ int main(int argc, char **argv)
         header_v4->detailed_ratings = (DLlist_detailed_rating_entry_v4*)(be32((u32)header_v4->detailed_ratings) + (u32)buffer);
     }
 
-    if(buffer[2]<4)
+    if(version<4)
     {
         header->ratings_total = be32(header->ratings_total);
         header->total_title_types = be32(header->total_title_types);
@@ -802,8 +830,8 @@ int main(int argc, char **argv)
     {
         for(texti=0; texti<31; texti++)
         {
-            if(buffer[2]<4)utf_temp = header->demos[i].title[texti];
-            if(buffer[2]>=4)utf_temp = header_v4->demos[i].title[texti];
+            if(version<4)utf_temp = header->demos[i].title[texti];
+            if(version>=4)utf_temp = header_v4->demos[i].title[texti];
             if(utf_temp==0)break;
             utf_temp = be16(utf_temp);
             putc((u8)utf_temp, fil);
@@ -812,8 +840,8 @@ int main(int argc, char **argv)
         fprintf(fil, "\r\n");
         for(texti=0; texti<31; texti++)
         {
-            if(buffer[2]<4)utf_temp = header->demos[i].subtitle[texti];
-            if(buffer[2]>=4)utf_temp = header_v4->demos[i].subtitle[texti];
+            if(version<4)utf_temp = header->demos[i].subtitle[texti];
+            if(version>=4)utf_temp = header_v4->demos[i].subtitle[texti];
             if(utf_temp==0)break;
             utf_temp = be16(utf_temp);
             putc((u8)utf_temp, fil);
@@ -821,7 +849,7 @@ int main(int argc, char **argv)
         }
         fprintf(fil, "\r\n");
 
-        if(buffer[2]>=4)
+        if(version>=4)
         {
             if(header_v4->demos[i].new_tag)
             {
@@ -831,12 +859,12 @@ int main(int argc, char **argv)
         }
 
         u32 demo_ID = 0;
-        if(buffer[2]<4)demo_ID = be32(header->demos[i].ID);
-        if(buffer[2]>=4)demo_ID = be32(header_v4->demos[i].ID);
+        if(version<4)demo_ID = be32(header->demos[i].ID);
+        if(version>=4)demo_ID = be32(header_v4->demos[i].ID);
         fprintf(fil, "ID: %u\r\n", (unsigned int)demo_ID);
 
         u32 ratingID = 0;
-        if(buffer[2]<4)
+        if(version<4)
         {
             title_ptr = LookupTitle(header->demos[i].titleid, header);
             if(title_ptr)ratingID = title_ptr->ratingID;
@@ -846,11 +874,11 @@ int main(int argc, char **argv)
             title_ptr_v4 = LookupTitleV4(header_v4->demos[i].titleid, header_v4);
             ratingID = header_v4->demos[i].ratingID;
         }
-        if((buffer[2]<4 && title_ptr) || buffer[2]>=4)
+        if((version<4 && title_ptr) || version>=4)
         {
             fprintf(fil, "Rating: ");
         }
-        if(buffer[2]<4 && title_ptr)
+        if(version<4 && title_ptr)
         {
             for(ratingi=0; ratingi<header->ratings_total; ratingi++)
             {
@@ -868,7 +896,7 @@ int main(int argc, char **argv)
                 }
             }
         }
-        else if(buffer[2]>=4)
+        else if(version>=4)
         {
             for(ratingi=0; ratingi<header_v4->ratings_total; ratingi++)
             {
@@ -887,9 +915,9 @@ int main(int argc, char **argv)
         }
         fprintf(fil, "\r\n");
 
-        DLlist_company_entry *comp;
-        if(buffer[2]<4 && title_ptr)comp = (DLlist_company_entry*)((u32)buffer + (u32)be16(title_ptr->company_offset));
-        if(buffer[2]>=4)comp = (DLlist_company_entry*)((u32)buffer + (u32)be32(header_v4->demos[i].company_offset));
+        DLlist_company_entry *comp = NULL;
+        if(version<4 && title_ptr)comp = (DLlist_company_entry*)((u32)buffer + (u32)be16(title_ptr->company_offset));
+        if(version>=4)comp = (DLlist_company_entry*)((u32)buffer + (u32)be32(header_v4->demos[i].company_offset));
         if(comp)
         {
             for(texti=0; texti<31; texti++)
@@ -903,7 +931,7 @@ int main(int argc, char **argv)
         }
         fprintf(fil, "\r\n");
 
-		if((buffer[2]<4 && title_ptr) || (buffer[2]>=4))
+		if((version<4 && title_ptr) || (version>=4))
 		{
             if(memcmp(comp->devtitle, comp->pubtitle, 31 * 2)!=0)
             {
@@ -919,8 +947,8 @@ int main(int argc, char **argv)
 		}
         fprintf(fil, "\r\n");
 
-        if(buffer[2]<4)timestamp_u32 = header->demos[i].removal_timestamp;
-        if(buffer[2]>=4)timestamp_u32 = header_v4->demos[i].removal_timestamp;
+        if(version<4)timestamp_u32 = header->demos[i].removal_timestamp;
+        if(version>=4)timestamp_u32 = header_v4->demos[i].removal_timestamp;
 
         if(timestamp_u32==0xffffffff)
         {
@@ -935,8 +963,8 @@ int main(int argc, char **argv)
 
         if(title_ptr || title_ptr_v4)
         {
-            if(buffer[2]<4)timestamp_u32 = title_ptr->release_date;
-            if(buffer[2]>=4)timestamp_u32 = title_ptr_v4->release_date;
+            if(version<4)timestamp_u32 = title_ptr->release_date;
+            if(version>=4)timestamp_u32 = title_ptr_v4->release_date;
 
             if(timestamp_u32==0xffffffff)
             {
@@ -950,7 +978,7 @@ int main(int argc, char **argv)
         }
         fprintf(fil, "\r\n\r\n");
 
-        fprintf(fil, "URL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/dstrial/%s/%s/%u.bin\r\n\r\n", region_code, (int)buffer[2], country_code, language_code, (unsigned int)demo_ID);
+        fprintf(fil, "URL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/dstrial/%s/%s/%u.bin\r\n\r\n", region_code, (int)version, country_code, language_code, (unsigned int)demo_ID);
         fflush(fil);
     }
 
@@ -960,12 +988,12 @@ int main(int argc, char **argv)
     for(i=0; i<total_videos; i++)
     {
         u32 txt_len = 0;
-        if(buffer[2]<4)txt_len = 51;
-        if(buffer[2]>=4)txt_len = 123;
+        if(version<4)txt_len = 51;
+        if(version>=4)txt_len = 123;
         for(texti=0; texti<txt_len; texti++)
         {
-            if(buffer[2]<4)utf_temp = header->videos[i].title[texti];
-            if(buffer[2]>=4)utf_temp = header_v4->videos0[i].title[texti];
+            if(version<4)utf_temp = header->videos[i].title[texti];
+            if(version>=4)utf_temp = header_v4->videos0[i].title[texti];
             if(utf_temp==0)break;
             utf_temp = be16(utf_temp);
             if(((u8)utf_temp)==0x0A)putc(0x0D, fil);
@@ -974,7 +1002,7 @@ int main(int argc, char **argv)
         }
         fprintf(fil, "\r\n");
 
-        if(buffer[2]>=4)
+        if(version>=4)
         {
             if(header_v4->videos0[i].new_tag)
             {
@@ -983,18 +1011,18 @@ int main(int argc, char **argv)
         }
 
         u16 time_length;
-        if(buffer[2]<4)time_length = be16(header->videos[i].time_length);
-        if(buffer[2]>=4)time_length = be16(header_v4->videos0[i].time_length);
+        if(version<4)time_length = be16(header->videos[i].time_length);
+        if(version>=4)time_length = be16(header_v4->videos0[i].time_length);
         fprintf(fil, "Time length %02d:%02d\r\n", time_length / 60, time_length % 60);
 
         u32 video_ID, video_titleid, video1_ID = 0;
-        if(buffer[2]<4)video_ID = be32(header->videos[i].ID);
-        if(buffer[2]>=4)
+        if(version<4)video_ID = be32(header->videos[i].ID);
+        if(version>=4)
         {
             video_ID = be32(header_v4->videos0[i].ID);
             video1_ID = be32(header_v4->videos1[i].ID);
         }
-        if(buffer[2]<4)
+        if(version<4)
         {
             fprintf(fil, "ID: %u\r\n", (unsigned int)video_ID);
         }
@@ -1003,8 +1031,8 @@ int main(int argc, char **argv)
             fprintf(fil, "ID: %u\r\n", (unsigned int)video_ID);
         }
 
-        if(buffer[2]<4)video_titleid = header->videos[i].titleid;
-        if(buffer[2]>=4)video_titleid = header_v4->videos0[i].titleid;
+        if(version<4)video_titleid = header->videos[i].titleid;
+        if(version>=4)video_titleid = header_v4->videos0[i].titleid;
         title_ptr = NULL;
         title_ptr_v4 = NULL;
         if(video_titleid!=0)
@@ -1012,7 +1040,7 @@ int main(int argc, char **argv)
             fprintf(fil, "Rating: ");
 
             u32 ratingID = 0;
-            if(buffer[2]<4)
+            if(version<4)
             {
                 title_ptr = LookupTitle(header->videos[i].titleid, header);
                 if(title_ptr)ratingID = title_ptr->ratingID;
@@ -1023,7 +1051,7 @@ int main(int argc, char **argv)
                 ratingID = header_v4->videos0[i].ratingID;
             }
 
-            if(buffer[2]<4 && title_ptr)
+            if(version<4 && title_ptr)
             {
                 for(ratingi=0; ratingi<header->ratings_total; ratingi++)
                 {
@@ -1040,7 +1068,7 @@ int main(int argc, char **argv)
                     }
                 }
             }
-            else if(buffer[2]>=4)
+            else if(version>=4)
             {
                 for(ratingi=0; ratingi<header_v4->ratings_total; ratingi++)
                 {
@@ -1061,8 +1089,8 @@ int main(int argc, char **argv)
             fprintf(fil, "\r\n");
 
             DLlist_company_entry *comp = NULL;
-            if(buffer[2]<4 && title_ptr)comp = (DLlist_company_entry*)((u32)buffer + (u32)be16(title_ptr->company_offset));
-            if(buffer[2]>=4 && title_ptr_v4)comp = (DLlist_company_entry*)((u32)buffer + (u32)be16(title_ptr_v4->company_offset));
+            if(version<4 && title_ptr)comp = (DLlist_company_entry*)((u32)buffer + (u32)be16(title_ptr->company_offset));
+            if(version>=4 && title_ptr_v4)comp = (DLlist_company_entry*)((u32)buffer + (u32)be16(title_ptr_v4->company_offset));
             if(title_ptr || title_ptr_v4)
             {
                 for(texti=0; texti<31; texti++)
@@ -1095,8 +1123,8 @@ int main(int argc, char **argv)
 
         if(title_ptr || title_ptr_v4)
         {
-            if(buffer[2]<4)timestamp_u32 = title_ptr->release_date;
-            if(buffer[2]>=4)timestamp_u32 = title_ptr_v4->release_date;
+            if(version<4)timestamp_u32 = title_ptr->release_date;
+            if(version>=4)timestamp_u32 = title_ptr_v4->release_date;
 
             if(timestamp_u32==0xffffffff)
             {
@@ -1110,14 +1138,14 @@ int main(int argc, char **argv)
         }
         fprintf(fil, "\r\n\r\n");
 
-        if(buffer[2]<4)
+        if(version<4)
         {
-            fprintf(fil, "URL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/movie/%s/%s/%u.3gp\r\n\r\n", region_code, buffer[2], country_code, language_code, (unsigned int)video_ID);
+            fprintf(fil, "URL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/movie/%s/%s/%u.3gp\r\n\r\n", region_code, version, country_code, language_code, (unsigned int)video_ID);
         }
         else
         {
-            fprintf(fil, "Low Quality URL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/movie/%s/%s/%u-l.mo\r\n", region_code, buffer[2], country_code, language_code, (unsigned int)video_ID);
-            fprintf(fil, "High Quality URL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/movie/%s/%s/%u-h.mo\r\n\r\n", region_code, buffer[2], country_code, language_code, (unsigned int)video_ID);
+            fprintf(fil, "Low Quality URL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/movie/%s/%s/%u-l.mo\r\n", region_code, version, country_code, language_code, (unsigned int)video_ID);
+            fprintf(fil, "High Quality URL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/movie/%s/%s/%u-h.mo\r\n\r\n", region_code, version, country_code, language_code, (unsigned int)video_ID);
         }
         fflush(fil);
     }
@@ -1125,20 +1153,20 @@ int main(int argc, char **argv)
 	fclose(fil);
     if((argc>6 && strncmp(argv[6], "-l", 2)==0) || (argc==3 && strncmp(argv[2], "-l", 2)==0))
 	{
-		char *lsarg;
+		char *lsarg = NULL;
 		if((argc>6 && strncmp(argv[6], "-l", 2)==0))lsarg = argv[6];
 		if((argc==3 && strncmp(argv[2], "-l", 2)==0))lsarg = argv[2];
 		u32 num_titles = 0;
 		printf("Listing title(s)...\n");
 		sprintf(str, "title%c.txt", region_code);
 		fil = fopen(str, "w");
-		if(buffer[2]<4)num_titles = ((u32)header->videos - (u32)header->titles) / sizeof(DLlist_title_entry);
-		if(buffer[2]>=4)num_titles = header_v4->total_titles;
+		if(version<4)num_titles = ((u32)header->videos - (u32)header->titles) / sizeof(DLlist_title_entry);
+		if(version>=4)num_titles = header_v4->total_titles;
 		u32 i;
 		unsigned int typeID = 0;
-		u32 ti, tt_num;
-		if(buffer[2]<4)tt_num = header->total_title_types;
-		if(buffer[2]>=4)tt_num = header_v4->total_title_types;
+		u32 ti = 0, tt_num;
+		if(version<4)tt_num = header->total_title_types;
+		if(version>=4)tt_num = header_v4->total_title_types;
 		if(strlen(lsarg)==5)
 		{
 			fprintf(fil, "Titles with console model %s:\n", &lsarg[2]);
@@ -1148,7 +1176,7 @@ int main(int argc, char **argv)
 			sscanf(&lsarg[2], "%02x", &typeID);
 			for(ti = 0; ti<tt_num; ti++)
 			{
-				if(buffer[2]<4)
+				if(version<4)
 				{
 					if(header->main_title_types[ti].typeID==typeID)break;
 				}
@@ -1157,12 +1185,12 @@ int main(int argc, char **argv)
 					if(header_v4->title_types[ti].typeID==typeID)break;
 				}
 			}
-			if(buffer[2]<4)fprintf(fil, "Titles with title type ID %02x, description ", (unsigned int)typeID);
-			if(buffer[2]>=4)fprintf(fil, "Titles with title type ID %02x, model %c%c%c description ", (unsigned int)typeID, header_v4->title_types[ti].console_model[0], header_v4->title_types[ti].console_model[1], header_v4->title_types[ti].console_model[2]);
+			if(version<4)fprintf(fil, "Titles with title type ID %02x, description ", (unsigned int)typeID);
+			if(version>=4)fprintf(fil, "Titles with title type ID %02x, model %c%c%c description ", (unsigned int)typeID, header_v4->title_types[ti].console_model[0], header_v4->title_types[ti].console_model[1], header_v4->title_types[ti].console_model[2]);
 			for(texti=0; texti<31; texti++)
 			{
-					if(buffer[2]<4)utf_temp = header->main_title_types[ti].title[texti];
-					if(buffer[2]>=4)utf_temp = header_v4->title_types[ti].title[texti];
+					if(version<4)utf_temp = header->main_title_types[ti].title[texti];
+					if(version>=4)utf_temp = header_v4->title_types[ti].title[texti];
 					if(utf_temp==0)break;
 					utf_temp = be16(utf_temp);
 					putc((u8)utf_temp, fil);
@@ -1176,15 +1204,15 @@ int main(int argc, char **argv)
 
 		for(i=0; i<num_titles; i++)
 		{
-		    if(buffer[2]<4)title_ptr = &header->titles[i];
-		    if(buffer[2]>=4)title_ptr_v4 = &header_v4->titles[i];
+		    if(version<4)title_ptr = &header->titles[i];
+		    if(version>=4)title_ptr_v4 = &header_v4->titles[i];
             found = 0;
             if(strlen(lsarg)==2)
             {
                 found = 1;
                 for(ti = 0; ti<tt_num; ti++)
 				{
-				    if(buffer[2]<4)
+				    if(version<4)
 				    {
                         if(header->titles[i].title_type==header->main_title_types[ti].typeID)
                         {
@@ -1202,7 +1230,7 @@ int main(int argc, char **argv)
             }
             if(strlen(lsarg)>2)
             {
-			if(strlen(lsarg)==5 && buffer[2]>=4)
+			if(strlen(lsarg)==5 && version>=4)
 			{
 				for(ti = 0; ti<tt_num; ti++)
 				{
@@ -1218,7 +1246,7 @@ int main(int argc, char **argv)
 			}
 			else if(strlen(lsarg)==4)
 			{
-				if(buffer[2]<4)
+				if(version<4)
 				{
 					if(header->titles[i].title_type!=typeID)continue;
 				}
@@ -1236,15 +1264,15 @@ int main(int argc, char **argv)
         fprintf(fil, "Total titles: %u\n\n", (unsigned int)numtitles);
 		for(i=0; i<num_titles; i++)
 		{
-		    if(buffer[2]<4)title_ptr = &header->titles[i];
-		    if(buffer[2]>=4)title_ptr_v4 = &header_v4->titles[i];
+		    if(version<4)title_ptr = &header->titles[i];
+		    if(version>=4)title_ptr_v4 = &header_v4->titles[i];
             found = 0;
             if(strlen(lsarg)==2)
             {
                 found = 1;
                 for(ti = 0; ti<tt_num; ti++)
 				{
-				    if(buffer[2]<4)
+				    if(version<4)
 				    {
                         if(header->titles[i].title_type==header->main_title_types[ti].typeID)
                         {
@@ -1262,7 +1290,7 @@ int main(int argc, char **argv)
             }
             if(strlen(lsarg)>2)
             {
-                if(strlen(lsarg)==5 && buffer[2]>=4)
+                if(strlen(lsarg)==5 && version>=4)
                 {
                     for(ti = 0; ti<tt_num; ti++)
                     {
@@ -1278,7 +1306,7 @@ int main(int argc, char **argv)
                 }
                 else if(strlen(lsarg)==4)
                 {
-                    if(buffer[2]<4)
+                    if(version<4)
                     {
                         if(header->titles[i].title_type!=typeID)continue;
                     }
@@ -1294,8 +1322,8 @@ int main(int argc, char **argv)
 
 			for(texti=0; texti<31; texti++)
 			{
-                if(buffer[2]<4)utf_temp = header->titles[i].title[texti];
-                if(buffer[2]>=4)utf_temp = header_v4->titles[i].title[texti];
+                if(version<4)utf_temp = header->titles[i].title[texti];
+                if(version>=4)utf_temp = header_v4->titles[i].title[texti];
                 if(utf_temp==0)break;
                 utf_temp = be16(utf_temp);
                 putc((u8)utf_temp, fil);
@@ -1305,8 +1333,8 @@ int main(int argc, char **argv)
 			fprintf(fil, "\n");
 			for(texti=0; texti<31; texti++)
 			{
-                if(buffer[2]<4)utf_temp = header->titles[i].subtitle[texti];
-                if(buffer[2]>=4)utf_temp = header_v4->titles[i].subtitle[texti];
+                if(version<4)utf_temp = header->titles[i].subtitle[texti];
+                if(version>=4)utf_temp = header_v4->titles[i].subtitle[texti];
                 if(utf_temp==0)break;
                 utf_temp = be16(utf_temp);
                 putc((u8)utf_temp, fil);
@@ -1314,7 +1342,7 @@ int main(int argc, char **argv)
 			}
 
 			fprintf(fil, "\n");
-			if(buffer[2]>=4)
+			if(version>=4)
 			{
 				if(memcmp(header_v4->titles[i].title, header_v4->titles[i].short_title, 31)!=0 && header_v4->titles[i].short_title[0]!=0)
 				{
@@ -1335,20 +1363,20 @@ int main(int argc, char **argv)
 			{
                 for(texti=0; texti<31; texti++)
                 {
-					if(buffer[2]<4)utf_temp = header->main_title_types[ti].title[texti];
-					if(buffer[2]>=4)utf_temp = header_v4->title_types[ti].title[texti];
+					if(version<4)utf_temp = header->main_title_types[ti].title[texti];
+					if(version>=4)utf_temp = header_v4->title_types[ti].title[texti];
 					if(utf_temp==0)break;
 					utf_temp = be16(utf_temp);
 					putc((u8)utf_temp, fil);
 					if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
                 }
-                if(buffer[2]<4)fprintf(fil, " (typeID %02x)\n", header->main_title_types[ti].typeID);
-                if(buffer[2]>=4)fprintf(fil, " (typeID %02x)\n", header_v4->title_types[ti].typeID);
+                if(version<4)fprintf(fil, " (typeID %02x)\n", header->main_title_types[ti].typeID);
+                if(version>=4)fprintf(fil, " (typeID %02x)\n", header_v4->title_types[ti].typeID);
 			}
 
             DLlist_company_entry *comp = NULL;
-            if(buffer[2]<4 && title_ptr)comp = (DLlist_company_entry*)((u32)buffer + (u32)be16(title_ptr->company_offset));
-            if(buffer[2]>=4 && title_ptr_v4)comp = (DLlist_company_entry*)((u32)buffer + (u32)be16(title_ptr_v4->company_offset));
+            if(version<4 && title_ptr)comp = (DLlist_company_entry*)((u32)buffer + (u32)be16(title_ptr->company_offset));
+            if(version>=4 && title_ptr_v4)comp = (DLlist_company_entry*)((u32)buffer + (u32)be16(title_ptr_v4->company_offset));
             if(comp)
             {
                 for(texti=0; texti<31; texti++)
@@ -1362,7 +1390,7 @@ int main(int argc, char **argv)
             }
 
             fputs("\r\n", fil);
-            if((buffer[2]<4 && title_ptr) || (buffer[2]>=4 && title_ptr_v4))
+            if((version<4 && title_ptr) || (version>=4 && title_ptr_v4))
             {
                 if(memcmp(comp->devtitle, comp->pubtitle, 31 * 2)!=0)
                 {
@@ -1381,7 +1409,7 @@ int main(int argc, char **argv)
             fputs(str, fil);
 
             u32 ratingID = 0;
-            if(buffer[2]<4)
+            if(version<4)
             {
                 ratingID = title_ptr->ratingID;
             }
@@ -1390,7 +1418,7 @@ int main(int argc, char **argv)
                 ratingID = title_ptr_v4->ratingID;
             }
 
-            if(buffer[2]<4)
+            if(version<4)
             {
                 for(ratingi=0; ratingi<header->ratings_total; ratingi++)
                 {
@@ -1407,7 +1435,7 @@ int main(int argc, char **argv)
                     }
                 }
             }
-            else if(buffer[2]>=4)
+            else if(version>=4)
             {
                 for(ratingi=0; ratingi<header_v4->ratings_total; ratingi++)
                 {
@@ -1426,8 +1454,8 @@ int main(int argc, char **argv)
             }
             fprintf(fil, "\r\n");
 
-            if(buffer[2]<4)timestamp_u32 = title_ptr->release_date;
-            if(buffer[2]>=4)timestamp_u32 = title_ptr_v4->release_date;
+            if(version<4)timestamp_u32 = title_ptr->release_date;
+            if(version>=4)timestamp_u32 = title_ptr_v4->release_date;
 
             if(timestamp_u32==0xffffffff)
             {
@@ -1440,12 +1468,12 @@ int main(int argc, char **argv)
             }
 
             fprintf(fil, "\r\n");
-            if(buffer[2]<4)fprintf(fil, "ID: %u\r\n", (unsigned int)title_ptr->ID);
-            if(buffer[2]>=4)fprintf(fil, "ID: %u\r\n", (unsigned int)title_ptr_v4->ID);
+            if(version<4)fprintf(fil, "ID: %u\r\n", (unsigned int)be32(title_ptr->ID));
+            if(version>=4)fprintf(fil, "ID: %u\r\n", (unsigned int)be32(title_ptr_v4->ID));
 
             u32 titleid;
-            if(buffer[2]<4)titleid = title_ptr->titleID;
-            if(buffer[2]>=4)titleid = title_ptr_v4->titleID;
+            if(version<4)titleid = title_ptr->titleID;
+            if(version>=4)titleid = title_ptr_v4->titleID;
             sprintf(str, "titleID: %c%c%c%c\r\n", (char)titleid, (char)(titleid>>8), (char)(titleid>>16), (char)(titleid>>24));
             fputs(str, fil);
 			fprintf(fil, "\n");

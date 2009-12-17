@@ -22,7 +22,7 @@
 // Also tribute to gbadev.org & cowbite & no$gba's gbatek without those I couldnt
 // do much on gba :p
 
-//Only change by yellowstar6 was a rename of main to gbalzss_main for compiling with ninchdl-listext.
+//Only change by yellowstar6 was a rename of main to gbalzss_main for compiling with ninchdl-listext and some printf changes.
 
 /**************************************************************
 	LZSS.C -- A Data Compression Program
@@ -275,7 +275,7 @@ void Decode(void)	/* Just the reverse of Encode(). */
 	unsigned char* tmp = (unsigned char*)&gbaheader;
 	for(i=0; i<4; i++) tmp[i] = getc(infile);
 	decomp_size = gbaheader>>8;
-	printf("gba header: %x, decompressed size: %d\n", gbaheader, decomp_size );
+	printf("gba header: %x, decompressed size: %u\n", gbaheader, decomp_size );
 
 	for (i = 0; i < N - F; i++) text_buf[i] = 0xff;
 	r = N - F;  flags = z = 7;
