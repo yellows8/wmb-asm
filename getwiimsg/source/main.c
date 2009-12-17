@@ -141,7 +141,7 @@ int main(int argc, char **argv)
 {
 	if(argc<4)
 	{
-		printf("getwiimsg v1.0 by yellowstar6.\n");
+		printf("getwiimsg v1.1 by yellowstar6.\n");
 		printf("Download Wii Message Board mail from server, decrypt, and dump to .eml and .txt files.\n");
 		printf("Local encrypted mail can be decrypted and dumped as well.\n");
 		printf("Internal KD WC24 AES key is needed.\n");
@@ -165,6 +165,20 @@ int main(int argc, char **argv)
 			index++;
 			
 			sprintf(str, "wc24decrypt http://cfh.wapp.wii.com/announce/%03d/%d/%d.bin decrypt%d.txt %s", country_code, language_code, 2, index, argv[3]);
+			printf("%s\n", str);
+			system(str);
+			memset(str, 0, 256);
+			ProcessMail(index);
+			index++;
+			
+			sprintf(str, "wc24decrypt http://cfh.wapp.wii.com/announce/%03d/%d/%d.bin decrypt%d.txt %s", country_code, language_code, 3, index, argv[3]);
+			printf("%s\n", str);
+			system(str);
+			memset(str, 0, 256);
+			ProcessMail(index);
+			index++;
+			
+			sprintf(str, "wc24decrypt http://cfh.wapp.wii.com/announce/%03d/%d/%d.bin decrypt%d.txt %s", country_code, language_code, 4, index, argv[3]);
 			printf("%s\n", str);
 			system(str);
 			memset(str, 0, 256);
