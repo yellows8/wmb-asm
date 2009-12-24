@@ -485,7 +485,7 @@ int WMBProcessHeader(unsigned char *data, int length)
 
      if(CheckFrame(data, wmb_host_mac, 0x04, &size, &pos))
      {
-        if(size!=352 && size!=250)return 1;
+        if(size!=352 && size<250)return 1;
 
         dat=&data[(int)pos];
 
@@ -539,10 +539,10 @@ int WMBProcessHeader(unsigned char *data, int length)
      if(size==352)
      memcpy(&temp_header,dat,(size_t)size);
 
-     if(size==250)
+     if(size>249)
      {
-            memcpy(&temp_header,dat,250);
-            memcpy(&temp_header.gbaLogo[58],header_filler,sizeof(header_filler));
+            memcpy(&temp_header,dat,size);
+            memcpy(&temp_header.gbaLogo[58 + (size - 250)],header_filler,sizeof(header_filler));
             //Some binaries' headers are incomplete - smaller than normal.
      }
 
