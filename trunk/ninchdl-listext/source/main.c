@@ -978,6 +978,27 @@ int main(int argc, char **argv)
         }
         fprintf(fil, "\r\n\r\n");
 
+	if(title_ptr || title_ptr_v4)
+	{
+
+	u32 tid, titleid;
+	    if(version<4)
+	    {
+		tid = title_ptr->titleID;
+	    	titleid = be32(title_ptr->ID);
+	    }
+	    if(version>=4)
+	    {		
+		tid = title_ptr_v4->titleID;
+		titleid = be32(title_ptr_v4->ID);
+	    }	    
+
+	    fprintf(fil, "Title ID: %c%c%c%c\r\nTitle entry ID: %u\r\n", (char)tid, (char)(tid>>8), (char)(tid>>16), (char)(tid>>24), titleid);
+
+	fprintf(fil, "URL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/soft/%s/%s/%u.info\r\n\r\n", region_code, (int)version, country_code, language_code, (unsigned int)titleid);
+
+	}
+
         fprintf(fil, "URL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/dstrial/%s/%s/%u.bin\r\n\r\n", region_code, (int)version, country_code, language_code, (unsigned int)demo_ID);
         fflush(fil);
     }
@@ -1014,6 +1035,42 @@ int main(int argc, char **argv)
         if(version<4)time_length = be16(header->videos[i].time_length);
         if(version>=4)time_length = be16(header_v4->videos0[i].time_length);
         fprintf(fil, "Time length %02d:%02d\r\n", time_length / 60, time_length % 60);
+
+	if(version<4)
+	{
+		fprintf(fil, "Icon: ");
+		switch(header->videos[i].icon)
+		{
+	 		case 0:
+				fprintf(fil, "Circle");
+			break;
+
+			case 1:
+				fprintf(fil, "Wii");
+			break;
+
+			case 2:
+				fprintf(fil, "WiiWare");
+			break;			
+
+			case 3:
+				fprintf(fil, "VC");
+			break;
+			
+			case 4:
+				fprintf(fil, "DS");
+			break;
+
+			case 5:
+				fprintf(fil, "DSiWare");
+			break;
+
+			case 6:
+				fprintf(fil, "Blank");
+			break;
+		}
+		fprintf(fil, "\r\n");
+	}
 
         u32 video_ID, video_titleid, video1_ID = 0;
         if(version<4)video_ID = be32(header->videos[i].ID);
@@ -1137,6 +1194,27 @@ int main(int argc, char **argv)
             }
         }
         fprintf(fil, "\r\n\r\n");
+
+	if(title_ptr || title_ptr_v4)
+	{
+
+	u32 tid, titleid;
+	    if(version<4)
+	    {
+		tid = title_ptr->titleID;
+	    	titleid = be32(title_ptr->ID);
+	    }
+	    if(version>=4)
+	    {		
+		tid = title_ptr_v4->titleID;
+		titleid = be32(title_ptr_v4->ID);
+	    }	    
+
+	    fprintf(fil, "Title ID: %c%c%c%c\r\nTitle entry ID: %u\r\n", (char)tid, (char)(tid>>8), (char)(tid>>16), (char)(tid>>24), titleid);
+
+	fprintf(fil, "URL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/soft/%s/%s/%u.info\r\n\r\n", region_code, (int)version, country_code, language_code, (unsigned int)titleid);
+
+	}
 
         if(version<4)
         {
@@ -1477,6 +1555,11 @@ int main(int argc, char **argv)
             sprintf(str, "titleID: %c%c%c%c\r\n", (char)titleid, (char)(titleid>>8), (char)(titleid>>16), (char)(titleid>>24));
             fputs(str, fil);
 			fprintf(fil, "\n");
+
+	if(version<4)fprintf(fil, "URL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/soft/%s/%s/%u.info\r\n\r\n", region_code, (int)version, country_code, language_code, (unsigned int)be32(title_ptr->ID));
+
+	if(version>=4)fprintf(fil, "URL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/soft/%s/%s/%u.info\r\n\r\n", region_code, (int)version, country_code, language_code, (unsigned int)be32(title_ptr_v4->ID));
+
 		}
 		fclose(fil);
 	}
