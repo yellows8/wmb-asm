@@ -5,7 +5,17 @@
 #---------------------------------------------------------------------------------
 # the prefix on the compiler executables
 #---------------------------------------------------------------------------------
-PREFIX		:=
+PREFIX	:=	
+
+ifeq ($(CROSSBUILD),1)
+PREFIX	:=	i586
+endif
+
+PREFIX		:=	$(PREFIX)-mingw32
+ifeq ($(CROSSBUILD),1)
+PREFIX		:=	$(PREFIX)msvc
+endif
+PREFIX		:=	$(PREFIX)-
 
 export CC	:=	$(PREFIX)gcc
 export CXX	:=	$(PREFIX)g++
