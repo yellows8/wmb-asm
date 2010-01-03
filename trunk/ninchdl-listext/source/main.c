@@ -34,7 +34,9 @@ typedef unsigned long long u64;
 #ifndef LITTLE_ENDIAN
 #define LITTLE_ENDIAN 1234
 #endif
+#ifndef BYTE_ORDER
 #define BYTE_ORDER LITTLE_ENDIAN
+#endif
 
 int gbalzss_main(int argc, char *argv[]);
 char argv_str[256];
@@ -995,7 +997,42 @@ int main(int argc, char **argv)
 
 	    fprintf(fil, "Title ID: %c%c%c%c\r\nTitle entry ID: %u\r\n", (char)tid, (char)(tid>>8), (char)(tid>>16), (char)(tid>>24), titleid);
 
-	fprintf(fil, "URL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/soft/%s/%s/%u.info\r\n\r\n", region_code, (int)version, country_code, language_code, (unsigned int)titleid);
+	int ti;
+	u32 tt_num;
+	if(version<4)tt_num = be32(header->total_title_types);
+	if(version>=4)tt_num = be32(header_v4->total_title_types);
+	for(ti = 0; ti<tt_num; ti++)
+				{
+				    if(version<4)
+				    {
+                        if(title_ptr->title_type==header->main_title_types[ti].typeID)
+                        {
+                            break;
+                        }
+				    }
+				    else
+                    {
+                        if(title_ptr_v4->title_type==header_v4->title_types[ti].typeID)
+                        {
+                            break;
+                        }
+                    }
+				}
+
+	fprintf(fil, "Title type: ");
+	for(texti=0; texti<31; texti++)
+        {
+		if(version<4)utf_temp = header->main_title_types[ti].title[texti];
+		if(version>=4)utf_temp = header_v4->title_types[ti].title[texti];
+		if(utf_temp==0)break;
+		utf_temp = be16(utf_temp);
+		putc((u8)utf_temp, fil);
+		if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
+        }
+        if(version<4)fprintf(fil, " (typeID %02x)\n", title_ptr->title_type);
+        if(version>=4)fprintf(fil, " (typeID %02x)\n", title_ptr_v4->title_type);
+
+	fprintf(fil, "Title info URL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/soft/%s/%s/%u.info\r\n\r\n", region_code, (int)version, country_code, language_code, (unsigned int)titleid);
 
 	}
 
@@ -1212,7 +1249,42 @@ int main(int argc, char **argv)
 
 	    fprintf(fil, "Title ID: %c%c%c%c\r\nTitle entry ID: %u\r\n", (char)tid, (char)(tid>>8), (char)(tid>>16), (char)(tid>>24), titleid);
 
-	fprintf(fil, "URL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/soft/%s/%s/%u.info\r\n\r\n", region_code, (int)version, country_code, language_code, (unsigned int)titleid);
+	int ti;
+	u32 tt_num;
+	if(version<4)tt_num = be32(header->total_title_types);
+	if(version>=4)tt_num = be32(header_v4->total_title_types);
+	for(ti = 0; ti<tt_num; ti++)
+				{
+				    if(version<4)
+				    {
+                        if(header->titles[i].title_type==header->main_title_types[ti].typeID)
+                        {
+                            break;
+                        }
+				    }
+				    else
+                    {
+                        if(header_v4->titles[i].title_type==header_v4->title_types[ti].typeID)
+                        {
+                            break;
+                        }
+                    }
+				}
+
+	fprintf(fil, "Title type: ");
+	for(texti=0; texti<31; texti++)
+        {
+		if(version<4)utf_temp = header->main_title_types[ti].title[texti];
+		if(version>=4)utf_temp = header_v4->title_types[ti].title[texti];
+		if(utf_temp==0)break;
+		utf_temp = be16(utf_temp);
+		putc((u8)utf_temp, fil);
+		if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
+        }
+        if(version<4)fprintf(fil, " (typeID %02x)\n", title_ptr->title_type);
+        if(version>=4)fprintf(fil, " (typeID %02x)\n", title_ptr_v4->title_type);
+
+	fprintf(fil, "Title info URL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/soft/%s/%s/%u.info\r\n\r\n", region_code, (int)version, country_code, language_code, (unsigned int)titleid);
 
 	}
 
@@ -1556,9 +1628,9 @@ int main(int argc, char **argv)
             fputs(str, fil);
 			fprintf(fil, "\n");
 
-	if(version<4)fprintf(fil, "URL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/soft/%s/%s/%u.info\r\n\r\n", region_code, (int)version, country_code, language_code, (unsigned int)be32(title_ptr->ID));
+	if(version<4)fprintf(fil, "Title info URL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/soft/%s/%s/%u.info\r\n\r\n", region_code, (int)version, country_code, language_code, (unsigned int)be32(title_ptr->ID));
 
-	if(version>=4)fprintf(fil, "URL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/soft/%s/%s/%u.info\r\n\r\n", region_code, (int)version, country_code, language_code, (unsigned int)be32(title_ptr_v4->ID));
+	if(version>=4)fprintf(fil, "Title info URL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/soft/%s/%s/%u.info\r\n\r\n", region_code, (int)version, country_code, language_code, (unsigned int)be32(title_ptr_v4->ID));
 
 		}
 		fclose(fil);
