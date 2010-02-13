@@ -1,6 +1,6 @@
 /*
 ninchdl-listext is licensed under the MIT license:
-Copyright (c) 2009 yellowstar6
+Copyright (c) 2009 and 2010 yellowstar6
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this
 software and associated documentation files (the “Software”), to deal in the Software
@@ -23,6 +23,7 @@ DEALINGS IN THE SOFTWARE.
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+#include <iconv.h>
 
 typedef unsigned char u8;
 typedef unsigned short u16;
@@ -452,6 +453,32 @@ void GetTimestamp(u32 input, DLlist_timestamp *timestamp)
     timestamp->year = be16(timestamp->year);
 }
 
+void ConvertUTF16ToUTF8(u16 *utf16, char *out)
+{
+	char *UTF16 = (char*)utf16;
+	int i = 0;
+	size_t inlen = 0, outlen = 256;
+	char **inbuf = &UTF16;
+	size_t *inbytesleft = &inlen;
+	char **outbuf = &out;
+	size_t *outbytesleft = &outlen;
+	while(utf16[i]!=0)i++;
+	inlen = i * 2;
+	iconv_t cd = iconv_open("UTF-8", "UTF-16BE");
+	if(cd<0)
+	{
+		printf("iconv_open error\n");
+		return;
+	}
+
+	if(iconv(cd, inbuf, inbytesleft, outbuf, outbytesleft)<0)
+	{
+		printf("iconv error\n");
+	}
+
+	iconv_close (cd);
+}
+
 int main(int argc, char **argv)
 {
 	char str[256];
@@ -830,7 +857,7 @@ int main(int argc, char **argv)
     u32 timestamp_u32;
     for(i=0; i<total_demos; i++)
     {
-        for(texti=0; texti<31; texti++)
+        /*for(texti=0; texti<31; texti++)
         {
             if(version<4)utf_temp = header->demos[i].title[texti];
             if(version>=4)utf_temp = header_v4->demos[i].title[texti];
@@ -838,9 +865,13 @@ int main(int argc, char **argv)
             utf_temp = be16(utf_temp);
             putc((u8)utf_temp, fil);
             if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
-        }
+        }*/
+	memset(str, 0, 256);
+	if(version<4)ConvertUTF16ToUTF8(header->demos[i].title, str);
+	if(version>=4)ConvertUTF16ToUTF8(header_v4->demos[i].title, str);	
+	fprintf(fil, str);
         fprintf(fil, "\r\n");
-        for(texti=0; texti<31; texti++)
+        /*for(texti=0; texti<31; texti++)
         {
             if(version<4)utf_temp = header->demos[i].subtitle[texti];
             if(version>=4)utf_temp = header_v4->demos[i].subtitle[texti];
@@ -848,7 +879,11 @@ int main(int argc, char **argv)
             utf_temp = be16(utf_temp);
             putc((u8)utf_temp, fil);
             if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
-        }
+        }*/
+	memset(str, 0, 256);
+	if(version<4)ConvertUTF16ToUTF8(header->demos[i].subtitle, str);
+	if(version>=4)ConvertUTF16ToUTF8(header_v4->demos[i].subtitle, str);
+	fprintf(fil, str);
         fprintf(fil, "\r\n");
 
         if(version>=4)
@@ -886,14 +921,17 @@ int main(int argc, char **argv)
             {
                 if(header->ratings[ratingi].ratingID==ratingID)
                 {
-                    for(texti=0; texti<11; texti++)
+                    /*for(texti=0; texti<11; texti++)
                     {
                         utf_temp = header->ratings[ratingi].title[texti];
                         if(utf_temp==0)break;
                         utf_temp = be16(utf_temp);
                         putc((u8)utf_temp, fil);
                         if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
-                    }
+                    }*/
+		    memset(str, 0, 256);
+		    ConvertUTF16ToUTF8(header->ratings[ratingi].title, str);
+		    fprintf(fil, str);
                     break;
                 }
             }
@@ -904,14 +942,17 @@ int main(int argc, char **argv)
             {
                 if(header_v4->ratings[ratingi].ratingID==ratingID)
                 {
-                    for(texti=0; texti<11; texti++)
+                    /*for(texti=0; texti<11; texti++)
                     {
                         utf_temp = header_v4->ratings[ratingi].title[texti];
                         if(utf_temp==0)break;
                         utf_temp = be16(utf_temp);
                         putc((u8)utf_temp, fil);
                         if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
-                    }
+                    }*/
+		    memset(str, 0, 256);
+		    ConvertUTF16ToUTF8(header_v4->ratings[ratingi].title, str);
+		    fprintf(fil, str);
                 }
             }
         }
@@ -922,30 +963,36 @@ int main(int argc, char **argv)
         if(version>=4)comp = (DLlist_company_entry*)((u32)buffer + (u32)be32(header_v4->demos[i].company_offset));
         if(comp)
         {
-            for(texti=0; texti<31; texti++)
+            /*for(texti=0; texti<31; texti++)
             {
                 utf_temp = comp->devtitle[texti];
                 if(utf_temp==0)break;
                 utf_temp = be16(utf_temp);
                 putc((u8)utf_temp, fil);
                 if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
-            }
+            }*/
+	    memset(str, 0, 256);
+	    ConvertUTF16ToUTF8(comp->devtitle, str);	
+	    fprintf(fil, str);
         }
         fprintf(fil, "\r\n");
 
 		if((version<4 && title_ptr) || (version>=4))
 		{
-            if(memcmp(comp->devtitle, comp->pubtitle, 31 * 2)!=0)
-            {
-                for(texti=0; texti<31; texti++)
-                {
-                    utf_temp = comp->pubtitle[texti];
-                    if(utf_temp==0)break;
-                    utf_temp = be16(utf_temp);
-                    putc((u8)utf_temp, fil);
-                    if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
-                }
-            }
+            		if(memcmp(comp->devtitle, comp->pubtitle, 31 * 2)!=0)
+            		{
+                		/*for(texti=0; texti<31; texti++)
+                		{
+                    			utf_temp = comp->pubtitle[texti];
+                    			if(utf_temp==0)break;
+                    			utf_temp = be16(utf_temp);
+                    			putc((u8)utf_temp, fil);
+                    			if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
+                		}*/
+				memset(str, 0, 256);
+	    			ConvertUTF16ToUTF8(comp->devtitle, str);	
+	    			fprintf(fil, str);
+            		}
 		}
         fprintf(fil, "\r\n");
 
@@ -1020,7 +1067,7 @@ int main(int argc, char **argv)
 				}
 
 	fprintf(fil, "Title type: ");
-	for(texti=0; texti<31; texti++)
+	/*for(texti=0; texti<31; texti++)
         {
 		if(version<4)utf_temp = header->main_title_types[ti].title[texti];
 		if(version>=4)utf_temp = header_v4->title_types[ti].title[texti];
@@ -1028,7 +1075,11 @@ int main(int argc, char **argv)
 		utf_temp = be16(utf_temp);
 		putc((u8)utf_temp, fil);
 		if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
-        }
+        }*/
+	memset(str, 0, 256);
+	if(version<4)ConvertUTF16ToUTF8(header->main_title_types[ti].title, str);
+	if(version>=4)ConvertUTF16ToUTF8(header_v4->title_types[ti].title, str);
+	fprintf(fil, str);
         if(version<4)fprintf(fil, " (typeID %02x)\n", title_ptr->title_type);
         if(version>=4)fprintf(fil, " (typeID %02x)\n", title_ptr_v4->title_type);
 
@@ -1048,7 +1099,7 @@ int main(int argc, char **argv)
         u32 txt_len = 0;
         if(version<4)txt_len = 51;
         if(version>=4)txt_len = 123;
-        for(texti=0; texti<txt_len; texti++)
+        /*for(texti=0; texti<txt_len; texti++)
         {
             if(version<4)utf_temp = header->videos[i].title[texti];
             if(version>=4)utf_temp = header_v4->videos0[i].title[texti];
@@ -1057,7 +1108,11 @@ int main(int argc, char **argv)
             if(((u8)utf_temp)==0x0A)putc(0x0D, fil);
             putc((u8)utf_temp, fil);
             if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
-        }
+        }*/
+	memset(str, 0, 256);
+	if(version<4)ConvertUTF16ToUTF8(header->videos[i].title, str);
+	if(version>=4)ConvertUTF16ToUTF8(header_v4->videos0[i].title, str);
+	fprintf(fil, str);
         fprintf(fil, "\r\n");
 
         if(version>=4)
@@ -1151,14 +1206,17 @@ int main(int argc, char **argv)
                 {
                     if(header->ratings[ratingi].ratingID==ratingID)
                     {
-                        for(texti=0; texti<11; texti++)
+                        /*for(texti=0; texti<11; texti++)
                         {
                             utf_temp = header->ratings[ratingi].title[texti];
                             if(utf_temp==0)break;
                             utf_temp = be16(utf_temp);
                             putc((u8)utf_temp, fil);
                             if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
-                        }
+                        }*/
+			memset(str, 0, 256);
+			ConvertUTF16ToUTF8(header->ratings[ratingi].title, str);
+			fprintf(fil, str);
                     }
                 }
             }
@@ -1168,14 +1226,17 @@ int main(int argc, char **argv)
                 {
                     if(header_v4->ratings[ratingi].ratingID==ratingID)
                     {
-                        for(texti=0; texti<11; texti++)
+                        /*for(texti=0; texti<11; texti++)
                         {
                             utf_temp = header_v4->ratings[ratingi].title[texti];
                             if(utf_temp==0)break;
                             utf_temp = be16(utf_temp);
                             putc((u8)utf_temp, fil);
                             if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
-                        }
+                        }*/
+			memset(str, 0, 256);
+			ConvertUTF16ToUTF8(header_v4->ratings[ratingi].title, str);
+			fprintf(fil, str);
                     }
                 }
             }
@@ -1187,14 +1248,17 @@ int main(int argc, char **argv)
             if(version>=4 && title_ptr_v4)comp = (DLlist_company_entry*)((u32)buffer + (u32)be16(title_ptr_v4->company_offset));
             if(title_ptr || title_ptr_v4)
             {
-                for(texti=0; texti<31; texti++)
+                /*for(texti=0; texti<31; texti++)
                 {
                     utf_temp = comp->devtitle[texti];
                     if(utf_temp==0)break;
                     utf_temp = be16(utf_temp);
                     putc((u8)utf_temp, fil);
                     if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
-                }
+                }*/
+		memset(str, 0, 256);
+		ConvertUTF16ToUTF8(comp->devtitle, str);
+		fprintf(fil, str);
             }
 
             fprintf(fil, "\r\n");
@@ -1202,14 +1266,17 @@ int main(int argc, char **argv)
             {
                 if(memcmp(comp->devtitle, comp->pubtitle, 31 * 2)!=0)
                 {
-                    for(texti=0; texti<31; texti++)
+                    /*for(texti=0; texti<31; texti++)
                     {
 						utf_temp = comp->pubtitle[texti];
 						if(utf_temp==0)break;
 						utf_temp = be16(utf_temp);
 						putc((u8)utf_temp, fil);
 						if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
-                    }
+                    }*/
+		    memset(str, 0, 256);
+		    ConvertUTF16ToUTF8(comp->pubtitle, str);
+		    fprintf(fil, str);
                 }
             }
 		}
@@ -1272,7 +1339,7 @@ int main(int argc, char **argv)
 				}
 
 	fprintf(fil, "Title type: ");
-	for(texti=0; texti<31; texti++)
+	/*for(texti=0; texti<31; texti++)
         {
 		if(version<4)utf_temp = header->main_title_types[ti].title[texti];
 		if(version>=4)utf_temp = header_v4->title_types[ti].title[texti];
@@ -1280,7 +1347,11 @@ int main(int argc, char **argv)
 		utf_temp = be16(utf_temp);
 		putc((u8)utf_temp, fil);
 		if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
-        }
+        }*/
+	memset(str, 0, 256);
+	if(version<4)ConvertUTF16ToUTF8(header->main_title_types[ti].title, str);
+	if(version>=4)ConvertUTF16ToUTF8(header_v4->title_types[ti].title, str);
+	fprintf(fil, str);
         if(version<4)fprintf(fil, " (typeID %02x)\n", title_ptr->title_type);
         if(version>=4)fprintf(fil, " (typeID %02x)\n", title_ptr_v4->title_type);
 
@@ -1301,10 +1372,10 @@ int main(int argc, char **argv)
     }
 
 	fclose(fil);
-    if((argc>6 && strncmp(argv[6], "-l", 2)==0) || (argc==3 && strncmp(argv[2], "-l", 2)==0))
+    if((argc>5 && strncmp(argv[5], "-l", 2)==0) || (argc==3 && strncmp(argv[2], "-l", 2)==0))
 	{
 		char *lsarg = NULL;
-		if((argc>6 && strncmp(argv[6], "-l", 2)==0))lsarg = argv[6];
+		if((argc>5 && strncmp(argv[5], "-l", 2)==0))lsarg = argv[5];
 		if((argc==3 && strncmp(argv[2], "-l", 2)==0))lsarg = argv[2];
 		u32 num_titles = 0;
 		printf("Listing title(s)...\n");
@@ -1337,7 +1408,7 @@ int main(int argc, char **argv)
 			}
 			if(version<4)fprintf(fil, "Titles with title type ID %02x, description ", (unsigned int)typeID);
 			if(version>=4)fprintf(fil, "Titles with title type ID %02x, model %c%c%c description ", (unsigned int)typeID, header_v4->title_types[ti].console_model[0], header_v4->title_types[ti].console_model[1], header_v4->title_types[ti].console_model[2]);
-			for(texti=0; texti<31; texti++)
+			/*for(texti=0; texti<31; texti++)
 			{
 					if(version<4)utf_temp = header->main_title_types[ti].title[texti];
 					if(version>=4)utf_temp = header_v4->title_types[ti].title[texti];
@@ -1345,7 +1416,11 @@ int main(int argc, char **argv)
 					utf_temp = be16(utf_temp);
 					putc((u8)utf_temp, fil);
 					if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
-			}
+			}*/
+			memset(str, 0, 256);
+			if(version<4)ConvertUTF16ToUTF8(header->main_title_types[ti].title, str);
+			if(version>=4)ConvertUTF16ToUTF8(header_v4->title_types[ti].title, str);
+			fprintf(fil, str);
 			fprintf(fil, "\n");
 		}
 
@@ -1470,7 +1545,7 @@ int main(int argc, char **argv)
             }
             if(!found)continue;
 
-			for(texti=0; texti<31; texti++)
+			/*for(texti=0; texti<31; texti++)
 			{
                 if(version<4)utf_temp = header->titles[i].title[texti];
                 if(version>=4)utf_temp = header_v4->titles[i].title[texti];
@@ -1478,10 +1553,14 @@ int main(int argc, char **argv)
                 utf_temp = be16(utf_temp);
                 putc((u8)utf_temp, fil);
                 if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
-			}
+			}*/
+			memset(str, 0, 256);
+			if(version<4)ConvertUTF16ToUTF8(header->titles[i].title, str);
+			if(version>=4)ConvertUTF16ToUTF8(header_v4->titles[i].title, str);
+			fprintf(fil, str);
 
 			fprintf(fil, "\n");
-			for(texti=0; texti<31; texti++)
+			/*for(texti=0; texti<31; texti++)
 			{
                 if(version<4)utf_temp = header->titles[i].subtitle[texti];
                 if(version>=4)utf_temp = header_v4->titles[i].subtitle[texti];
@@ -1489,7 +1568,11 @@ int main(int argc, char **argv)
                 utf_temp = be16(utf_temp);
                 putc((u8)utf_temp, fil);
                 if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
-			}
+			}*/
+			memset(str, 0, 256);
+			if(version<4)ConvertUTF16ToUTF8(header->titles[i].subtitle, str);
+			if(version>=4)ConvertUTF16ToUTF8(header_v4->titles[i].subtitle, str);
+			fprintf(fil, str);
 
 			fprintf(fil, "\n");
 			if(version>=4)
@@ -1497,29 +1580,36 @@ int main(int argc, char **argv)
 				if(memcmp(header_v4->titles[i].title, header_v4->titles[i].short_title, 31)!=0 && header_v4->titles[i].short_title[0]!=0)
 				{
 				    fprintf(fil, "Short title: ");
-					for(texti=0; texti<31; texti++)
+					/*for(texti=0; texti<31; texti++)
 					{
 						utf_temp = header_v4->titles[i].short_title[texti];
 						if(utf_temp==0)break;
 						utf_temp = be16(utf_temp);
 						putc((u8)utf_temp, fil);
 						if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
-					}
+					}*/
+					memset(str, 0, 256);
+					ConvertUTF16ToUTF8(header_v4->titles[i].short_title, str);
+					fprintf(fil, str);
 					fprintf(fil, "\n");
 				}
 			}
 
 			if(strlen(lsarg)!=4)
 			{
-                for(texti=0; texti<31; texti++)
-                {
+                		/*for(texti=0; texti<31; texti++)
+                		{
 					if(version<4)utf_temp = header->main_title_types[ti].title[texti];
 					if(version>=4)utf_temp = header_v4->title_types[ti].title[texti];
 					if(utf_temp==0)break;
 					utf_temp = be16(utf_temp);
 					putc((u8)utf_temp, fil);
 					if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
-                }
+                		}*/
+				memset(str, 0, 256);
+				if(version<4)ConvertUTF16ToUTF8(header->main_title_types[ti].title, str);
+				if(version>=4)ConvertUTF16ToUTF8(header_v4->title_types[ti].title, str);
+				fprintf(fil, str);
                 if(version<4)fprintf(fil, " (typeID %02x)\n", header->main_title_types[ti].typeID);
                 if(version>=4)fprintf(fil, " (typeID %02x)\n", header_v4->title_types[ti].typeID);
 			}
@@ -1529,14 +1619,17 @@ int main(int argc, char **argv)
             if(version>=4 && title_ptr_v4)comp = (DLlist_company_entry*)((u32)buffer + (u32)be16(title_ptr_v4->company_offset));
             if(comp)
             {
-                for(texti=0; texti<31; texti++)
+                /*for(texti=0; texti<31; texti++)
                 {
                     utf_temp = comp->devtitle[texti];
                     if(utf_temp==0)break;
                     utf_temp = be16(utf_temp);
                     putc((u8)utf_temp, fil);
                     if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
-                }
+                }*/
+		memset(str, 0, 256);
+		ConvertUTF16ToUTF8(comp->devtitle, str);
+		fprintf(fil, str);
             }
 
             fputs("\r\n", fil);
@@ -1544,14 +1637,17 @@ int main(int argc, char **argv)
             {
                 if(memcmp(comp->devtitle, comp->pubtitle, 31 * 2)!=0)
                 {
-                    for(texti=0; texti<31; texti++)
+                    /*for(texti=0; texti<31; texti++)
                     {
                         utf_temp = comp->pubtitle[texti];
                         if(utf_temp==0)break;
                         utf_temp = be16(utf_temp);
                         putc((u8)utf_temp, fil);
                         if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
-                    }
+                    }*/
+		    memset(str, 0, 256);
+		    ConvertUTF16ToUTF8(comp->pubtitle, str);
+		    fprintf(fil, str);
                 }
             }
 
@@ -1574,14 +1670,17 @@ int main(int argc, char **argv)
                 {
                     if(header->ratings[ratingi].ratingID==ratingID)
                     {
-                        for(texti=0; texti<11; texti++)
+                        /*for(texti=0; texti<11; texti++)
                         {
                             utf_temp = header->ratings[ratingi].title[texti];
                             if(utf_temp==0)break;
                             utf_temp = be16(utf_temp);
                             putc((u8)utf_temp, fil);
                             if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
-                        }
+                        }*/
+			memset(str, 0, 256);
+		    	ConvertUTF16ToUTF8(header->ratings[ratingi].title, str);
+		    	fprintf(fil, str);
                     }
                 }
             }
@@ -1591,14 +1690,17 @@ int main(int argc, char **argv)
                 {
                     if(header_v4->ratings[ratingi].ratingID==ratingID)
                     {
-                        for(texti=0; texti<11; texti++)
+                        /*for(texti=0; texti<11; texti++)
                         {
                             utf_temp = header_v4->ratings[ratingi].title[texti];
                             if(utf_temp==0)break;
                             utf_temp = be16(utf_temp);
                             putc((u8)utf_temp, fil);
                             if((utf_temp >> 8))putc((u8)(utf_temp >> 8), fil);
-                        }
+                        }*/
+			memset(str, 0, 256);
+		    	ConvertUTF16ToUTF8(header_v4->ratings[ratingi].title, str);
+		    	fprintf(fil, str);
                     }
                 }
             }
