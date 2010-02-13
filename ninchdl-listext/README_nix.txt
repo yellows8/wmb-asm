@@ -21,7 +21,7 @@ Options:
 
 Source is available on SVN at http://wmb-asm.googlecode.com/svn/trunk/ninchdl-listext/
 
-Changlog:
+Changelog:
 v1.1
 Added proper UTF-16 to UTF-8 conversion with libiconv.
 Fixed endian bug with dumped title IDs.
