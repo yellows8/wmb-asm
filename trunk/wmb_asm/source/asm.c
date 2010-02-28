@@ -91,9 +91,9 @@ typedef void (*lpReset)();
 typedef char *(*lpGetStatus)(int *error_code);
 typedef int (*lpGetModeStatus)(int status);
 typedef int (*lpQueryFailure)();
-typedef int (*lpSwitchMode)(int mode);
+//typedef int (*lpSwitchMode)(int mode);
 
-struct PacketModule
+typedef struct _PacketModule
 {
     lpInit Init;
     lpDeInit DeInit;
@@ -114,7 +114,7 @@ struct PacketModule
 	int ID;
 	char *IDStr;
 	int Priority;
-};
+} PacketModule;
 PacketModule packetModules[MAX_PKT_MODULES];
 int totalPacketModules = 0;
 int currentPacketModule = -1;
@@ -304,10 +304,6 @@ int LoadPacketModule(char *filename, char *error_buffer, char *destr, LPDLL *lpd
 #endif
 FILE *modlog = NULL;
 
-#ifdef __cplusplus
-  extern "C" {
-#endif
-
 int WMB_AsmPlug_GetID();
 char *WMB_AsmPlug_GetIDStr();
 int WMB_AsmPlug_GetPriority();
@@ -333,10 +329,6 @@ bool DLSTATION_AsmPlug_Init(sAsmSDK_Config *config);
 bool DLSTATION_AsmPlug_DeInit();
 volatile Nds_data *DLSTATION_AsmPlug_GetNdsData();
 void DLSTATION_AsmPlug_Reset();
-
-#ifdef __cplusplus
-  }
-#endif
 
 bool InitPktModules()
 {
@@ -789,12 +781,13 @@ bool InitAsm(SuccessCallback callback, bool debug, sAsmSDK_Config *config)
 
 void ResetAsm(volatile Nds_data *dat)
 {
+			int i;
 
                         if(dat!=NULL)module_nds_data = dat;
                         if(dat==NULL)
                         {
 							volatile Nds_data *data = NULL;
-		                      for(int i=0; i<totalPacketModules; i++)
+		                      for(i=0; i<totalPacketModules; i++)
 		                      {
 			                         if(packetModules[i].GetNdsData!=NULL)
 			                         {
@@ -947,9 +940,10 @@ int total_assembled=0;
 int prev_total=0;
 void CaptureBacktrack()
 {
+    int i;
     //Used mainly with multi-game captures. This is done because some packets that the program will not find, may have already been transmitted & captured previously in the capture.
     total_assembled=0;
-        for(int i=0; i<15; i++)
+        for(i=0; i<15; i++)
         {
             if(module_nds_data->handledIDs[i])total_assembled++;
         }
@@ -1008,7 +1002,7 @@ void CaptureBacktrack()
 
 
         total_assembled=0;
-        for(int i=0; i<15; i++)
+        for(i=0; i<15; i++)
         {
             if(module_nds_data->handledIDs[i])total_assembled++;
         }
@@ -1019,20 +1013,17 @@ void CaptureBacktrack()
         CaptureBacktrack();
 }
 
-#ifdef __cplusplus
-  extern "C" {
-#endif
-
 int PKTINDX = 0;
 
 void CaptureAsmResetA(volatile Nds_data *dat, lpAsmGetStatusCallback callback)
 {
     module_nds_data = dat;
+    int i;
 
     if(funusedpkt!=NULL && module_nds_data->multipleIDs)
     {
         bool got_all=1;
-        for(int i=0; i<15; i++)
+        for(i=0; i<15; i++)
         {
             if(!module_nds_data->handledIDs[i] && module_nds_data->foundIDs[i])got_all = 0;
         }
@@ -1044,7 +1035,7 @@ void CaptureAsmResetA(volatile Nds_data *dat, lpAsmGetStatusCallback callback)
             CaptureBacktrack();
 
             got_all=1;
-            for(int i=0; i<15; i++)
+            for(i=0; i<15; i++)
             {
                 if(!module_nds_data->handledIDs[i] && module_nds_data->foundIDs[i])got_all = 0;
             }
@@ -1061,14 +1052,14 @@ void CaptureAsmResetA(volatile Nds_data *dat, lpAsmGetStatusCallback callback)
         }
 
         total_assembled=0;
-        for(int i=0; i<15; i++)
+        for(i=0; i<15; i++)
         {
             if(module_nds_data->handledIDs[i])total_assembled++;
         }
 
         got_all = 1;
         int total_asm=0, total=0;
-        for(int i=0; i<15; i++)
+        for(i=0; i<15; i++)
         {
             if(!module_nds_data->handledIDs[i] && module_nds_data->foundIDs[i])got_all=0;
             if(module_nds_data->foundIDs[i])total++;
@@ -1119,13 +1110,14 @@ void CaptureAsmResetA(volatile Nds_data *dat, lpAsmGetStatusCallback callback)
     ResetAsm(module_nds_data);
 }
 
-DLLIMPORT void CaptureAsmReset(int *code, lpAsmGetStatusCallback callback)//Needs to be called after reading the whole capture.
+void CaptureAsmReset(int *code, lpAsmGetStatusCallback callback)//Needs to be called after reading the whole capture.
 {
         #ifndef NDS
 		volatile Nds_data *data = NULL;
 		int oldpktmod = currentPacketModule;
+		int i;
 
-		    for(int i=0; i<totalPacketModules; i++)
+		    for(i=0; i<totalPacketModules; i++)
 		    {
 			    if(packetModules[i].lpdll==NULL)break;
 
@@ -1152,7 +1144,7 @@ DLLIMPORT void CaptureAsmReset(int *code, lpAsmGetStatusCallback callback)//Need
 	    #endif
 }
 
-DLLIMPORT char *GetStatusAsm(int *error_code)
+char *GetStatusAsm(int *error_code)
 {
     if(currentPacketModule != -1)
     {
@@ -1176,13 +1168,13 @@ void GetStatusAsmA(lpAsmGetStatusCallback callback, int index)
     free(error);
 }
 
-DLLIMPORT bool QueryAssembleStatus(int *error_code)
+bool QueryAssembleStatus(int *error_code)
 {
     GetStatusAsm(error_code);
     return module_nds_data->finished_first_assembly;
 }
 
-DLLIMPORT unsigned char GetPrecentageCompleteAsm()
+unsigned char GetPrecentageCompleteAsm()
 {
     unsigned char percent=0;
 
@@ -1190,13 +1182,14 @@ DLLIMPORT unsigned char GetPrecentageCompleteAsm()
     int devisor=0;
     int size=490;
     int i=0;
+    int I;
 
     if(currentPacketModule == -1)return 0;//Prevent access violations and other problems.
 
         if(packetModules[currentPacketModule].query_failure() == 2)
         {
 
-                for(int I=0; I<(int)module_nds_data->total_binaries_size; I+=size)
+                for(I=0; I<(int)module_nds_data->total_binaries_size; I+=size)
                 {
                     temp+=module_nds_data->data_sizes[i];
                     size=module_nds_data->data_sizes[i];
@@ -1216,10 +1209,11 @@ DLLIMPORT unsigned char GetPrecentageCompleteAsm()
 }
 
 int TheTime=0;
-DLLIMPORT bool HandlePacket(sAsmSDK_Params *params)
+bool HandlePacket(sAsmSDK_Params *params)
 {
 
      unsigned char *data;
+     int i, ii;
 
      glob_header = params->header;
      glob_argv = params->argv;
@@ -1262,7 +1256,7 @@ DLLIMPORT bool HandlePacket(sAsmSDK_Params *params)
 
     volatile Nds_data *dat = NULL;
 
-     for(int ii=0; ii<totalPacketModules; ii++)
+     for(ii=0; ii<totalPacketModules; ii++)
 	 {
 
 	   if(packetModules[ii].GetNdsData!=NULL)
@@ -1284,7 +1278,7 @@ DLLIMPORT bool HandlePacket(sAsmSDK_Params *params)
 	                        memset(out,0,256);
 	                        memset(output,0,256);
                             strncpy(out,(char*)module_nds_data->header.gameTitle,12);
-                            for(int i=0; i<12; i++)
+                            for(i=0; i<12; i++)
                             {
                                 if(out[I+i]=='\\' || out[I+i]=='/' || out[I+i]==':' || out[I+i]=='*' || out[I+i]=='?' || out[I+i]=='"' || out[I+i]=='<' || out[I+i]=='>' || out[I+i]=='|')
                                 out[I+i] = ' ';//Remove any illegal chars, that will cause file opening to fail
@@ -1302,7 +1296,7 @@ DLLIMPORT bool HandlePacket(sAsmSDK_Params *params)
                             found=0;
                             I=pos;
                             strncpy((char*)&out[pos],(char*)module_nds_data->header.gameCode,4);
-                            for(int i=0; i<4; i++)
+                            for(i=0; i<4; i++)
                             {
                                 if(out[I+i]=='\\' || out[I+i]=='/' || out[I+i]==':' || out[I+i]=='*' || out[I+i]=='?' || out[I+i]=='"' || out[I+i]=='<' || out[I+i]=='>' || out[I+i]=='|')
                                 out[I+i] = ' ';//Remove any illegal chars, that will cause file opening to fail
@@ -1317,7 +1311,7 @@ DLLIMPORT bool HandlePacket(sAsmSDK_Params *params)
                             found=0;
 
                             strncpy((char*)&out[pos],(char*)module_nds_data->header.makercode,2);
-                            for(int i=0; i<2; i++)
+                            for(i=0; i<2; i++)
                             {
                                 if(out[I+i]=='\\' || out[I+i]=='/' || out[I+i]==':' || out[I+i]=='*' || out[I+i]=='?' || out[I+i]=='"' || out[I+i]=='<' || out[I+i]=='>' || out[I+i]=='|')
                                 out[I+i] = ' ';//Remove any illegal chars, that will cause file opening to fail
@@ -1337,12 +1331,12 @@ DLLIMPORT bool HandlePacket(sAsmSDK_Params *params)
                             //printf("OUTPUT %s OUTDIR %s OUT %s\n",output,outdir,out);
 
 
-                             char *Str = new char[256];
+                             char *Str = (char*)malloc(256);
                              strcpy(Str,output);
 
                              if(!AssembleNds(Str))
                              {
-                             delete[]Str;
+                             free(Str);
                              pcap_close(params->fp);
 
                                 if(*DEBUG)
@@ -1437,7 +1431,7 @@ DLLIMPORT bool HandlePacket(sAsmSDK_Params *params)
                                }
 	                           #endif
 
-	                           delete []Str;
+	                           free(Str);
 
                                module_nds_data->trigger_assembly = 0;
 
@@ -1450,10 +1444,6 @@ DLLIMPORT bool HandlePacket(sAsmSDK_Params *params)
      return 1;
 
 }
-
-#ifdef __cplusplus
-  }
-#endif
 
 bool Handle802_11(unsigned char *data, int length)
 {
@@ -1480,6 +1470,7 @@ bool AssembleNds(char *output)
      //size_t length=98;
      unsigned char *Temp=NULL;
      size_t sz=0;
+     int i;
      char *download_play = (char*)malloc(35);
      strcpy(download_play,"DS DOWNLOAD PLAY----------------");
 
@@ -1503,7 +1494,7 @@ bool AssembleNds(char *output)
         memset((void*)banner.titles,0,6*(128*2));
 
         int tempi=0;
-        for(int i=0; i<48; i++)
+        for(i=0; i<48; i++)
         {
             if(module_nds_data->advert.game_name[i]==0)
             {
@@ -1519,7 +1510,7 @@ bool AssembleNds(char *output)
 
         memcpy((void*)&gdtemp[tempi], (void*)&module_nds_data->advert.game_description[0],96*2);
 
-        for(int i=0; i<96; i++)
+        for(i=0; i<96; i++)
         {
             if(module_nds_data->advert.game_description[i]==0)
             {
@@ -1587,17 +1578,17 @@ bool AssembleNds(char *output)
 
      int rpos = 0;
      memset(reserved,0,160);
-     for(int i=0; i<16; i++)
+     for(i=0; i<16; i++)
      reserved[i] = 0x2D;
      rpos+=16;
 
      memcpy((void*)&reserved[rpos], (void*)module_nds_data->advert.hostname, (size_t)(module_nds_data->advert.hostname_len*2));
      rpos+=((int)module_nds_data->advert.hostname_len*2);
-     for(int i=0; i<32-(rpos-16); i++)
+     for(i=0; i<32-(rpos-16); i++)
      reserved[rpos + i] = 0x00;
      rpos+= 32-(rpos-16);
 
-     for(int i=0; i<16; i++)
+     for(i=0; i<16; i++)
      reserved[rpos + i] = 0x2D;
 
      ndshdr.logoCRC16 = CalcCRC16(ndshdr.gbaLogo,156);
@@ -1618,10 +1609,10 @@ bool AssembleNds(char *output)
      #ifdef NDS
      printf("SZ %d\n", sz);
      #endif
-     Temp = new unsigned char[sz];
+     Temp = (unsigned char*)malloc(sz);
      memset(Temp,0,sz);
      fwrite(Temp,1,sz,nds);
-     delete[] Temp;
+     free(Temp);
 
      temp=0;
      int writtenBytes=0;
@@ -1638,10 +1629,10 @@ bool AssembleNds(char *output)
      #ifdef NDS
      printf("SZ %d %d/%d ARM7S %d\n", sz, (int)module_nds_data->header.arm7romSource, (int)ftell(nds), (int)module_nds_data->arm7s);
      #endif
-     Temp = new unsigned char[sz];
+     Temp = (unsigned char*)malloc(sz);
      memset(Temp,0,sz);
      fwrite(Temp,1,sz,nds);
-     delete[] Temp;
+     free(Temp);
 
      writtenBytes=0;
      if(module_nds_data->arm7e > module_nds_data->arm7s)
@@ -1660,7 +1651,7 @@ bool AssembleNds(char *output)
 
      if((int)module_nds_data->header.bannerOffset>=(int)ftell(nds))
      {
-        Temp = new unsigned char[sz];
+        Temp = (unsigned char*)malloc(sz);
 
         memset(Temp,0,sz);
         //This following block is based on code from Frz's sachen program.
@@ -1675,7 +1666,7 @@ bool AssembleNds(char *output)
         }
 
         fwrite(Temp,1,sz,nds);
-        delete[] Temp;
+        free(Temp);
      }
 
      int savepos = ftell(nds);
@@ -1693,10 +1684,10 @@ bool AssembleNds(char *output)
      if((module_nds_data->header.bannerOffset+sizeof(TNDSBanner)) < module_nds_data->header.romSize)
      {
      sz=((module_nds_data->header.romSize)-(module_nds_data->header.bannerOffset+sizeof(TNDSBanner)));
-     Temp = new unsigned char[sz];
+     Temp = (unsigned char*)malloc(sz);
      memset(Temp,0,sz);
      fwrite(Temp,1,sz,nds);
-     delete[] Temp;
+     free(Temp);
      }
 
      fwrite((void*)&module_nds_data->rsa.signature,1,136,nds);
