@@ -27,22 +27,12 @@ DEALINGS IN THE SOFTWARE.
 #include "wmb_asm_sdk_plugin.h"
 
 #ifndef NDS
-	#include <lzo\lzoconf.h>
-	#include <lzo\lzo1x.h>
+	#include <lzo/lzoconf.h>
+	#include <lzo/lzo1x.h>
 #endif
 
 #ifdef NDS
 	#include <minilzo.h>
-#endif
-
-#undef DLLIMPORT
-#define DLLIMPORT __declspec (dllexport)
-
-#ifdef DLLIMPORT
-	#ifdef NDS
-		#undef DLLIMPORT
-		#define DLLIMPORT
-	#endif
 #endif
 
 //Change the names of the functions on-the-fly when compiling for DS, since everything is in one binary.
@@ -91,24 +81,24 @@ int HandleDL_MenuDownload(unsigned char *data, int length);
 int HandleDL_Header(unsigned char *data, int length);
 int HandleDL_Data(unsigned char *data, int length);
 
-struct DLClient
+typedef struct _DLClient
 {
     unsigned char clientID;
     unsigned char mac[6];
     int gameID;
-    int is_dl;//Is this client really using the DLStation/N Spot protocol, not WMB or some other protocol?
+    int is_dl;//Is this client really using the DLStation protocol, not WMB or some other protocol?
     bool has_data;//Does this entry contain any data?
-};
+} DLClient;
 
-struct WMBHost
+typedef struct _WMBHost
 {
     unsigned char mac[6];//Any host that sends binary data over WMB, has their MAC put into the WMBHosts array. If any of the DLClients ack the WMB Host, they are kicked from the DLClients list, as they are using WMB, not DLStation/N Spot protocol.
     bool sent_data;
     int data_seq;
     bool has_data;
-};
+} WMBHost;
 
-struct MenuItem
+typedef struct _MenuItem
 {
     unsigned char icon[512];
     unsigned short palette[16];
@@ -117,7 +107,7 @@ struct MenuItem
     char controls[0x402];
     char id[8];
     unsigned char zeroes[2];
-} __attribute__((__packed__));
+} __attribute__((__packed__)) MenuItem;
 
 DLClient DLClients[15];
 WMBHost WMBHosts[256];
@@ -150,26 +140,22 @@ unsigned int de_data_size = 0;//Size of the decompressed data.
 
 unsigned char lzo_mgc_num[8] = {0x4C, 0x5A, 0x4F, 0x6E, 0x00, 0x2F, 0xF1, 0x71};
 
-#ifdef __cplusplus
-  extern "C" {
-#endif
-
-DLLIMPORT int AsmPlug_GetID()
+int AsmPlug_GetID()
 {
     return 1;
 }
 
-DLLIMPORT char *AsmPlug_GetIDStr()
+char *AsmPlug_GetIDStr()
 {
     return (char*)"DLSTATION";
 }
 
-DLLIMPORT int AsmPlug_GetPriority()
+int AsmPlug_GetPriority()
 {
     return ASMPLUG_PRI_NORMAL;
 }
 
-DLLIMPORT char *AsmPlug_GetStatus(int *error_code)
+char *AsmPlug_GetStatus(int *error_code)
 {
     if(dlstation_stage==STAGEDL_MENU_REQ)
     {
@@ -193,14 +179,14 @@ DLLIMPORT char *AsmPlug_GetStatus(int *error_code)
 	return NULL;
 }
 
-DLLIMPORT int AsmPlug_QueryFailure()
+int AsmPlug_QueryFailure()
 {
     if(dlstation_stage==STAGEDL_MENU_REQ)return 3;
 
     return 0;
 }
 
-DLLIMPORT int AsmPlug_Handle802_11(unsigned char *data, int length)
+int AsmPlug_Handle802_11(unsigned char *data, int length)
 {
     int ret = 0;
 
@@ -226,7 +212,7 @@ DLLIMPORT int AsmPlug_Handle802_11(unsigned char *data, int length)
      return 0;
 }
 
-DLLIMPORT bool AsmPlug_Init(sAsmSDK_Config *config)
+bool AsmPlug_Init(sAsmSDK_Config *config)
 {
     AsmPlugin_Init(config, &dlstation_nds_data);
     dlstation_nds_data->use_advert = 1;
@@ -261,7 +247,7 @@ DLLIMPORT bool AsmPlug_Init(sAsmSDK_Config *config)
     return 1;
 }
 
-DLLIMPORT bool AsmPlug_DeInit()
+bool AsmPlug_DeInit()
 {
     AsmPlugin_DeInit(&dlstation_nds_data);
 
@@ -277,12 +263,12 @@ DLLIMPORT bool AsmPlug_DeInit()
     return 1;
 }
 
-DLLIMPORT volatile Nds_data *AsmPlug_GetNdsData()
+volatile Nds_data *AsmPlug_GetNdsData()
 {
     return dlstation_nds_data;
 }
 
-DLLIMPORT void AsmPlug_Reset()
+void AsmPlug_Reset()
 {
     dlstation_stage=STAGEDL_MENU_REQ;
 
@@ -305,7 +291,7 @@ DLLIMPORT void AsmPlug_Reset()
     }
 }
 
-DLLIMPORT int AsmPlug_GetModeStatus(int mode)//Queries whether or not the specified mode is available in this packet module.
+int AsmPlug_GetModeStatus(int mode)//Queries whether or not the specified mode is available in this packet module.
 {
     if(mode == MODE_ASM)return 1;
     if(mode != MODE_ASM)return 0;
@@ -313,23 +299,20 @@ DLLIMPORT int AsmPlug_GetModeStatus(int mode)//Queries whether or not the specif
 	return 0;
 }
 
-DLLIMPORT int AsmPlug_SwitchMode(int mode)
+int AsmPlug_SwitchMode(int mode)
 {
     if(mode != MODE_ASM)return 3;
 
     return 1;
 }
 
-#ifdef __cplusplus
-  }
-#endif
-
 void AddClient(DLClient client)
 {
     bool found = 0;
+    int i;
     client.has_data = 1;
 
-    for(int i=0; i<15; i++)
+    for(i=0; i<15; i++)
     {
         if(DLClients[i].has_data)
         {
@@ -354,7 +337,8 @@ void RemoveClient(int index)
 
 void RemoveClients()
 {
-    for(int i=0; i<15; i++)
+    int i;
+    for(i=0; i<15; i++)
         RemoveClient(i);
 }
 
@@ -362,9 +346,10 @@ int AddWMBHost(WMBHost host)
 {
     int found = -1;
     int index = 0;
+    int i;
     host.has_data = 1;
 
-    for(int i=0; i<256; i++)
+    for(i=0; i<256; i++)
     {
         if(!WMBHosts[i].has_data)continue;
 
@@ -372,7 +357,7 @@ int AddWMBHost(WMBHost host)
     }
     if(found>=0)return found;
 
-    for(int i=0; i<15; i++)
+    for(i=0; i<15; i++)
     {
         if(!WMBHosts[i].has_data)
         {
@@ -388,8 +373,9 @@ int AddWMBHost(WMBHost host)
 int GetClient(unsigned char *mac)
 {
     int index = -1;
+    int i;
 
-    for(int i=0; i<16; i++)
+    for(i=0; i<16; i++)
     {
         if(!DLClients[i].has_data)continue;
 
@@ -406,8 +392,9 @@ int GetClient(unsigned char *mac)
 int GetWMBHost(unsigned char *mac)
 {
     int index = -1;
+    int i;
 
-    for(int i=0; i<15; i++)
+    for(i=0; i<15; i++)
     {
         if(!WMBHosts[i].has_data)continue;
 
@@ -430,15 +417,17 @@ void RemoveWMBHost(int index)
 
 void RemoveWMBHosts()
 {
-    for(int i=0; i<256; i++)
+    int i;
+    for(i=0; i<256; i++)
         RemoveWMBHost(i);
 }
 
 int LookupGameID(char *id)
 {
     int index = -1;
+    int i;
 
-    for(int i=0; i<16; i++)
+    for(i=0; i<16; i++)
     {
         if(memcmp(id, gameIDs[i], 8)==0)
         {
@@ -530,6 +519,7 @@ int HandleWMB_DataAck(unsigned char *data, int length)
     unsigned char mgc2[3] = {0x00, 0x00, 0x00};
     int index = 0;
     bool found = 0;
+    int i;
 
     if(CheckFrameControl(frm, 2, 1))
     {
@@ -537,7 +527,7 @@ int HandleWMB_DataAck(unsigned char *data, int length)
         {
             if(memcmp(dat, mgc1, 3) && memcmp(dat + 7, mgc2, 3))
             {
-                for(int i=0; i<15; i++)
+                for(i=0; i<15; i++)
                 {
                     if(!DLClients[i].has_data)continue;
 
@@ -740,6 +730,7 @@ int HandleDL_MenuDownload(unsigned char *data, int length)
     MenuItem *item = NULL;
     int gameID = 0;
     char *str = NULL;
+    int i;
 
     if(assembled_menu)return 3;
 
@@ -752,7 +743,7 @@ int HandleDL_MenuDownload(unsigned char *data, int length)
             {
                 if(seq!=0)
                 {
-                    for(int i=0; i<(int)seq; i++)
+                    for(i=0; i<(int)seq; i++)
                     {
                         cur_pos+=menu_sizes[i];
                         if(menu_sizes[i]==0)
@@ -776,7 +767,7 @@ int HandleDL_MenuDownload(unsigned char *data, int length)
         {
             if(!found_menu[0])return 3;
             cur_pos += menu_sizes[0];
-            for(int i=1; i<1000; i++)//This is supposed to find the end of the menu data in the menu_data buffer, but this might be broken, I'm not sure. There's a bunch of zeroes at the end of my dump.
+            for(i=1; i<1000; i++)//This is supposed to find the end of the menu data in the menu_data buffer.
             {
                 if((!found_menu[i-1] && found_menu[i]))return 3;
 
@@ -840,14 +831,14 @@ int HandleDL_MenuDownload(unsigned char *data, int length)
                 memcpy((void*)&dlstation_nds_data->adverts[gameID].icon, (void*)&item->icon, 512);
                 memcpy((void*)&dlstation_nds_data->adverts[gameID].icon_pallete, (void*)&item->palette, sizeof(unsigned short) * 16);
 
-                for(int i=0; i<48; i++)
+                for(i=0; i<48; i++)
                 {
                     if(item->title[i]==0)break;
 
                     dlstation_nds_data->adverts[gameID].game_name[i] = (unsigned short)item->title[i];
                 }
 
-                for(int i=0; i<96; i++)
+                for(i=0; i<96; i++)
                 {
                     if(item->subtitle[i]==0)break;
 
@@ -883,8 +874,8 @@ int HandleDL_MenuDownload(unsigned char *data, int length)
 //This function returns 1 if the clientID, from the header/data packets, has the same gameID, as in the value in the gameID variable.
 bool LookupClientsGameID(unsigned short clientID, unsigned char gameID)
 {
-
-    for(int i=0; i<6; i++)
+    int i;
+    for(i=0; i<6; i++)
     {
 
         if(clientID > 8 * (i+1))continue;
@@ -1016,6 +1007,7 @@ int HandleDL_Data(unsigned char *data, int length)
     int temp = dlstation_nds_data->data_sizes[0];
     int end_temp = 0;
     int lzo_ret = 0;
+    int i;
     lzo_uint out_len = 0;
 
     dat = CheckDLFrame(data, length, 0x1f, &size, &seq, &clientID);
@@ -1029,7 +1021,7 @@ int HandleDL_Data(unsigned char *data, int length)
         if(seq!=0xFFFF)
         {
 
-            for(int i=1; i<(int)seq; i++)
+            for(i=1; i<(int)seq; i++)
             {
 
                 temp+=dlstation_nds_data->data_sizes[i+1];
@@ -1058,7 +1050,7 @@ int HandleDL_Data(unsigned char *data, int length)
             {
                 bool found = 0;
 
-                for(int i=1; i<(int)seq; i++)
+                for(i=1; i<(int)seq; i++)
                 {
                     if(!dlstation_nds_data->data_sizes[i])found = 1;
                 }
