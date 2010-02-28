@@ -20,7 +20,7 @@ DEALINGS IN THE SOFTWARE.
 */
 
 #define BUILDING_SDK
-#include "..\include\wmb_asm_sdk.h"
+#include "wmb_asm_sdk.h"
 
     #ifndef NDS
 
@@ -66,7 +66,7 @@ DEALINGS IN THE SOFTWARE.
                                     #ifdef unix
                                         lpdll = dlopen(modname,RTLD_NOW);
 
-                                        if(error_buffer!=NULL && dllHandle==NULL)sprintf(error_buffer,"Failed to open shared library %s\n",modname);
+                                        if(error_buffer!=NULL && lpdll==NULL)sprintf(error_buffer,"Failed to open shared library %s\n",modname);
                                     #endif
 
                                             #ifndef WIN32
@@ -184,9 +184,9 @@ bool LoadAsmDLL(const char *filename, struct sAsmSDK_Config *config, char *error
 
     #endif
 
-        ND_DAT = (struct Nds_data*)malloc(sizeof(struct Nds_data));
+        ND_DAT = (Nds_data*)malloc(sizeof(Nds_data));
         config->nds_data = (volatile struct Nds_data**)&ND_DAT;
-    memset((void*)*config->nds_data, 0, sizeof(struct Nds_data));
+    memset((void*)*config->nds_data, 0, sizeof(Nds_data));
 
     config->DEBUG = (bool*)malloc(sizeof(bool));
 

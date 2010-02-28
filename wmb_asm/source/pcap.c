@@ -21,7 +21,7 @@ DEALINGS IN THE SOFTWARE.
 
 #define BUILDING_SDK
 
-#include "..\include\wmb_asm_sdk.h"
+#include "wmb_asm_sdk.h"
 
 #ifndef lib_pcap_h
 

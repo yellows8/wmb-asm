@@ -23,7 +23,7 @@ DEALINGS IN THE SOFTWARE.
 
 #define SDK_MAIN
 
-#include "..\include\wmb_asm_sdk.h"
+#include "wmb_asm_sdk.h"
 
 unsigned char normal_mac[5] = {0x03,0x09,0xBF,0x00,0x00};
 

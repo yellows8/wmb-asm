@@ -1,5 +1,5 @@
-#include "..\..\SDK\include\wmb_asm_sdk_module.h"
-#include "..\include\network.h"
+#include "wmb_asm_sdk_module.h"
+#include "network.h"
 
 #ifdef NDS
 int nds_init_network();

@@ -25,8 +25,8 @@ DEALINGS IN THE SOFTWARE.
 
 #define DLLMAIN
 
-#include "..\..\SDK\include\wmb_asm_sdk_module.h"
-#include "..\include\network.h"
+#include "wmb_asm_sdk_module.h"
+#include "network.h"
 
 #define MAX_PKT_MODULES 255
 
@@ -34,10 +34,6 @@ DEALINGS IN THE SOFTWARE.
 #define DLLIMPORT __declspec (dllexport)
 
 SuccessCallback AssemblySuccessCallback = NULL;
-
-#ifdef __cplusplus
-  extern "C" {
-#endif
 
 void CheckEndianA(void* input, int input_length);//This one must be called first, with AVS header length as input
 void ConvertEndian(void* input, void* output, int input_length);//Only call this after both of the above are called.
@@ -53,28 +49,15 @@ unsigned short CalcCRC16(unsigned char *data, unsigned int length);
 bool Handle802_11(unsigned char *data, int length);
 bool AssembleNds(char *output);
 
-#ifdef DLLIMPORT
-	#ifdef NDS
-		#undef DLLIMPORT
-		#define DLLIMPORT
-	#endif
-#endif
+unsigned char GetPrecentageCompleteAsm();
 
-DLLIMPORT unsigned char GetPrecentageCompleteAsm();
+bool HandlePacket(sAsmSDK_Params *params);
 
-//DLLIMPORT void CaptureAsmReset(lpAsmGetStatusCallback callback);
-
-DLLIMPORT bool HandlePacket(sAsmSDK_Params *params);
-
-DLLIMPORT char *GetStatusAsm(int *error_code);
+char *GetStatusAsm(int *error_code);
 void GetStatusAsmA(lpAsmGetStatusCallback callback, int index);
 
 #ifdef WIN32
 void ExecuteApp(char *appname, char *cmdline);
-#endif
-
-#ifdef __cplusplus
-  }
 #endif
 
 bool debug=0;
