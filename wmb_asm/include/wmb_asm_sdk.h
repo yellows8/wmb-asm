@@ -57,6 +57,12 @@ DEALINGS IN THE SOFTWARE.
             #endif
     #endif
 
+#ifndef ARM9
+        #ifndef __cplusplus
+                typedef enum {false = 0, true = 1} bool;
+        #endif
+#endif
+
 #include "pcap.h"
 #include "dirscan.h"
 
@@ -296,26 +302,16 @@ struct PacketModule
                     #endif
 
 //These structs are from Juglak's WMB Host. Others are from libnds, while one is mine
-struct iee80211_framehead2 {//<----------This is the struct actually used in the program. The other is a backup.
+typedef struct _iee80211_framehead2 {//<----------This is the struct actually used in the program. The other is a backup.
 	unsigned short frame_control;
 	unsigned short duration_id;
 	unsigned char mac1[6];
 	unsigned char mac2[6];
 	unsigned char mac3[6];
 	unsigned short sequence_control;
-};
+} iee80211_framehead2;
 
-struct iee80211_framehead {
-	unsigned short frame_control;
-	unsigned short duration_id;
-	unsigned char mac1[6];
-	unsigned char mac2[6];
-	unsigned char mac3[6];
-	unsigned short sequence_control;
-	unsigned char mac4[6];
-};
-
-struct ds_advert {
+typedef struct _ds_advert {
 	volatile unsigned short icon_pallete[16];
 	volatile unsigned char icon[512];
 	volatile unsigned char unk220;
@@ -325,18 +321,18 @@ struct ds_advert {
 	volatile unsigned char unk237;
 	volatile unsigned short game_name[48];
 	volatile unsigned short game_description[96];
-} __attribute__ ((__packed__));
+} __attribute__ ((__packed__)) ds_advert;
 
-struct TNDSBanner {
+typedef struct _TNDSBanner {
   unsigned short version;
   unsigned short crc;
   unsigned char reserved[28];
   unsigned char icon[512];
   unsigned short palette[16];
   unsigned short titles[6][128];
-} __attribute__ ((__packed__));
+} __attribute__ ((__packed__)) TNDSBanner;
 
-struct beacon {
+typedef struct _beacon {
 	unsigned char unk0[4];
 	unsigned char destmac[6];
 	unsigned char srcmac[6];
@@ -350,9 +346,9 @@ struct beacon {
 	unsigned char dsparms[3];
 	unsigned char tidm[7];
 	unsigned char vendor[2];
-} __attribute__ ((__packed__));
+} __attribute__ ((__packed__)) beacon;
 
-struct ds_element {
+typedef struct _ds_element {
 	unsigned char manufacturer[3];
 	unsigned char unk03;
 	unsigned char unk04[4];
@@ -372,9 +368,9 @@ struct ds_element {
 	unsigned char advert_len; // in beacons
 	unsigned short data_size;
 	unsigned char data[98];
-} __attribute__ ((__packed__));
+} __attribute__ ((__packed__)) ds_element;
 
-struct nds_rsaframe {
+typedef struct nds_rsaframe {
 	unsigned int arm9exeaddr;
 	unsigned int arm7exeaddr;
 	unsigned int unk08; // 0
@@ -392,7 +388,7 @@ struct nds_rsaframe {
 	unsigned char unk38[2]; // 1
 	unsigned char signature[136];
 	unsigned char unkC4[36]; // 0's
-} __attribute__ ((__packed__));
+} __attribute__ ((__packed__)) nds_rsaframe;
 
 
 
@@ -404,7 +400,7 @@ struct nds_rsaframe {
 #define AVS_PREAMBLE 1//-805175296//1
 #define AVS_ENCODING 1//-1//1
 
-struct AVS_header//AVS WLAN Capture header
+typedef struct _AVS_header//AVS WLAN Capture header
 {
        unsigned int magic_revision;//Conatins both a magic number and the revision in one.
        //Use if((avs->magic_revision & AVS_magic) && (((unsigned char*)&avs->magic_revision)[3] & AVS_revision)) to check if it's correct
@@ -422,9 +418,9 @@ struct AVS_header//AVS WLAN Capture header
        unsigned int preamble;
        unsigned int encoding_type;
 
-} __attribute__((__packed__));
+} __attribute__((__packed__)) AVS_header;
 
-struct TNDSHeader {
+typedef struct _TNDSHeader {
   char gameTitle[12];
   char gameCode[4];
   char makercode[2];
@@ -477,7 +473,7 @@ struct TNDSHeader {
   unsigned short headerCRC16;
 
   unsigned char zero[160];
-} __attribute__ ((__packed__));
+} __attribute__ ((__packed__)) TNDSHeader;
 
 //Beacon code is based on masscat's WMB client code for beacons.
 typedef struct _Nds_data
@@ -524,13 +520,13 @@ typedef struct _Nds_data
 
 	#ifdef ASM_SDK_PLUGIN
 	#ifdef NDS
-		DLLIMPORT void ResetAsm(volatile Nds_data *nds_data);
+		void ResetAsm(volatile Nds_data *nds_data);
 	#endif
 	#endif
 
     #ifndef NDS
         #ifdef USING_DLL
-            DLLIMPORT void ResetAsm(volatile Nds_data *nds_data);
+            void ResetAsm(volatile Nds_data *nds_data);
         #endif
 
         typedef void (*lpResetAsm)(volatile Nds_data *nds_data);
