@@ -23,7 +23,7 @@ DEALINGS IN THE SOFTWARE.
 
 #include "wmb_asm_sdk.h"
 
-inline void AllocDir(struct FILE_LIST *files)
+inline void AllocDir(FILE_LIST *files)
 {
 
         files->filename = (char*)malloc(256);
@@ -32,7 +32,7 @@ inline void AllocDir(struct FILE_LIST *files)
         memset(files->next,0,sizeof(struct FILE_LIST));
 }
 
-DLLIMPORT void FreeDirectory(struct FILE_LIST *filelist)
+void FreeDirectory(FILE_LIST *filelist)
 {
 
     struct FILE_LIST *files = filelist;
@@ -47,11 +47,11 @@ DLLIMPORT void FreeDirectory(struct FILE_LIST *filelist)
     }
 }
 
-DLLIMPORT struct FILE_LIST *ScanDirectory(struct FILE_LIST *filelist, char *dirname, char *ext)
+FILE_LIST *ScanDirectory(FILE_LIST *filelist, char *dirname, char *ext)
 {
 
-    struct FILE_LIST *files=NULL;
-    struct FILE_LIST *cur_files=NULL;
+    FILE_LIST *files=NULL;
+    FILE_LIST *cur_files=NULL;
     DIR *dir = NULL;
     struct dirent *ent = NULL;
     char *DirName = (char*)malloc(256);

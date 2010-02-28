@@ -30,9 +30,6 @@ DEALINGS IN THE SOFTWARE.
 
 #define MAX_PKT_MODULES 255
 
-#undef DLLIMPORT
-#define DLLIMPORT __declspec (dllexport)
-
 SuccessCallback AssemblySuccessCallback = NULL;
 
 void CheckEndianA(void* input, int input_length);//This one must be called first, with AVS header length as input
@@ -126,7 +123,8 @@ bool PktModReorder();
 
 void PktModClose()
 {
-	for(int i=0; i<totalPacketModules; i++)
+	int i;
+	for(i=0; i<totalPacketModules; i++)
 	{
 		if(packetModules[i].DeInit!=NULL)
 			packetModules[i].DeInit();
@@ -143,15 +141,16 @@ bool PktModInit()
 	if(!PktModReorder())return 0;
 	#endif
 
-		for(int i=0; i<totalPacketModules; i++)
+		int i;
+		for(i=0; i<totalPacketModules; i++)
 		{
 			if(packetModules[i].Init!=NULL)
 			{
 				if(!packetModules[i].Init(CONFIG))
 				    return 0;
 
-                packetModules[i].GetNdsData()->PacketModIndex = i;
-            }
+                		packetModules[i].GetNdsData()->PacketModIndex = i;
+            		}
 		}
 
 	return 1;
@@ -236,7 +235,8 @@ bool PktModReorder()
 
 void PktModReset()
 {
-	for(int i=0; i<totalPacketModules; i++)
+	int i;
+	for(i=0; i<totalPacketModules; i++)
 	{
 		if(packetModules[i].reset!=NULL)
 			packetModules[i].reset();
@@ -245,7 +245,8 @@ void PktModReset()
 
 void PktModSwitchMode(int mode)
 {
-	for(int i=0; i<totalPacketModules; i++)
+	int i;
+	for(i=0; i<totalPacketModules; i++)
 	{
 		if(packetModules[i].SwitchMode!=NULL)
 			packetModules[i].SwitchMode(mode);
@@ -255,10 +256,11 @@ void PktModSwitchMode(int mode)
 bool PktModHandle802_11(unsigned char *data, int length)
 {
     int ret = 0;
+    int ii;
 
     if(currentPacketModule == -1)
     {
-			for(int ii=0; ii<totalPacketModules; ii++)
+			for(ii=0; ii<totalPacketModules; ii++)
 			{
 				if(packetModules[ii].handle802_11!=NULL)
 				{
@@ -277,8 +279,8 @@ bool PktModHandle802_11(unsigned char *data, int length)
         ret = packetModules[currentPacketModule].handle802_11(data, length);
 
         if(ret==0)
-        {
-			for(int ii=0; ii<totalPacketModules; ii++)
+        
+			for(ii=0; ii<totalPacketModules; ii++)
 			{
 				if(packetModules[ii].handle802_11!=NULL && ii!=currentPacketModule)
 				{
@@ -740,18 +742,14 @@ inline bool CheckFCS(unsigned char *data, int length)
     return 0;
 }
 
-#ifdef __cplusplus
-  extern "C" {
-#endif
-
 //************VERSION************************************
 
-DLLIMPORT char *GetModuleVersionStr()
+char *GetModuleVersionStr()
 {
     return (char*)ASM_MODULE_VERSION_STR;
 }
 
-DLLIMPORT int GetModuleVersionInt(int which_number)
+int GetModuleVersionInt(int which_number)
 {
     if(which_number <= 0)return ASM_MODULE_VERSION_MAJOR;
     if(which_number == 1)return ASM_MODULE_VERSION_MINOR;
@@ -761,7 +759,7 @@ DLLIMPORT int GetModuleVersionInt(int which_number)
     return 0;
 }
 
-DLLIMPORT bool InitAsm(SuccessCallback callback, bool debug, sAsmSDK_Config *config)
+bool InitAsm(SuccessCallback callback, bool debug, sAsmSDK_Config *config)
 {
 
     DEBUG = config->DEBUG;
@@ -789,7 +787,7 @@ DLLIMPORT bool InitAsm(SuccessCallback callback, bool debug, sAsmSDK_Config *con
     return 1;
 }
 
-DLLIMPORT void ResetAsm(volatile Nds_data *dat)
+void ResetAsm(volatile Nds_data *dat)
 {
 
                         if(dat!=NULL)module_nds_data = dat;
@@ -863,7 +861,7 @@ DLLIMPORT void ResetAsm(volatile Nds_data *dat)
 
 }
 
-DLLIMPORT void ExitAsm()
+void ExitAsm()
 {
     ResetAsm(NULL);
     PktModClose();
@@ -892,7 +890,7 @@ DLLIMPORT void ExitAsm()
         }
 }
 
-DLLIMPORT int SwitchMode(int mode)
+int SwitchMode(int mode)
 {
     if(mode < 0 || mode > MODE_HOST)return 0;
 
@@ -909,7 +907,7 @@ DLLIMPORT int SwitchMode(int mode)
     return 1;
 }
 
-DLLIMPORT int SelectPacketModule(int index)
+int SelectPacketModule(int index)
 {
     if(index < 0 || index > totalPacketModules)return 0;
 
@@ -921,33 +919,29 @@ DLLIMPORT int SelectPacketModule(int index)
     return 1;
 }
 
-DLLIMPORT PacketModule *GetPacketModules()
+PacketModule *GetPacketModules()
 {
     return packetModules;
 }
 
-DLLIMPORT int GetTotalPacketModules()
+int GetTotalPacketModules()
 {
     return totalPacketModules;
 }
 
-DLLIMPORT int GetPacketModuleID(int index)
+int GetPacketModuleID(int index)
 {
     if(index < 0 || index > totalPacketModules)return 0;
 
     return packetModules[index].ID;
 }
 
-DLLIMPORT char *GetPacketModuleIDStr(int index)
+char *GetPacketModuleIDStr(int index)
 {
     if(index < 0 || index > totalPacketModules)return NULL;
 
     return packetModules[index].IDStr;
 }
-
-#ifdef __cplusplus
-  }
-#endif
 
 int total_assembled=0;
 int prev_total=0;

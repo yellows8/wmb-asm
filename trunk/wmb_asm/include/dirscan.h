@@ -22,21 +22,13 @@ DEALINGS IN THE SOFTWARE.
 #ifndef _H_DIRSCAN
 #define _H_DIRSCAN
 
-#ifdef __cplusplus
-  extern "C" {
-#endif
-
-struct FILE_LIST
+typedef struct _FILE_LIST
 {
     char *filename;
     struct FILE_LIST *next;
-} ;
+} FILE_LIST;
 
-    struct FILE_LIST *ScanDirectory(struct FILE_LIST *filelist, char *dirname, char *ext);
-    void FreeDirectory(struct FILE_LIST *filelist);
-
-#ifdef __cplusplus
-  }
-#endif
+    FILE_LIST *ScanDirectory(FILE_LIST *filelist, char *dirname, char *ext);
+    void FreeDirectory(FILE_LIST *filelist);
 
 #endif

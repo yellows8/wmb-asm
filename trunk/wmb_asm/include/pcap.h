@@ -32,7 +32,7 @@ DEALINGS IN THE SOFTWARE.
     typedef unsigned char u_char;
     typedef unsigned int u_int;
     
-    struct pcap_file_header {
+    typedef struct _pcap_file_header {
 	   unsigned int magic;
 	   unsigned short majorVersion;
 	   unsigned short minorVersion;
@@ -40,32 +40,28 @@ DEALINGS IN THE SOFTWARE.
 	   unsigned int timeStampAccuracy;
 	   unsigned int snapshotLength;
 	   unsigned int linkLayerType;
-    } __attribute__ ((__packed__));
+    } __attribute__ ((__packed__)) pcap_file_header;
 
-    struct spcap_pkthdr {
+    typedef struct _spcap_pkthdr {
 	   long tv_sec;
         long tv_usec;	/* time stamp */
 	   unsigned int caplen;	/* length of portion present */
 	   unsigned int len;	/* length this packet (off wire) */
-    } __attribute__ ((__packed__));
+    } __attribute__ ((__packed__)) spcap_pkthdr;
     
-    struct pcap_t
+    typedef struct _pcap_t
 	{
 		FILE *file;
 		bool swap;
-		struct spcap_pkthdr header;
+		spcap_pkthdr header;
 		unsigned char *pktdata;
 		char *error_buffer;
-	} __attribute__ ((__packed__));
-	
-	#ifdef __cplusplus
-    extern "C" {
-    #endif
+	} __attribute__ ((__packed__)) pcap_t;
 	
         struct pcap_t  *pcap_open_offline(const char *filename, char *errbuf);
-        int     pcap_next_ex(struct pcap_t *file, struct spcap_pkthdr **hdr, const u_char **pktdata);
-        void    pcap_close(struct pcap_t *file);
-        char    *pcap_geterr(struct pcap_t *file);
+        int     pcap_next_ex(pcap_t *file, spcap_pkthdr **hdr, const u_char **pktdata);
+        void    pcap_close(pcap_t *file);
+        char    *pcap_geterr(pcap_t *file);
         
         #ifdef ASM_SDK_CLIENT
             int GetPacketNumber();
@@ -78,10 +74,6 @@ DEALINGS IN THE SOFTWARE.
         int GetSnapshotLength();
         bool GetPacketHasAVS();
         void SetPacketHasAVS(bool val);
-    
-    #ifdef __cplusplus
-    }
-    #endif
 
     #endif
     
