@@ -27,12 +27,7 @@ DEALINGS IN THE SOFTWARE.
 
 unsigned char normal_mac[5] = {0x03,0x09,0xBF,0x00,0x00};
 
-void ConvertAVSEndian(struct AVS_header *avs);
-
-#ifdef DLLIMPORT
-    #undef DLLIMPORT
-    #define DLLIMPORT
-#endif
+void ConvertAVSEndian(AVS_header *avs);
 
 //**********ENDIANS*******************************
 
@@ -141,7 +136,7 @@ bool CompareMAC(unsigned char *a, unsigned char *b)
 }
 
 //******************CHECK FRAME CONTROL***************************************************************
-bool CheckFrameControl(struct iee80211_framehead2 *framehead, int type, int subtype)
+bool CheckFrameControl(iee80211_framehead2 *framehead, int type, int subtype)
 {
     /*if(*SDK_DEBUG && SDK_CONFIG!=NULL)
     {
@@ -179,7 +174,7 @@ unsigned char host_client_mgc[4] = {0x06,0x01,0x02,0x00};
 //******************CHECK FRAME*********************************************************
 bool CheckFrame(unsigned char *data, unsigned char *host_mac, unsigned char command, unsigned short *size, unsigned char *pos)
 {
-     struct iee80211_framehead *fh = (struct iee80211_framehead*)data;
+     iee80211_framehead2 *fh = (iee80211_framehead2*)data;
      unsigned char rsize=0;
      unsigned short Size=0;
      int data_pos = 24;
@@ -240,7 +235,7 @@ unsigned char *nintendoWMBBeacon( unsigned char *frame, int frame_size)
          while(i<frame_size)
          {
             //Keep going through the tags until we reach the end of the data
-                         if(frame[i]==NINTENDO_IE_TAG)//We found the Nintendo tag!
+                         if(frame[i]==NINTENDO_IE_TAG)//We found the Nintendo tag.
                          {
                                                       nin_ie=&frame[i+2];
                                                         length=((int)frame[i+1]);
@@ -261,18 +256,18 @@ unsigned char *nintendoWMBBeacon( unsigned char *frame, int frame_size)
   return nin_ie;
 }
 
-void UpdateAvert(volatile struct Nds_data *dat)
+void UpdateAvert(volatile Nds_data *dat)
 {
     #ifndef NDS
     printf("UpdateAdvert(wmb_nds_data); //wmb_nds_data = %d src %d\n", (int)dat->gameID, (980 * (int)dat->gameID));
     #endif
-    memcpy((void*)&dat->advert, (void*)&dat->beacon_data[ (980 * (int)dat->gameID) ], sizeof(struct ds_advert));
+    memcpy((void*)&dat->advert, (void*)&dat->beacon_data[ (980 * (int)dat->gameID) ], sizeof(ds_advert));
 }
 
 //*********************AVS*******************************************************
 unsigned char *IsValidAVS(u_char *pkt_data)
 {
-     struct AVS_header *avs = NULL;
+     AVS_header *avs = NULL;
 
      if(!PCAP_CheckAVS)
      {
@@ -292,7 +287,7 @@ unsigned char *IsValidAVS(u_char *pkt_data)
 
                         if(avs->preamble==AVS_PREAMBLE && avs->encoding_type==AVS_ENCODING)
                         {
-                        return pkt_data + ((int)sizeof(struct AVS_header));
+                        return pkt_data + ((int)sizeof(AVS_header));
                         }
                         else
                         {
@@ -331,7 +326,7 @@ unsigned char *IsValidAVS(u_char *pkt_data)
 }
 
 //**********************AVS ENDIAN*******************************************************
-void ConvertAVSEndian(struct AVS_header *avs)
+void ConvertAVSEndian(AVS_header *avs)
 {
      CheckEndianA(&avs->header_length,4);
 
@@ -388,7 +383,7 @@ bool CheckDataPackets(int seq)
 
 unsigned char GetGameID(unsigned char *data)
 {
-    struct iee80211_framehead2 *framehead = (struct iee80211_framehead2*)data;
+    iee80211_framehead2 *framehead = (iee80211_framehead2*)data;
     unsigned Byte1, Byte2, gameID;
     unsigned char *bytes;
     Byte1=0;Byte2=0;gameID=0;
