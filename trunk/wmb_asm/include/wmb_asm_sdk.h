@@ -34,75 +34,12 @@ DEALINGS IN THE SOFTWARE.
 #define ASM_MODULE_VERSION_BUILD 0
 #define ASM_MODULE_VERSION_STR "2.0b r2"
 
-#ifndef ARM9
-	#ifndef __cplusplus
-		typedef enum {false = 0, true = 1} bool;
-	#endif
-#endif
-
-#ifdef BUILDING_SDK
-
-    #ifndef BUILDING_DLL
-        #undef DLLIMPORT
-        #define DLLIMPORT
-        #undef USING_DLL
-    #endif
-
-    #ifdef BUILDING_DLL
-        #undef DLLIMPORT
-        #define DLLIMPORT __declspec (dllexport)
-    #endif
-
-    #ifdef BUILDING_DLL
-        #ifndef USING_DLL
-            #define USING_DLL
-        #endif
-    #endif
-
-#endif
-
-#ifndef BUILDING_SDK
-    #ifdef USING_DLL
-        #ifndef ASM_SDK_MODULE
-            #undef DLLIMPORT
-            #define DLLIMPORT __declspec (dllimport)
-        #endif
-
-        #ifdef ASM_SDK_MODULE
-            #undef DLLIMPORT
-            #define DLLIMPORT __declspec (dllexport)
-        #endif
-    #endif
-
-    #ifndef USING_DLL
-        #undef DLLIMPORT
-        #define DLLIMPORT
-    #endif
-
-#endif
-
-#ifdef BUILDING_SDK
-
-        #ifndef DLL_LOAD
-
-            #ifndef USING_DLL
-                #define USING_DLL
-            #endif
-        #endif
-#endif
-
     #ifdef ARM9//We are compiling for Nintendo DS
 		#include <nds.h>
 		#ifndef NDS
 		#define NDS
 		#endif
     #endif
-
-        #ifdef NDS
-            #ifndef BUILDING_DLL
-                #define BUILDING_DLL 1//Some trickery so the functions aren't exported. See dll.h for detals.
-            #endif
-        #endif
 
 #include <stdio.h>
 #include <string.h>
@@ -111,26 +48,19 @@ DEALINGS IN THE SOFTWARE.
 #include <stdlib.h>
 
     #ifndef NDS
+    #ifdef WIN32
         #include <io.h>
+    #endif
 
             #ifdef __cplusplus
                 #include <cstdio>
             #endif
     #endif
 
-#ifdef __cplusplus
-    extern "C" {
-#endif
+#include "pcap.h"
+#include "dirscan.h"
 
-#include "../include/pcap.h"
-
-#ifdef __cplusplus
-    }
-#endif
-
-#include "../include/dirscan.h"
-
-    #ifndef NDS
+    #ifdef WIN32
         #include <windows.h>
     #endif
 
@@ -139,12 +69,12 @@ DEALINGS IN THE SOFTWARE.
                         #include <cstdlib>
                         #include <iostream>
                     #endif
-                #include "../include/win32dirent.h"
+                #include "win32dirent.h"
             #endif
 
                     #ifdef unix
-                        #include <cstdlib>
-                        #include <iostream>
+                        //#include <cstdlib>
+                        //#include <iostream>
                         #include <dirent.h>
                         #include <dlfcn.h>
                     #endif
@@ -227,7 +157,7 @@ typedef void (*SuccessCallback)(void);
 void ConvertEndian(void* input, void* output, int input_length);
 void CheckEndianA(void* input, int input_length);
 
-struct sAsmSDK_Params
+typedef struct _sAsmSDK_Params
 {
     struct spcap_pkthdr *header;
     u_char *pkt_data;
@@ -240,7 +170,7 @@ struct sAsmSDK_Params
     char *copydir;
     bool use_copydir;
     bool has_avs;
-};
+}sAsmSDK_Params;
 
 typedef void (*lpAsmGetStatusCallback)(char *str);
 
@@ -292,7 +222,7 @@ struct PacketModule
 
                 #ifndef NDS
 
-                    typedef bool (*lpHandlePacket)(struct sAsmSDK_Params *params);
+                    typedef bool (*lpHandlePacket)( sAsmSDK_Params *params);
                     typedef bool (*lpInitAsm)(SuccessCallback callback, bool debug, struct sAsmSDK_Config *config);
                     typedef void (*lpExitAsm)(void);
                     typedef void (*lpCaptureAsmReset)(int *code, lpAsmGetStatusCallback callback);
@@ -466,7 +396,7 @@ struct nds_rsaframe {
 
 
 
-#define AVS_magic    0x08021100//If you think about it, this magic string looks like 0 802.11 00
+#define AVS_magic    0x08021100
 #define AVS_revision 0x01//1/01
 #define AVS_PHY_type 4//67108864//4//802.11 type I guess... (DSSS 802.11b in this case)
 #define AVS_DATA_RATE 20//335544320//14
@@ -550,7 +480,7 @@ struct TNDSHeader {
 } __attribute__ ((__packed__));
 
 //Beacon code is based on masscat's WMB client code for beacons.
-struct Nds_data
+typedef struct _Nds_data
 {
        volatile int found_beacon[10*15];//At least one if we have seen a beacon. Access it like so: nds_data.found_beacon((gameID*10)+advert_sequence_number)
        volatile unsigned char beacon_data[980*15];
@@ -590,7 +520,7 @@ struct Nds_data
        volatile bool use_advert;//This is only used when multipleIDs is true. When this variable is 0, advert will be used directly for assembly, with beacon_data being copyed into it first, however when 1, the adverts array will be used during assembly, instead of copying in data from the beacon_data array.
        int build_raw;//When doing assembly, when this is <=0, continue as normal. However, when this is larger than one, the Wmb Asm Module will just calculate the filename of the .nds, and directly write the contents of the saved_data buffer. The size of the .nds to write, from the buffer, is the value of this build_raw variable.
        int PacketModIndex;//The index of the packet module, for this plugin.
-};
+}Nds_data;
 
 	#ifdef ASM_SDK_PLUGIN
 	#ifdef NDS
@@ -600,10 +530,10 @@ struct Nds_data
 
     #ifndef NDS
         #ifdef USING_DLL
-            DLLIMPORT void ResetAsm(volatile struct Nds_data *nds_data);
+            DLLIMPORT void ResetAsm(volatile Nds_data *nds_data);
         #endif
 
-        typedef void (*lpResetAsm)(volatile struct Nds_data *nds_data);
+        typedef void (*lpResetAsm)(volatile Nds_data *nds_data);
 
         #ifndef BUILDING_SDK
 
@@ -623,9 +553,9 @@ struct Nds_data
 
     #endif
 
-        struct sAsmSDK_Config
+        typedef struct _sAsmSDK_Config
         {
-            volatile struct Nds_data **nds_data;
+            volatile Nds_data **nds_data;
             bool *DEBUG;
             FILE **Log;
 
@@ -652,7 +582,7 @@ struct Nds_data
 
 				lpGetPacketNumber getpacketnumber;
 
-        };
+        } sAsmSDK_Config;
 
 
 

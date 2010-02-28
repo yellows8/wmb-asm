@@ -21,7 +21,7 @@ DEALINGS IN THE SOFTWARE.
 
 #define DLLMAIN
 
-#include "..\SDK\include\wmb_asm_sdk_client.h"
+#include "wmb_asm_sdk_client.h"
 
 #ifndef NDS
 #define APPNAME "wmb_asm.exe"
