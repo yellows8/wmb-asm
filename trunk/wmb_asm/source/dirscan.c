@@ -28,15 +28,15 @@ inline void AllocDir(FILE_LIST *files)
 
         files->filename = (char*)malloc(256);
         strcpy(files->filename,"");
-        files->next = (struct FILE_LIST*)malloc(sizeof(struct FILE_LIST));
-        memset(files->next,0,sizeof(struct FILE_LIST));
+        files->next = (FILE_LIST*)malloc(sizeof(FILE_LIST));
+        memset(files->next,0,sizeof(FILE_LIST));
 }
 
 void FreeDirectory(FILE_LIST *filelist)
 {
 
-    struct FILE_LIST *files = filelist;
-    struct FILE_LIST *next_file = files;
+    FILE_LIST *files = filelist;
+    FILE_LIST *next_file = files;
     files=next_file;
     while(files!=NULL)
     {
@@ -84,8 +84,8 @@ FILE_LIST *ScanDirectory(FILE_LIST *filelist, char *dirname, char *ext)
 
         if(cur_files==NULL)
         {
-            cur_files = (struct FILE_LIST*)malloc(sizeof(struct FILE_LIST));
-            memset(cur_files,0,sizeof(struct FILE_LIST));
+            cur_files = (FILE_LIST*)malloc(sizeof(FILE_LIST));
+            memset(cur_files,0,sizeof(FILE_LIST));
         }
 
         if(cur_files->filename==NULL)
@@ -118,8 +118,8 @@ FILE_LIST *ScanDirectory(FILE_LIST *filelist, char *dirname, char *ext)
     {
         if(files==NULL)
         {
-            files = (struct FILE_LIST*)malloc(sizeof(struct FILE_LIST));
-            memset(files,0,sizeof(struct FILE_LIST));
+            files = (FILE_LIST*)malloc(sizeof(FILE_LIST));
+            memset(files,0,sizeof(FILE_LIST));
         }
 
         AllocDir(files);

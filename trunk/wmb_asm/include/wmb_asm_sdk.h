@@ -83,6 +83,8 @@ DEALINGS IN THE SOFTWARE.
                         //#include <iostream>
                         #include <dirent.h>
                         #include <dlfcn.h>
+			#include <sys/stat.h>
+			#include <sys/types.h>
                     #endif
 
     #ifdef NDS

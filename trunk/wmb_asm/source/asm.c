@@ -264,12 +264,12 @@ bool PktModHandle802_11(unsigned char *data, int length)
 			{
 				if(packetModules[ii].handle802_11!=NULL)
 				{
-                    ret = packetModules[ii].handle802_11(data, length);
+                    			ret = packetModules[ii].handle802_11(data, length);
 
 					if(ret!=0)
 					{
-                    currentPacketModule = ii;
-                    return 1;
+                    				currentPacketModule = ii;
+                    				return 1;
 					}
 				}
 			}
@@ -279,17 +279,17 @@ bool PktModHandle802_11(unsigned char *data, int length)
         ret = packetModules[currentPacketModule].handle802_11(data, length);
 
         if(ret==0)
-        
+	{
 			for(ii=0; ii<totalPacketModules; ii++)
 			{
 				if(packetModules[ii].handle802_11!=NULL && ii!=currentPacketModule)
 				{
-                    ret = packetModules[ii].handle802_11(data, length);
+                    			ret = packetModules[ii].handle802_11(data, length);
 
 					if(ret)
 					{
-                    currentPacketModule = ii;
-                    return 1;
+                    				currentPacketModule = ii;
+                    				return 1;
 					}
 				}
 			}
