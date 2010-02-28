@@ -151,10 +151,6 @@ extern unsigned char *Nin_ie;
 #define NIN_WMB_IE_PAYLOAD_DATA 0x26
 #define NIN_WMB_IE_SOME_FLAGS 0x10
 
-#ifdef __cplusplus
-  extern "C" {
-#endif
-
 int GetFileLength(FILE* _pfile);
 
 struct sAsmSDK_Config;
@@ -165,11 +161,11 @@ void CheckEndianA(void* input, int input_length);
 
 typedef struct _sAsmSDK_Params
 {
-    struct spcap_pkthdr *header;
+    spcap_pkthdr *header;
     u_char *pkt_data;
     int length;
     char **argv;
-    struct pcap_t *fp;
+    pcap_t *fp;
     bool checkrsa;
     char *outdir;
     bool run;
@@ -183,37 +179,37 @@ typedef void (*lpAsmGetStatusCallback)(char *str);
 typedef int (*lpGetPacketNumber)();
 
 #ifndef ASM_SDK_MODULE
-struct PacketModule
+typedef struct _PacketModule
 {
-    unsigned char filler[64];//The plugins are not supposed to access these directly, only through exported Wmb Asm Module functions.(A typedef struct PacketModule line was not used because GCC throws warnings about an incomplete type.)
-};
+    unsigned char filler[64];//The plugins are not supposed to access these directly, only through exported Wmb Asm Module functions.
+} PacketModule;
 #endif
 
     #ifdef ASM_SDK_CLIENT
 	#ifdef NDS
         //In this case with building dlls, DLLIMPORT really means to export the function.
-        DLLIMPORT bool HandlePacket(sAsmSDK_Params *params);
+        bool HandlePacket(sAsmSDK_Params *params);
 
-        DLLIMPORT bool InitAsm(SuccessCallback callback, bool debug, sAsmSDK_Config *config);
-        DLLIMPORT void ExitAsm();
-        DLLIMPORT void CaptureAsmReset(int *code, lpAsmGetStatusCallback callback);
+        bool InitAsm(SuccessCallback callback, bool debug, sAsmSDK_Config *config);
+        void ExitAsm();
+        void CaptureAsmReset(int *code, lpAsmGetStatusCallback callback);
 
-        DLLIMPORT char *GetStatusAsm(int *error_code);
-        DLLIMPORT bool QueryAssembleStatus(int *error_code);
-        DLLIMPORT unsigned char GetPrecentageCompleteAsm();
+        char *GetStatusAsm(int *error_code);
+        bool QueryAssembleStatus(int *error_code);
+        unsigned char GetPrecentageCompleteAsm();
 
-        DLLIMPORT int SwitchMode(int mode);
-        DLLIMPORT int SelectPacketModule(int index);
-        DLLIMPORT PacketModule *GetPacketModules();
-        DLLIMPORT int GetTotalPacketModules();
-        DLLIMPORT int GetPacketModuleID(int index);
-        DLLIMPORT char *GetPacketModuleIDStr(int index);
+        int SwitchMode(int mode);
+        int SelectPacketModule(int index);
+        PacketModule *GetPacketModules();
+        int GetTotalPacketModules();
+        int GetPacketModuleID(int index);
+        char *GetPacketModuleIDStr(int index);
 	#endif
     #endif
 
     #ifdef NDS
 	   #ifdef ASM_SDK_PLUGIN
-		DLLIMPORT unsigned char GetPrecentageCompleteAsm();
+		unsigned char GetPrecentageCompleteAsm();
 
 		extern lpGetPacketNumber GetPacketNum;
 	   #endif
@@ -481,12 +477,12 @@ typedef struct _Nds_data
        volatile int found_beacon[10*15];//At least one if we have seen a beacon. Access it like so: nds_data.found_beacon((gameID*10)+advert_sequence_number)
        volatile unsigned char beacon_data[980*15];
        volatile unsigned short beacon_checksum[10];
-       volatile struct ds_advert advert;
-       volatile struct ds_advert oldadvert;
-       volatile struct ds_advert adverts[15];
-       volatile struct nds_rsaframe rsa;
-       volatile struct TNDSHeader header;
-       volatile struct TNDSBanner *banner;//When null, the Wmb Asm Module will take care of the banner, but when not null, the packet module plugins can put data in here, and the Wmb Asm Module will just take care of writing it to the .nds.
+       volatile ds_advert advert;
+       volatile ds_advert oldadvert;
+       volatile ds_advert adverts[15];
+       volatile nds_rsaframe rsa;
+       volatile TNDSHeader header;
+       volatile TNDSBanner *banner;//When null, the Wmb Asm Module will take care of the banner, but when not null, the packet module plugins can put data in here, and the Wmb Asm Module will just take care of writing it to the .nds.
        volatile bool data_init;
        volatile int arm7s, arm7e;
        volatile int arm7s_seq, arm7e_seq;
@@ -599,15 +595,7 @@ typedef struct _Nds_data
         #endif
 		#endif
 
-    #ifdef __cplusplus
-    }
-    #endif
-
         #ifdef ASM_SDK_CLIENT
-
-			#ifdef __cplusplus
-				extern "C" {
-			#endif
 
             bool LoadAsmDLL(const char *filename, sAsmSDK_Config *config, char *error_buffer);
             bool CloseAsmDLL(char *error_buffer);
@@ -650,10 +638,6 @@ typedef struct _Nds_data
                     }
                 #endif
 
-			#ifdef __cplusplus
-				}
-			#endif
-
         #endif
 
         #define MODE_ASM 0
@@ -666,10 +650,6 @@ typedef struct _Nds_data
             #define ASMPLUG_PRI_LOW -1//Plugin priorities. The plugins with the highest priority are dealt with first, then the ones with the lower priority, and so on. The plugins with the highest pritority with have the Handle802_11 function called first, then that function will be called after the current/highest, for the lower priority, and so on.
             #define ASMPLUG_PRI_NORMAL 0//You can use priorites higher or lower than the ones defined here in the SDK, it's not restricted to only these defines. But you'll need to either make a new define, or just return the prioritiy directly from AsmPlug_GetPriority.
             #define ASMPLUG_PRI_HIGH 1
-
-			#ifdef __cplusplus
-				extern "C" {
-			#endif
 
             bool CheckFrame(unsigned char *data, unsigned char *host_mac, unsigned char command, unsigned short *size, unsigned char *pos);
             bool CheckFlow(unsigned char *mac,unsigned char flow);
@@ -706,10 +686,6 @@ typedef struct _Nds_data
 
             void UpdateAvert(volatile Nds_data *dat);
 
-			#ifdef __cplusplus
-				}
-			#endif
-
         #endif
         #endif
 
@@ -720,11 +696,6 @@ typedef struct _Nds_data
     #ifdef BUILDING_SDK
 
         #include "wmb_asm_sdk_internal.h"
-
-        #ifdef DLLIMPORT
-            #undef DLLIMPORT
-            #define DLLIMPORT
-        #endif
     #endif
 
 #endif
