@@ -296,13 +296,14 @@ int ReadDump(int argc, char *argv[])
     bool use_copydir=0;//Do we copy the output to copydir?
     bool use_capdir=1;//Do we write the output to the captures' directories?
     bool run = 0;//Do we execute the output after assembly, as if double-clicked in Windows Explorer?(Windows only)
+    int i;
     Debug = 0;
     FILE_LIST *files_list = (FILE_LIST*)malloc(sizeof(FILE_LIST));//List that will contain the filenames of the captures
     FILE_LIST *cur_file;
     memset(files_list,0,sizeof(FILE_LIST));
 
     cur_file=files_list;
-    for(int i=1; i<=argc-1; i++)//Go through all of the parameters, excluding the first one which contains the application's filename, in search of options, captures, and directories containing captures.
+    for(i=1; i<=argc-1; i++)//Go through all of the parameters, excluding the first one which contains the application's filename, in search of options, captures, and directories containing captures.
     {
         if(*argv[i]=='-')
         {

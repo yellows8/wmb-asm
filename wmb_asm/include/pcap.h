@@ -58,7 +58,7 @@ DEALINGS IN THE SOFTWARE.
 		char *error_buffer;
 	} __attribute__ ((__packed__)) pcap_t;
 	
-        struct pcap_t  *pcap_open_offline(const char *filename, char *errbuf);
+        pcap_t  *pcap_open_offline(const char *filename, char *errbuf);
         int     pcap_next_ex(pcap_t *file, spcap_pkthdr **hdr, const u_char **pktdata);
         void    pcap_close(pcap_t *file);
         char    *pcap_geterr(pcap_t *file);
