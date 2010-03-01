@@ -40,7 +40,7 @@ int WMBProcessRSA(unsigned char *data, int length);
 int WMBProcessHeader(unsigned char *data, int length);
 int WMBProcessData(unsigned char *data, int length);
 
-bool CheckFrame(unsigned char *data, unsigned char command, unsigned short *size, unsigned char *pos);
+//bool CheckFrame(unsigned char *data, unsigned char command, unsigned short *size, unsigned char *pos);
 
 int wmb_stage=SDK_STAGE_BEACON;
 
@@ -60,17 +60,6 @@ volatile Nds_data *wmb_nds_data;
 
 void Init();
 
-#ifdef __cplusplus
-  extern "C" {
-#endif
-
-#ifdef DLLIMPORT
-	#ifdef NDS
-		#undef DLLIMPORT
-		#define DLLIMPORT
-	#endif
-#endif
-
 //Change the names of the functions on-the-fly when compiling for DS, since everything is in one binary.
 #ifdef NDS
 	#define AsmPlug_GetID WMB_AsmPlug_GetID
@@ -87,22 +76,22 @@ void Init();
 	#define AsmPlug_SwitchMode WMB_AsmPlug_SwitchMode
 #endif
 
-DLLIMPORT int AsmPlug_GetID()
+int AsmPlug_GetID()
 {
     return 0;
 }
 
-DLLIMPORT char *AsmPlug_GetIDStr()
+char *AsmPlug_GetIDStr()
 {
     return (char*)"WMB";
 }
 
-DLLIMPORT int AsmPlug_GetPriority()
+int AsmPlug_GetPriority()
 {
     return ASMPLUG_PRI_LOW;//Why the lowest priority of all the default Wmb Asm plugins? The DS Download Station plugin needs to check some WMB packets. If the priority of this WMB plugin was normal, the DS Download Station plugin most likely wouldn't work correctly, if at all.
 }
 
-DLLIMPORT char *AsmPlug_GetStatus(int *error_code)
+char *AsmPlug_GetStatus(int *error_code)
 {
     if(wmb_stage==SDK_STAGE_BEACON && !wmb_nds_data->finished_first_assembly)
     {
@@ -130,6 +119,7 @@ DLLIMPORT char *AsmPlug_GetStatus(int *error_code)
         char *str;
         int missed=0;
         int found=0;
+	int i;
         str=(char*)malloc(256);
         memset(str, 0, 256);
         *error_code=SDK_STAGE_DATA;
@@ -138,7 +128,7 @@ DLLIMPORT char *AsmPlug_GetStatus(int *error_code)
             {
                 if(wmb_nds_data->data_sizes != NULL)
                 {
-                    for(int i=0; i<wmb_nds_data->arm7e_seq; i++)
+                    for(i=0; i<wmb_nds_data->arm7e_seq; i++)
                     {
                         if(wmb_nds_data->data_sizes[i]==0)
                         {
@@ -161,7 +151,7 @@ DLLIMPORT char *AsmPlug_GetStatus(int *error_code)
 	return NULL;
 }
 
-DLLIMPORT int AsmPlug_QueryFailure()
+int AsmPlug_QueryFailure()
 {
     if(wmb_stage>=SDK_STAGE_DATA)return 2;
     if(wmb_stage==SDK_STAGE_HEADER)return 1;
@@ -170,7 +160,7 @@ DLLIMPORT int AsmPlug_QueryFailure()
     return 0;
 }
 
-DLLIMPORT int AsmPlug_GetModeStatus(int mode)//Queries whether or not the specified mode is available in this packet module.
+int AsmPlug_GetModeStatus(int mode)//Queries whether or not the specified mode is available in this packet module.
 {
     if(mode == MODE_ASM)return 1;
     if(mode != MODE_ASM)return 0;
@@ -178,14 +168,14 @@ DLLIMPORT int AsmPlug_GetModeStatus(int mode)//Queries whether or not the specif
 	return 0;
 }
 
-DLLIMPORT int AsmPlug_SwitchMode(int mode)
+int AsmPlug_SwitchMode(int mode)
 {
     if(mode != MODE_ASM)return 3;
 
     return 1;
 }
 
-DLLIMPORT int AsmPlug_Handle802_11(unsigned char *data, int length)
+int AsmPlug_Handle802_11(unsigned char *data, int length)
 {
 
      if(wmb_stage==SDK_STAGE_BEACON)return WMBProcessBeacons(data,length);
@@ -197,7 +187,7 @@ DLLIMPORT int AsmPlug_Handle802_11(unsigned char *data, int length)
      return 1;
 }
 
-DLLIMPORT bool AsmPlug_Init(sAsmSDK_Config *config)
+bool AsmPlug_Init(sAsmSDK_Config *config)
 {
     AsmPlugin_Init(config, &wmb_nds_data);//Allocates memory for the nds_data struct
     memset((void*)wmb_nds_data, 0, sizeof(Nds_data));
@@ -213,7 +203,7 @@ DLLIMPORT bool AsmPlug_Init(sAsmSDK_Config *config)
     return 1;
 }
 
-DLLIMPORT bool AsmPlug_DeInit()
+bool AsmPlug_DeInit()
 {
     AsmPlugin_DeInit(&wmb_nds_data);
     fclose(wlog);
@@ -221,12 +211,12 @@ DLLIMPORT bool AsmPlug_DeInit()
     return 1;
 }
 
-DLLIMPORT volatile Nds_data *AsmPlug_GetNdsData()
+volatile Nds_data *AsmPlug_GetNdsData()
 {
     return wmb_nds_data;
 }
 
-DLLIMPORT void AsmPlug_Reset()
+void AsmPlug_Reset()
 {
     wmb_stage=SDK_STAGE_BEACON;
     last_seq=0;
@@ -246,15 +236,12 @@ DLLIMPORT void AsmPlug_Reset()
 
 }
 
-#ifdef __cplusplus
-  }
-#endif
-
 void WMBBeaconGrab(unsigned char *data)
 {
      ds_element *ds = (ds_element*)Nin_ie;
      //Block start. This block is based on code from masscat's WMB client.
      int *ptr = (int*)&wmb_nds_data->found_beacon[(int)ds->advert_sequence_number + ((int)ds->gameID * 10)];
+     int i;
 
      *ptr+=1;
 
@@ -280,7 +267,7 @@ void WMBBeaconGrab(unsigned char *data)
      if(!wmb_nds_data->multipleIDs)
      {
         //This code is based on code from masscat's WMB client.
-        for(int i=0; i<9; i++)
+        for(i=0; i<9; i++)
         {
              if(!wmb_nds_data->found_beacon[i + ((int)ds->gameID * 10)])got_all=0;
         }
@@ -306,7 +293,7 @@ void WMBBeaconGrab(unsigned char *data)
 
                 if(!wmb_nds_data->multipleIDs)
                 {
-                    for(int i=0; i<9; i++)
+                    for(i=0; i<9; i++)
                     {
                         pos=i*98;
                         if(i!=8)dsize=98;
@@ -358,7 +345,7 @@ void WMBBeaconGrab(unsigned char *data)
 									fprintfdebug(*WMBLog,"FOUND ALL BEACONS!\n");
 									fprintfdebug(*WMBLog,"ENTERING ASSOC STAGE\n");
 									fprintfdebug(*WMBLog,"HOST MAC ");
-											for(int i=0; i<5; i++)
+											for(i=0; i<5; i++)
 												fprintfdebug(*WMBLog,"%x:",wmb_host_mac[i]);
 									fprintfdebug(*WMBLog,"%x\n",wmb_host_mac[5]);
 									fflushdebug(*WMBLog);
@@ -370,7 +357,8 @@ void WMBBeaconGrab(unsigned char *data)
 
 int WMBProcessAuth(unsigned char *data, int length)
 {
-     iee80211_framehead *fh = (iee80211_framehead*)data;
+     iee80211_framehead2 *fh = (iee80211_framehead2*)data;
+     int i;
 
      if (((FH_FC_TYPE(fh->frame_control) == 0) && (FH_FC_SUBTYPE(fh->frame_control) == 11)) && CompareMAC(wmb_host_mac, fh->mac3))
      {
@@ -385,7 +373,7 @@ int WMBProcessAuth(unsigned char *data, int length)
         fprintfdebug(*WMBLog,"FOUND AUTH\n");
         fprintfdebug(*WMBLog,"CLIENT MAC ");
 
-            for(int i=0; i<5; i++)
+            for(i=0; i<5; i++)
                 fprintfdebug(*WMBLog,"%x:",wmb_client_mac[i]);
 
         fprintfdebug(*WMBLog,"%x\n",wmb_client_mac[5]);
@@ -479,6 +467,7 @@ int WMBProcessHeader(unsigned char *data, int length)
      unsigned short size=0;
      unsigned short seq=0;
      unsigned short *Seq=&seq;
+     int i;
 
 	TNDSHeader temp_header;
 	memset(&temp_header,0,sizeof(TNDSHeader));
@@ -498,7 +487,7 @@ int WMBProcessHeader(unsigned char *data, int length)
 				if(*WMBDEBUG)
 				{
 					fprintfdebug(*WMBLog,"FOUND HEADER WITH BAD ID %d ALREADY FOUND IDS ",(int)ID);
-						for(int i=0; i<15; i++)
+						for(i=0; i<15; i++)
 							if(wmb_nds_data->handledIDs[i])fprintfdebug(*WMBLog,"%d ",i);
 
 					fprintfdebug(*WMBLog,"\n");
@@ -523,7 +512,7 @@ int WMBProcessHeader(unsigned char *data, int length)
 
 
 
-     iee80211_framehead *fh = (iee80211_framehead*)data;
+     iee80211_framehead2 *fh = (iee80211_framehead2*)data;
 	int fh_seq=ReadSeq(&fh->sequence_control);
 	if(last_seq==0)
 	{
@@ -625,12 +614,13 @@ int WMBProcessData(unsigned char *data, int length)
      unsigned char pos = 0;
      unsigned short *Seq, seq;
      unsigned char *dat=NULL;
+     int i;
      seq=0;
 
 	bool prev_init=wmb_nds_data->data_init;
 	Init();
 
-	iee80211_framehead *fh = (iee80211_framehead*)data;
+	iee80211_framehead2 *fh = (iee80211_framehead2*)data;
 
 	if(CheckFrame(data, wmb_host_mac, 0x04, &size, &pos))
 	{
@@ -724,7 +714,7 @@ int WMBProcessData(unsigned char *data, int length)
             }
 
      int temp=0;
-     for(int i=0; i<(int)seq-1; i++)
+     for(i=0; i<(int)seq-1; i++)
      {
      temp+=wmb_nds_data->data_sizes[i];
 
@@ -792,7 +782,7 @@ int WMBProcessData(unsigned char *data, int length)
 
      //Make sure we found every packet. Only thing left to do in this function is the goto assembly
      //wmb_stage code, so it's safe to do this here.
-     for(int i=0; i<wmb_nds_data->arm7e_seq; i++)
+     for(i=0; i<wmb_nds_data->arm7e_seq; i++)
      {
             if(wmb_nds_data->data_sizes[i]==0)
             {
@@ -812,7 +802,7 @@ int WMBProcessData(unsigned char *data, int length)
 
 	 if(wmb_nds_data->multipleIDs)
 	 {
-        memcpy((void*)&wmb_nds_data->advert, (void*)&wmb_nds_data->beacon_data[ (980 * (int)wmb_nds_data->gameID) ], sizeof(struct ds_advert));
+        memcpy((void*)&wmb_nds_data->advert, (void*)&wmb_nds_data->beacon_data[ (980 * (int)wmb_nds_data->gameID) ], sizeof(ds_advert));
 	 }
 
      wmb_nds_data->trigger_assembly = 1;
@@ -833,6 +823,7 @@ int WMBProcessBeacons(unsigned char *data, int length)
      iee80211_framehead2 *framehead = (iee80211_framehead2*)data;
      beacon *Beacon = (beacon*)data;
      ds_element *ds = (ds_element*)&data[52];
+     int i;
      //unsigned short interval = BEACON_INTERVAL;
      unsigned short cap = BEACON_CAPABILITY;
      unsigned char tagparms[4];
@@ -916,7 +907,7 @@ int WMBProcessBeacons(unsigned char *data, int length)
 
                                                     bool got_it=1;
 
-                                                        for(int i=0; i<9; i++)
+                                                        for(i=0; i<9; i++)
                                                         {
 
                                                             if(wmb_nds_data->found_beacon[((int)ds->gameID*10)+i])
@@ -929,7 +920,7 @@ int WMBProcessBeacons(unsigned char *data, int length)
                                                         {
                                                             int total=0;
 
-                                                                for(int i=0; i<15; i++)
+                                                                for(i=0; i<15; i++)
                                                                 {
                                                                     if(wmb_nds_data->foundIDs[i])total++;
                                                                 }
