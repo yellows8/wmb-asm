@@ -91,7 +91,7 @@ typedef void (*lpReset)();
 typedef char *(*lpGetStatus)(int *error_code);
 typedef int (*lpGetModeStatus)(int status);
 typedef int (*lpQueryFailure)();
-//typedef int (*lpSwitchMode)(int mode);
+typedef int (*lpSwitchMode)(int mode);
 
 typedef struct _PacketModule
 {
@@ -108,7 +108,7 @@ typedef struct _PacketModule
     lpGetIDStr GetIDStr;
     lpGetPriority GetPriority;
 	#ifndef NDS
-    LPDLL lpdll;//The handle of the module if this one isn't a built-in packet handler.
+    //LPDLL lpdll;//The handle of the module if this one isn't a built-in packet handler.
 	#endif
 
 	int ID;
@@ -130,7 +130,7 @@ void PktModClose()
 			packetModules[i].DeInit();
 
 		#ifndef NDS
-			CloseDLL(&packetModules[i].lpdll, NULL);
+			//CloseDLL(&packetModules[i].lpdll, NULL);
 		#endif
 	}
 }
@@ -159,7 +159,7 @@ bool PktModInit()
 //This function reorders the plugins in the packetMoudles array, according to the priorties. In this way, priority code is only needed in the initialization function, not across several plugin function calling code, also.
 bool PktModReorder()
 {
-	#ifdef NDS
+	/*#ifdef NDS
 		return 1;
 	#endif
 
@@ -230,7 +230,7 @@ bool PktModReorder()
 
     return 1;
 
-	#endif
+	#endif*/
 }
 
 void PktModReset()
@@ -300,7 +300,7 @@ bool PktModHandle802_11(unsigned char *data, int length)
 }
 
 #ifndef NDS
-int LoadPacketModule(char *filename, char *error_buffer, char *destr, LPDLL *lpdll);
+//int LoadPacketModule(char *filename, char *error_buffer, char *destr, LPDLL *lpdll);
 #endif
 FILE *modlog = NULL;
 
@@ -333,7 +333,7 @@ void DLSTATION_AsmPlug_Reset();
 bool InitPktModules()
 {
 	#ifndef NDS
-    LPDLL lpdll;
+    //LPDLL lpdll;
     char filename[256];
     memset(filename, 0, 256);
 	FILE_LIST *files_list = NULL;
@@ -351,7 +351,7 @@ bool InitPktModules()
     totalPacketModules = 0;
     currentPacketModule = -1;
 
-	#ifdef NDS
+	//#ifdef NDS
 
 		//Ordering of packet modules in the array when compiling for DS, must be done manually, for ordering and priority ordering.
 
@@ -383,9 +383,9 @@ bool InitPktModules()
 		packetModules[totalPacketModules].SwitchMode = &WMB_AsmPlug_SwitchMode;
 		totalPacketModules++;
 
-	#endif
+	//#endif
 
-    #ifndef NDS
+    /*#ifndef NDS
     printf("Loading plugins...\n");
 
         files_list = (FILE_LIST*)malloc(sizeof(FILE_LIST));
@@ -455,7 +455,7 @@ bool InitPktModules()
     remove("module_log.txt");//Since we made it this far, there was no errors, so we can safely remove this file without saved errors being deleted.
 
     printf("Done.\n");
-    #endif
+    #endif*/
 
     if(!PktModInit())
         return 0;
@@ -465,7 +465,7 @@ bool InitPktModules()
     return 1;
 }
 
-#ifndef NDS
+/*#ifndef NDS
 int LoadPacketModule(char *filename, char *error_buffer, char *destr, LPDLL *lpdll)
 {
 
@@ -700,7 +700,7 @@ int LoadPacketModule(char *filename, char *error_buffer, char *destr, LPDLL *lpd
 
                                     return 1;
 }
-#endif
+#endif*/
 
 //***************************CHECK FCS*************************************************
 inline bool CheckFCS(unsigned char *data, int length)
@@ -753,25 +753,27 @@ int GetModuleVersionInt(int which_number)
 
 bool InitAsm(SuccessCallback callback, bool debug, sAsmSDK_Config *config)
 {
-
+printf("A\n");
     DEBUG = config->DEBUG;
     Log = config->Log;
-    module_nds_data = *config->nds_data;
-
+printf("B\n");
+    module_nds_data = *(config->nds_data);
+printf("a\n");
     *DEBUG = debug;
+printf("b\n");
     *Log = NULL;
-
+printf("c\n");
     CONFIG = config;
-
+printf("d\n");
     if(*DEBUG)
 		{
 			*Log = fopendebug("log.txt","w");
         }
-
+printf("e\n");
 	memset((void*)module_nds_data,0,sizeof(Nds_data));
 	save_unused_packets=1;
 	funusedpkt=NULL;
-
+printf("f\n");
     AssemblySuccessCallback = callback;
 
     if(!InitPktModules())return 0;
@@ -1119,7 +1121,7 @@ void CaptureAsmReset(int *code, lpAsmGetStatusCallback callback)//Needs to be ca
 
 		    for(i=0; i<totalPacketModules; i++)
 		    {
-			    if(packetModules[i].lpdll==NULL)break;
+			    //if(packetModules[i].lpdll==NULL)break;
 
 			         if(packetModules[i].GetNdsData!=NULL)
 			         {
@@ -1202,7 +1204,7 @@ unsigned char GetPrecentageCompleteAsm()
 
             devisor = module_nds_data->total_binaries_size/100;
             temp2 = temp / devisor;
-            percent = (unsigned char)ceil((double)temp2);
+            percent = (unsigned char)temp2;
         }
 
     return percent;

@@ -19,7 +19,7 @@ OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 DEALINGS IN THE SOFTWARE.
 */
 
-#define DLLMAIN
+//#define DLLMAIN
 #ifndef BUILDING_DLL
 #define BUILDING_DLL
 #endif
@@ -61,7 +61,7 @@ volatile Nds_data *wmb_nds_data;
 void Init();
 
 //Change the names of the functions on-the-fly when compiling for DS, since everything is in one binary.
-#ifdef NDS
+//#ifdef NDS
 	#define AsmPlug_GetID WMB_AsmPlug_GetID
 	#define AsmPlug_GetIDStr WMB_AsmPlug_GetIDStr
 	#define AsmPlug_GetPriority WMB_AsmPlug_GetPriority
@@ -74,7 +74,7 @@ void Init();
 	#define AsmPlug_Reset WMB_AsmPlug_Reset
 	#define AsmPlug_GetModeStatus WMB_AsmPlug_GetModeStatus
 	#define AsmPlug_SwitchMode WMB_AsmPlug_SwitchMode
-#endif
+//#endif
 
 int AsmPlug_GetID()
 {
@@ -193,7 +193,7 @@ bool AsmPlug_Init(sAsmSDK_Config *config)
     memset((void*)wmb_nds_data, 0, sizeof(Nds_data));
 
 	#ifndef NDS
-    ResetAsm = config->ResetAsm;
+    //ResetAsm = config->ResetAsm;
     #endif
     WMBDEBUG = config->DEBUG;
     WMBLog = &wlog;
