@@ -592,6 +592,7 @@ typedef struct _Nds_data
                         #endif*/
 
                         config->getpacketnumber = &getpacketnumber;
+			GetPacketNum = config->getpacketnumber;
                     }
                 #endif
 
