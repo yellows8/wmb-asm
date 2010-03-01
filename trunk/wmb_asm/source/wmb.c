@@ -177,7 +177,6 @@ int AsmPlug_SwitchMode(int mode)
 
 int AsmPlug_Handle802_11(unsigned char *data, int length)
 {
-
      if(wmb_stage==SDK_STAGE_BEACON)return WMBProcessBeacons(data,length);
      if(wmb_stage==SDK_STAGE_AUTH)return WMBProcessAuth(data,length);
      if(wmb_stage==SDK_STAGE_RSA)return WMBProcessRSA(data,length);
@@ -804,7 +803,7 @@ int WMBProcessData(unsigned char *data, int length)
 	 {
         memcpy((void*)&wmb_nds_data->advert, (void*)&wmb_nds_data->beacon_data[ (980 * (int)wmb_nds_data->gameID) ], sizeof(ds_advert));
 	 }
-
+wmb_nds_data->build_raw = 0;
      wmb_nds_data->trigger_assembly = 1;
 
      }
@@ -899,7 +898,6 @@ int WMBProcessBeacons(unsigned char *data, int length)
 
                                          if(ds->sequence_number<8 && ds->sequence_number>0)wmb_nds_data->prev_nonadvert = ds->non_advert;
                                          if(ds->sequence_number==0 && wmb_nds_data->prev_nonadvert!=ds->non_advert)wmb_nds_data->multipleIDs=1;
-
                                          if(ds->sequence_number==8 && wmb_nds_data->multipleIDs && wmb_nds_data->FirstBeaconID==ds->gameID)
                                          {
                                                 if(wmb_nds_data->beacon_thing==1)
@@ -935,7 +933,6 @@ int WMBProcessBeacons(unsigned char *data, int length)
                                                     wmb_nds_data->beacon_thing=1;
                                                 }
                                          }
-
                                         memcpy(wmb_host_mac,Beacon->srcmac,6);
 
                                         wmb_nds_data->beacon_checksum[(int)ds->advert_sequence_number] = checksum;

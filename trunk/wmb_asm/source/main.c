@@ -125,6 +125,8 @@ int main(int argc, char *argv[])
                         InitDLLFunctions(Config);
                     //#endif
 
+			InitConfig(Config);
+
                             if(!ReadDump(argc,argv))
                             {
                                 free(error_buffer);

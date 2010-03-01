@@ -138,7 +138,7 @@ void PktModClose()
 bool PktModInit()
 {
 	#ifndef NDS
-	if(!PktModReorder())return 0;
+	//if(!PktModReorder())return 0;
 	#endif
 
 		int i;
@@ -157,9 +157,9 @@ bool PktModInit()
 }
 
 //This function reorders the plugins in the packetMoudles array, according to the priorties. In this way, priority code is only needed in the initialization function, not across several plugin function calling code, also.
-bool PktModReorder()
+/*bool PktModReorder()
 {
-	/*#ifdef NDS
+	#ifdef NDS
 		return 1;
 	#endif
 
@@ -230,8 +230,8 @@ bool PktModReorder()
 
     return 1;
 
-	#endif*/
-}
+	#endif
+}*/
 
 void PktModReset()
 {
@@ -265,7 +265,6 @@ bool PktModHandle802_11(unsigned char *data, int length)
 				if(packetModules[ii].handle802_11!=NULL)
 				{
                     			ret = packetModules[ii].handle802_11(data, length);
-
 					if(ret!=0)
 					{
                     				currentPacketModule = ii;
@@ -285,7 +284,6 @@ bool PktModHandle802_11(unsigned char *data, int length)
 				if(packetModules[ii].handle802_11!=NULL && ii!=currentPacketModule)
 				{
                     			ret = packetModules[ii].handle802_11(data, length);
-
 					if(ret)
 					{
                     				currentPacketModule = ii;
@@ -753,27 +751,19 @@ int GetModuleVersionInt(int which_number)
 
 bool InitAsm(SuccessCallback callback, bool debug, sAsmSDK_Config *config)
 {
-printf("A\n");
     DEBUG = config->DEBUG;
     Log = config->Log;
-printf("B\n");
     module_nds_data = *(config->nds_data);
-printf("a\n");
     *DEBUG = debug;
-printf("b\n");
     *Log = NULL;
-printf("c\n");
     CONFIG = config;
-printf("d\n");
     if(*DEBUG)
 		{
 			*Log = fopendebug("log.txt","w");
         }
-printf("e\n");
 	memset((void*)module_nds_data,0,sizeof(Nds_data));
 	save_unused_packets=1;
 	funusedpkt=NULL;
-printf("f\n");
     AssemblySuccessCallback = callback;
 
     if(!InitPktModules())return 0;
@@ -1523,15 +1513,13 @@ bool AssembleNds(char *output)
         }
 
         if(tempi>0 && tempi<256)
-        memset(&gdtemp[tempi],0,256-tempi);//One capture had a discription from another demo, after it's own discription. This gets rid of the extra one.
-
-        memcpy(&banner.titles[0][0], gdtemp, 192*2);
-        memcpy(&banner.titles[1][0], gdtemp, 192*2);
-        memcpy(&banner.titles[2][0], gdtemp, 192*2);
-        memcpy(&banner.titles[3][0], gdtemp, 192*2);
-        memcpy(&banner.titles[4][0], gdtemp, 192*2);
-        memcpy(&banner.titles[5][0], gdtemp, 192*2);
-
+        memset(&gdtemp[tempi],0,256-tempi);//One capture had a description from another demo, after it's own discription. This gets rid of the extra one.
+        memcpy(&banner.titles[0], gdtemp, 128*2);
+        memcpy(&banner.titles[1], gdtemp, 128*2);
+        memcpy(&banner.titles[2], gdtemp, 128*2);
+        memcpy(&banner.titles[3], gdtemp, 128*2);       
+	memcpy(&banner.titles[4], gdtemp, 128*2);
+        memcpy(&banner.titles[5], gdtemp, 128*2);
         banner.version = 1;
         banner.crc = CalcCRC16(banner.icon, 2080);
      }
