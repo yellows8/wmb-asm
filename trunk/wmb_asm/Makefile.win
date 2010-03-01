@@ -1,39 +1,174 @@
-# Project: wmb_asm_cmd
-# Compiler: Default GCC compiler
-# Compiler Type: MingW 3
-# Makefile originally created by wxDev-C++ 6.10.2
+#---------------------------------------------------------------------------------
+.SUFFIXES:
+#---------------------------------------------------------------------------------
 
-CPP       = g++.exe
-CC        = gcc.exe
-WINDRES   = windres.exe
-OBJ       = Objects/MingW/binconv.o Objects/MingW/main.o Objects/MingW/wmb_asm_cmd_private.res
-LINKOBJ   = Objects/MingW/binconv.o Objects/MingW/main.o Objects/MingW/wmb_asm_cmd_private.res
-LIBS      = -L"C:/MinGW/Lib" SDK/lib/libWmbAsmSDK.a  -g3 
-INCS      = -I"include"
-CXXINCS   = -I"C:/MinGW/lib/gcc/mingw32/3.4.5" -I"C:/MinGW/include/c++/3.4.5/backward" -I"C:/MinGW/include/c++/3.4.5/mingw32/bits" -I"C:/MinGW/include/c++/3.4.5" -I"C:/MinGW/include"
-RCINCS    = --include-dir "C:/Dev-Cpp/include/common"
-BIN       = wmb_asm.exe
-DEFINES   = 
-CXXFLAGS  = $(CXXINCS) $(DEFINES)   -O3 -g3
-CFLAGS    = $(INCS) $(DEFINES)   -O3 -g3
-GPROF     = gprof.exe
-RM        = rm -f
-LINK      = g++.exe
+#---------------------------------------------------------------------------------
+# the prefix on the compiler executables
+#---------------------------------------------------------------------------------
+PREFIX	:=	
 
-.PHONY: all all-before all-after clean clean-custom
-all: all-before $(BIN) all-after
+ifeq ($(CROSSBUILD),1)
+PREFIX	:=	i586
+endif
 
-clean: clean-custom
-	$(RM) $(OBJ) $(BIN)
+PREFIX		:=	$(PREFIX)-mingw32
+ifeq ($(CROSSBUILD),1)
+PREFIX		:=	$(PREFIX)msvc
+endif
+PREFIX		:=	$(PREFIX)-
 
-$(BIN): $(OBJ)
-	$(LINK) $(LINKOBJ) -o "wmb_asm.exe" $(LIBS)
+export CC	:=	$(PREFIX)gcc
+export CXX	:=	$(PREFIX)g++
+export AS	:=	$(PREFIX)as
+export AR	:=	$(PREFIX)ar
+export OBJCOPY	:=	$(PREFIX)objcopy
 
-Objects/MingW/binconv.o: $(GLOBALDEPS) source/binconv.cpp SDK/include/wmb_asm_sdk_client.h SDK/include/wmb_asm_sdk.h SDK/include/pcap.h SDK/include/inet.h SDK/include/dirscan.h SDK/include/win32dirent.h SDK/include/ndsdirent.h SDK/include/wmb_asm_sdk_internal.h
-	$(CPP) -c source/binconv.cpp -o Objects/MingW/binconv.o $(CXXFLAGS)
+#---------------------------------------------------------------------------------
+%.a:
+#---------------------------------------------------------------------------------
+	@echo $(notdir $@)
+	@rm -f $@
+	$(AR) -rc $@ $^
 
-Objects/MingW/main.o: $(GLOBALDEPS) source/main.cpp SDK/include/wmb_asm_sdk_client.h SDK/include/wmb_asm_sdk.h SDK/include/pcap.h SDK/include/inet.h SDK/include/dirscan.h SDK/include/win32dirent.h SDK/include/ndsdirent.h SDK/include/wmb_asm_sdk_internal.h
-	$(CPP) -c source/main.cpp -o Objects/MingW/main.o $(CXXFLAGS)
+#---------------------------------------------------------------------------------
+%.o: %.cpp
+	@echo $(notdir $<)
+	$(CXX) -MMD -MP -MF $(DEPSDIR)/$*.d $(CXXFLAGS) -c $< -o $@
 
-Objects/MingW/wmb_asm_cmd_private.res: Objects/MingW/wmb_asm_cmd_private.rc 
-	$(WINDRES) --input-format=rc -o Objects/MingW/wmb_asm_cmd_private.res $(RCINCS) Objects/MingW/WMB_AS~1.RC -O coff
+#---------------------------------------------------------------------------------
+%.o: %.c
+	@echo $(notdir $<)
+	$(CC) -MMD -MP -MF $(DEPSDIR)/$*.d $(CFLAGS) -c $< -o $@
+
+
+#---------------------------------------------------------------------------------
+%.o: %.s
+	@echo $(notdir $<)
+	$(CC) -MMD -MP -MF $(DEPSDIR)/$*.d -x assembler-with-cpp $(ASFLAGS) -c $< -o $@
+
+#---------------------------------------------------------------------------------
+%.o: %.S
+	@echo $(notdir $<)
+	$(CC) -MMD -MP -MF $(DEPSDIR)/$*.d -x assembler-with-cpp $(ASFLAGS) -c $< -o $@
+
+#---------------------------------------------------------------------------------
+# TARGET is the name of the output
+# BUILD is the directory where object files & intermediate files will be placed
+# SOURCES is a list of directories containing source code
+# INCLUDES is a list of directories containing extra header files
+# MAXMOD_SOUNDBANK contains a directory of music and sound effect files
+#---------------------------------------------------------------------------------
+TARGET		:=	$(shell basename $(CURDIR))
+BUILD		:=	build_win
+SOURCES		:=	source
+DATA		:=	data
+INCLUDES	:=	include
+
+#---------------------------------------------------------------------------------
+# options for code generation
+#---------------------------------------------------------------------------------
+
+CFLAGS	:=	-Wall -O2
+
+CFLAGS	+=	$(INCLUDE)
+CXXFLAGS	:= $(CFLAGS)
+
+ASFLAGS	:=	-g
+LDFLAGS	=	-g -Wl
+
+#---------------------------------------------------------------------------------
+# any extra libraries we wish to link with the project (order is important)
+#---------------------------------------------------------------------------------
+LIBS	:=	-llzo
+
+
+#---------------------------------------------------------------------------------
+# list of directories containing libraries, this must be the top level containing
+# include and lib
+#---------------------------------------------------------------------------------
+LIBDIRS	:=	
+
+ifeq ($(CROSSBUILD),1)
+LIBDIRS += 	/usr/i586-mingw32msvc
+endif
+
+ifneq ($(CROSSBUILD),1)
+LIBDIRS +=	/c/mingw
+endif
+
+#---------------------------------------------------------------------------------
+# no real need to edit anything past this point unless you need to add additional
+# rules for different file extensions
+#---------------------------------------------------------------------------------
+ifneq ($(BUILD),$(notdir $(CURDIR)))
+#---------------------------------------------------------------------------------
+
+export OUTPUT	:=	$(CURDIR)/$(TARGET).exe
+
+export VPATH	:=	$(foreach dir,$(SOURCES),$(CURDIR)/$(dir)) \
+					$(foreach dir,$(DATA),$(CURDIR)/$(dir))
+
+export DEPSDIR	:=	$(CURDIR)/$(BUILD)
+
+CFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
+CPPFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp)))
+SFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
+BINFILES	:=	$(foreach dir,$(DATA),$(notdir $(wildcard $(dir)/*.*)))
+
+#---------------------------------------------------------------------------------
+# use CXX for linking C++ projects, CC for standard C
+#---------------------------------------------------------------------------------
+ifeq ($(strip $(CPPFILES)),)
+#---------------------------------------------------------------------------------
+	export LD	:=	$(CC)
+#---------------------------------------------------------------------------------
+else
+#---------------------------------------------------------------------------------
+	export LD	:=	$(CXX)
+#---------------------------------------------------------------------------------
+endif
+#---------------------------------------------------------------------------------
+
+export OFILES	:=	$(addsuffix .o,$(BINFILES)) \
+			$(CPPFILES:.cpp=.o) $(CFILES:.c=.o) $(SFILES:.s=.o)
+
+export INCLUDE	:=	$(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
+			$(foreach dir,$(LIBDIRS),-I$(dir)/include) \
+			$(foreach dir,$(LIBDIRS),-I$(dir)/include) \
+			-I$(CURDIR)/$(BUILD)
+
+export LIBPATHS	:=	$(foreach dir,$(LIBDIRS),-L$(dir)/lib)
+
+.PHONY: $(BUILD) clean
+
+#---------------------------------------------------------------------------------
+$(BUILD):
+	@[ -d $@ ] || mkdir -p $@
+	@make --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile.win
+
+#---------------------------------------------------------------------------------
+clean:
+	@echo clean ...
+	@rm -fr $(BUILD) $(TARGET)
+
+#---------------------------------------------------------------------------------
+else
+
+#---------------------------------------------------------------------------------
+# main targets
+#---------------------------------------------------------------------------------
+$(OUTPUT)	:	$(OFILES)
+	@echo linking $(notdir $@)
+	@$(LD)  $(LDFLAGS) $(OFILES) $(LIBPATHS) $(LIBS) -o $@
+
+#---------------------------------------------------------------------------------
+%.bin.o	:	%.bin
+#---------------------------------------------------------------------------------
+	@echo $(notdir $<)
+	$(bin2o)
+
+-include $(DEPSDIR)/*.d
+
+#---------------------------------------------------------------------------------------
+endif
+#---------------------------------------------------------------------------------------
