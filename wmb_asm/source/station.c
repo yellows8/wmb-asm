@@ -19,7 +19,7 @@ OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 DEALINGS IN THE SOFTWARE.
 */
 
-#define DLLMAIN
+//#define DLLMAIN
 #ifndef BUILDING_DLL
 #define BUILDING_DLL
 #endif
@@ -36,7 +36,7 @@ DEALINGS IN THE SOFTWARE.
 #endif
 
 //Change the names of the functions on-the-fly when compiling for DS, since everything is in one binary.
-#ifdef NDS
+//#ifdef NDS
 	#define AsmPlug_GetID DLSTATION_AsmPlug_GetID
 	#define AsmPlug_GetIDStr DLSTATION_AsmPlug_GetIDStr
 	#define AsmPlug_GetPriority DLSTATION_AsmPlug_GetPriority
@@ -49,7 +49,7 @@ DEALINGS IN THE SOFTWARE.
 	#define AsmPlug_Reset DLSTATION_AsmPlug_Reset
 	#define AsmPlug_GetModeStatus DLSTATION_AsmPlug_GetModeStatus
 	#define AsmPlug_SwitchMode DLSTATION_AsmPlug_SwitchMode
-#endif
+//#endif
 
 #define STAGEDL_ASSOC_RESPONSE 1
 #define STAGEDL_MENU_REQ 2
@@ -218,7 +218,7 @@ bool AsmPlug_Init(sAsmSDK_Config *config)
     dlstation_nds_data->use_advert = 1;
 
 	#ifndef NDS
-    ResetAsm = config->ResetAsm;
+    //ResetAsm = config->ResetAsm;
     #endif
 	DLSTATIONDEBUG = config->DEBUG;
     DLSTATIONLog = config->Log;

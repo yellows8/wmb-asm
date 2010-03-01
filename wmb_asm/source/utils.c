@@ -413,6 +413,27 @@ unsigned char GetGameID(unsigned char *data)
     return gameID;
 }
 
+void AsmPlugin_Init(sAsmSDK_Config *config, volatile Nds_data **dat)
+{
+      if(dat==NULL)return;
+
+      *dat = (volatile Nds_data*)malloc(sizeof(Nds_data));
+       memset((void*)*dat, 0, sizeof(Nds_data));
+
+	#ifndef NDS
+        //GetPrecentageCompleteAsm = config->GetPrecentageCompleteAsm;
+	#endif
+        //GetPacketNum = config->getpacketnumber;
+}
+
+void AsmPlugin_DeInit(volatile Nds_data **dat)
+{
+       if(dat==NULL)return;
+       if(*dat==NULL)return;
+
+       free((void*)*dat);
+}
+
 //********************************CRC 16**************************************************
 //CRC code written by Frz. CRC32 code at least. CRC16 code is based on the CRC32 code.
 
@@ -548,6 +569,23 @@ int GetFileLength(FILE* _pfile)
 	return l_iEnd;
 }
 
+void InitConfig(sAsmSDK_Config *config)
+{
+	ND_DAT = (Nds_data*)malloc(sizeof(Nds_data));
+        config->nds_data = (volatile Nds_data**)&ND_DAT;
+    memset((void*)*config->nds_data, 0, sizeof(Nds_data));
+
+    config->DEBUG = (bool*)malloc(sizeof(bool));
+
+        *config->DEBUG = 0;
+
+        config->Log = (FILE**)malloc(sizeof(FILE*));
+
+        sdk_nds_data = config->nds_data;
+        SDK_DEBUG = config->DEBUG;
+        SDK_Log = config->Log;
+        SDK_CONFIG = config;
+}
 
 //******************************ExecuteApp***********************************************
 #ifdef WIN32
