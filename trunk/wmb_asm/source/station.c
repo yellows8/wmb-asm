@@ -875,62 +875,11 @@ int HandleDL_MenuDownload(unsigned char *data, int length)
 bool LookupClientsGameID(unsigned short clientID, unsigned char gameID)
 {
     int i;
-    for(i=0; i<6; i++)
+    for(i=0; i<15; i++)
     {
+	if(!(2<<i & clientID))continue;//If the bit for the clientID we're checking isn't set, skip it.
 
-        if(clientID > 8 * (i+1))continue;
-
-        if(clientID != ((8 * i) + 6))//If this isn't the clientID for two IDs combined...
-        {
-            if(clientID == ((8 * i) + 2))
-            {
-                if(DLClients[(int)clientID - 2].gameID == gameID)
-                {
-                    return 1;
-                }
-                else
-                {
-                    return 0;
-                }
-            }
-
-            if(clientID == ((8 * i) + 4))
-            {
-                if(DLClients[(int)clientID - 2].gameID == gameID)
-                {
-                    return 1;
-                }
-                else
-                {
-                    return 0;
-                }
-            }
-
-            if(clientID == ((8 * i) + 8))
-            {
-                if(DLClients[(int)clientID - 5].gameID == gameID)
-                {
-                    return 1;
-                }
-                else
-                {
-                    return 0;
-                }
-            }
-        }
-        else
-        {
-
-                if(DLClients[((2 * i))].gameID == gameID)
-                {
-                    return 1;
-                }
-
-                if(DLClients[((2 * i) + 1)].gameID == gameID)
-                {
-                    return 1;
-                }
-        }
+	if(DLClients[i].gameID == gameID)return 1;
     }
 
     return 0;
