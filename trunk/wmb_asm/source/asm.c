@@ -328,6 +328,19 @@ bool DLSTATION_AsmPlug_DeInit();
 volatile Nds_data *DLSTATION_AsmPlug_GetNdsData();
 void DLSTATION_AsmPlug_Reset();
 
+int SecStageDump_AsmPlug_GetID();
+char *SecStageDump_AsmPlug_GetIDStr();
+int SecStageDump_AsmPlug_GetPriority();
+char *SecStageDump_AsmPlug_GetStatus(int *error_code);
+int SecStageDump_AsmPlug_GetModeStatus(int module);
+int SecStageDump_AsmPlug_SwitchMode(int mode);
+int SecStageDump_AsmPlug_QueryFailure();
+int SecStageDump_AsmPlug_Handle802_11(unsigned char *data, int length);
+bool SecStageDump_AsmPlug_Init(sAsmSDK_Config *config);
+bool SecStageDump_AsmPlug_DeInit();
+volatile Nds_data *SecStageDump_AsmPlug_GetNdsData();
+void SecStageDump_AsmPlug_Reset();
+
 bool InitPktModules()
 {
 	#ifndef NDS
@@ -379,6 +392,20 @@ bool InitPktModules()
 		packetModules[totalPacketModules].GetPriority = &WMB_AsmPlug_GetPriority;
 		packetModules[totalPacketModules].GetModeStatus = &WMB_AsmPlug_GetModeStatus;
 		packetModules[totalPacketModules].SwitchMode = &WMB_AsmPlug_SwitchMode;
+		totalPacketModules++;
+
+		packetModules[totalPacketModules].Init = &SecStageDump_AsmPlug_Init;
+		packetModules[totalPacketModules].DeInit = &SecStageDump_AsmPlug_DeInit;
+		packetModules[totalPacketModules].GetNdsData = &SecStageDump_AsmPlug_GetNdsData;
+		packetModules[totalPacketModules].handle802_11 = &SecStageDump_AsmPlug_Handle802_11;
+		packetModules[totalPacketModules].reset = &SecStageDump_AsmPlug_Reset;
+		packetModules[totalPacketModules].get_status = &SecStageDump_AsmPlug_GetStatus;
+		packetModules[totalPacketModules].query_failure = &SecStageDump_AsmPlug_QueryFailure;
+		packetModules[totalPacketModules].GetID = &SecStageDump_AsmPlug_GetID;
+		packetModules[totalPacketModules].GetIDStr = &SecStageDump_AsmPlug_GetIDStr;
+		packetModules[totalPacketModules].GetPriority = &SecStageDump_AsmPlug_GetPriority;
+		packetModules[totalPacketModules].GetModeStatus = &SecStageDump_AsmPlug_GetModeStatus;
+		packetModules[totalPacketModules].SwitchMode = &SecStageDump_AsmPlug_SwitchMode;
 		totalPacketModules++;
 
 	//#endif
