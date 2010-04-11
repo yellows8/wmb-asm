@@ -23,13 +23,6 @@ DEALINGS IN THE SOFTWARE.
 
 #include "wmb_asm_sdk_client.h"
 
-#ifndef NDS
-#define APPNAME "wmb_asm.exe"
-#endif
-#ifdef NDS
-#define APPNAME "wmb_asm.nds"
-#endif
-
 #define APPVERSION "v2.0b r2"//The string displayed for the version, when this program is ran without any parameters.
 
 int ReadDump(int argc, char *argv[]);
@@ -92,7 +85,7 @@ int main(int argc, char *argv[])
 
           if(argc==1)
           {
-                     printf("%s %s by yellowstar6 built on %s, at %s.\n",APPNAME,APPVERSION,__DATE__,__TIME__);
+                     printf("wmb_asm %s by yellowstar6\n",APPVERSION);
                      printf("Usage:\n");
                      printf("wmb_asm <options> [List of captures and directories]\n");
                      printf("Options:\n");
@@ -112,7 +105,7 @@ int main(int argc, char *argv[])
           else
           {
 
-                printf("%s\n",APPNAME);
+                printf("wmb_asm\n");
                 time_t start, end;
                 start=time(NULL);
 
