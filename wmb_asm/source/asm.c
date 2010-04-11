@@ -53,10 +53,6 @@ bool HandlePacket(sAsmSDK_Params *params);
 char *GetStatusAsm(int *error_code);
 void GetStatusAsmA(lpAsmGetStatusCallback callback, int index);
 
-#ifdef WIN32
-void ExecuteApp(char *appname, char *cmdline);
-#endif
-
 bool debug=0;
 
 FILE *funusedpkt = NULL;
@@ -1291,6 +1287,7 @@ bool HandlePacket(sAsmSDK_Params *params)
 
                             char out[256];
                             char output[256];
+			    char sys[256];
                             int pos=0;
                             int I=0;
                             bool found=0;
@@ -1379,31 +1376,12 @@ bool HandlePacket(sAsmSDK_Params *params)
                              memcpy((void*)&module_nds_data->oldadvert, (void*)&module_nds_data->advert,sizeof(ds_advert));
                              ResetAsm((Nds_data*)module_nds_data);
 
-
-
-	                           #ifdef WIN32
-	                           if(params->checkrsa)
-	                           {
-	                           char *rsa_cmdline = (char*)malloc(256);
-	                           memset(rsa_cmdline, 0, 256);
-	                           int rsai=0;
-	                           strcpy(&rsa_cmdline[rsai],"verify nintendo");
-	                           rsai+=strlen("verify nintendo");
-	                           rsa_cmdline[rsai]=' ';
-	                           rsai++;
-	                           rsa_cmdline[rsai] = '\"';
-	                           rsai++;
-	                           strcpy(&rsa_cmdline[rsai],Str);
-	                           rsai+=strlen(Str);
-	                           rsa_cmdline[rsai] = '\"';
-	                           rsai++;
-	                           rsa_cmdline[rsai]=0;
-	                           printf("Executing ndsrsa.exe %s\n",rsa_cmdline);
-	                           ExecuteApp("ndsrsa.exe",rsa_cmdline);
-	                           printf("\n");
-	                           free(rsa_cmdline);
+	                       if(params->checkrsa)
+	                       {
+				   memset(sys, 0, 256);
+				   sprintf(sys, "ndsrsa verify nintendo \"%s\"", Str);
+				   system(sys);
                                }
-                               #endif
 
                                if(params->copydir!=NULL && params->use_copydir)
                                {
@@ -1439,16 +1417,21 @@ bool HandlePacket(sAsmSDK_Params *params)
                                     }
                                }
 
-                               #ifdef WIN32
                                if(params->run)
                                {
-                                    char cline[256];
-                                    sprintf(cline,"\"%s\"",output);
-                                    printf("Executing %s\n",output);
-                                    int err=0;
-                                    err = (int)ShellExecute(NULL,NULL,output,NULL,NULL,SW_SHOW);
+				    char *ndsemu = getenv("NDSEMU");
+				    memset(sys, 0, 256);
+				    if(ndsemu)
+				    {
+                                    	sprintf(sys, "%s \"%s\"", ndsemu, output);
+					printf("%s\n", sys);
+					system(sys);
+				    }
+				    else
+				    {
+					printf("NDSEMU environment variable not defined, set it to the path/command for your NDS emulator.\n");
+				    }
                                }
-	                           #endif
 
 	                           free(Str);
 

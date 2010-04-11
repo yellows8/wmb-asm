@@ -20,6 +20,7 @@ DEALINGS IN THE SOFTWARE.
 */
 
 //This module is for experimenting with second stage loaders protocols. In this case, LoZ: Spirit Tracks.
+//The data transferred in the Spirit Tracks second stage loader protocol, is some code,(roughly 0x1b0 bytes) a NARC, and some other data. None of this seems to be signed.
 
 //#define DLLMAIN
 #ifndef BUILDING_DLL
@@ -37,10 +38,10 @@ sAsmSDK_Config *SECSTAGEDUMPCONFIG = NULL;
 bool *SECSTAGEDUMPDEBUG = NULL;
 FILE **SecStageDumpLog = NULL;
 FILE *secstagedumplog;
-FILE *fbindump;
+FILE *fbindump, *fbincode;
 
 volatile Nds_data *secstagedump_nds_data;
-unsigned short current_seq = 0;
+unsigned short current_seq = 0, current_seq2 = 0;
 
 void Init();
 int CheckFrameExt(unsigned char *data, unsigned char command, unsigned short *size, unsigned char *pos, unsigned char firstmgc_byte, unsigned char flags);
@@ -117,6 +118,7 @@ bool AsmPlug_Init(sAsmSDK_Config *config)
     secstagedumplog = fopen("secstagedump_log", "w");
     SECSTAGEDUMPCONFIG = config;
     fbindump = fopen("secstagedump.bin", "wb");
+    fbincode = fopen("secstagedumpcode.bin", "wb");
 
     return 1;
 }
@@ -126,6 +128,7 @@ bool AsmPlug_DeInit()
     AsmPlugin_DeInit(&secstagedump_nds_data);
     fclose(secstagedumplog);
     fclose(fbindump);
+    fclose(fbincode);
 
     return 1;
 }
@@ -151,12 +154,22 @@ int SecondStageDump_ProcessData(unsigned char *data, int length)
      unsigned short flags;
      int i;
      unsigned char *unks;
-     seq=0;
+	int type = 0;     
+	seq=0;
 
 	iee80211_framehead2 *fh = (iee80211_framehead2*)data;
 
 	if(CheckFrameExt(data, 0x05, &size, &pos, 0xe6, 0x1c))
 	{
+	}
+	else if(CheckFrameExt(data, 0x07, &size, &pos, 0xe6, 0x9c))
+        {
+		type = 1;
+ 	}
+	else
+	{
+		return 0;
+	}
 
     dat=&data[(int)pos];
      unks = dat;
@@ -169,25 +182,38 @@ int SecondStageDump_ProcessData(unsigned char *data, int length)
 
      	if(*SECSTAGEDUMPDEBUG)
      	{
-	fprintfdebug(*SecStageDumpLog,"FOUND DATA SEQ %x FLAGS %x UNKS %02x %02x %02x %02x %02x\n", seq, flags, unks[2], unks[3], unks[4], unks[5], unks[6]);
+	fprintfdebug(*SecStageDumpLog,"FOUND DATA(%d) SEQ %x FLAGS %x UNKS %02x %02x %02x %02x %02x\n", type, seq, flags, unks[2], unks[3], unks[4], unks[5], unks[6]);
 	fflushdebug(*SecStageDumpLog);
         }
 
+     memcpy(secstagedump_buffer, dat, size - 0x11 - 0x3);
+
+     if(type==0)
+     {
      if(seq==current_seq)
      {
-	memcpy(secstagedump_buffer, dat, size - 0x11 - 0x3);
 	fwrite(secstagedump_buffer, 1, size - 0x11 - 0x3, fbindump);
 	current_seq++;
-	fprintfdebug(*SecStageDumpLog,"WROTE DATA TO DUMP FILE\n");
+	fprintfdebug(*SecStageDumpLog,"WROTE DATA(0)TO DUMP FILE\n");
      }
      else
      {
-	fprintfdebug(*SecStageDumpLog,"IGNORED DATA, MISSED A PKT OR OLD PKT\n");
+	fprintfdebug(*SecStageDumpLog,"IGNORED DATA(0), MISSED A PKT OR OLD PKT\n");
      }
-
-     return 1;
-
-    }
+     }
+     else
+     {
+	if(seq==current_seq2)
+     {
+	fwrite(secstagedump_buffer, 1, size - 0x11 - 0x3, fbincode);
+	current_seq2++;
+	fprintfdebug(*SecStageDumpLog,"WROTE DATA(1) TO DUMP FILE\n");
+     }
+     else
+     {
+	fprintfdebug(*SecStageDumpLog,"IGNORED DATA(1), MISSED A PKT OR OLD PKT\n");
+     }
+     }
 
      return 0;
 }
