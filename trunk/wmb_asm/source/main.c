@@ -92,15 +92,15 @@ int main(int argc, char *argv[])
 
           if(argc==1)
           {
-                     printf("%s %s by yellowstar built on %s, at %s.\n",APPNAME,APPVERSION,__DATE__,__TIME__);
+                     printf("%s %s by yellowstar6 built on %s, at %s.\n",APPNAME,APPVERSION,__DATE__,__TIME__);
                      printf("Usage:\n");
-                     printf("wmb_asm.exe <options> [List of captures and directories]\n");
+                     printf("wmb_asm <options> [List of captures and directories]\n");
                      printf("Options:\n");
                      printf("-rsa The program will check the RSA-signature, with this option\n");
                      printf("-nds_capdir Assembled binaries will be written to the captures' directory(default)\n");
                      printf("-nds_curdir Assembled binaries will be written to the program's working/current directory\n");
                      printf("-nds_dirDir Assembled binaries will be written to Dir.\n");
-                     printf("-run Opens the output once done as if you double-clicked it in Windows Explorer.\n");
+                     printf("-run Executes the emulator command/path defined by env variable NDSEMU with the filename being the assembled .nds.\n");
                      printf("-copy_dirDir Similar to -nds_dirDir, except the output is copied to Dir after the assembly.\n");
                      printf("-showtime Display how long the the whole assembly process took, at the end, in seconds.(Default)\n");
                      printf("-notime Similar to the previous option, except the time elapsed isn't displayed.\n");
