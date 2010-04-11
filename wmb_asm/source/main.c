@@ -99,8 +99,8 @@ int main(int argc, char *argv[])
                      printf("-notime Similar to the previous option, except the time elapsed isn't displayed.\n");
                      printf("-debug Write to a debug log file. Intended for debugging, and fixing binaries not assembled correctly.\n");
                      printf("-nodebug Don't write to a debug log file.(Default)\n");
-                     printf("Example: wmb_asm.exe -rsa -nds_dirbinaries capture1.cap capture2.cap captures more_captures...\n");
-                     printf("With that, the RSA-siganture would be checked if ndsrsa.exe is in the current directory,\noutput would be written to the binaries directory,\ncapture1.cap, capture2.cap would be used,\nand captures and more_captures directories would be scanned for captures.\n");
+                     printf("Example: wmb_asm -rsa -nds_dirbinaries capture1.cap capture2.cap captures more_captures...\n");
+                     printf("With that, the RSA-siganture would be checked if ndsrsa is in the current directory,\noutput would be written to the binaries directory,\ncapture1.cap, capture2.cap would be used,\nand captures and more_captures directories would be scanned for captures.\n");
           }
           else
           {
@@ -404,7 +404,7 @@ int ReadCaptureLoop(char *cap, int argc, char *argv[], bool checkrsa, char *outd
 		printf("Error reading the packets: %s\n", pcap_geterr(fp));
 
 		pcap_close(fp);
-	   //free(fp);//Gdb debugger included with wxDev-Cpp hangs on this call...(And on the free call in pcap_close in my capture reading code)
+	   //free(fp);//Gdb debugger hangs on this call...(And on the free call in pcap_close in my capture reading code)
 
 	    free(params);
 	    free(errbuf);
