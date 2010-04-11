@@ -13,4 +13,3 @@ The following is the Wmb Asm bugs in this SVN revision:
 
 3. Not all of the binaries from multi-game captures may be assembled.
 
-4. Wmb Asm may take a long time to load plugins, in particular with debugging information enabled when compiling.
