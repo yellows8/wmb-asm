@@ -10,4 +10,5 @@ The content.bin filename can be a http(s) URL to download and decrypt.
 Source is available on SVN at http://wmb-asm.googlecode.com/svn/trunk/wc24decrypt/
 
 Credits:
-Mike Scott for his rijndeal.c
+Mike Scott for his rijndeal.cSquidMan for his endian conversion function from update downloader
+
