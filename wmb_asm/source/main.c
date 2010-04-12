@@ -38,34 +38,6 @@ sAsmSDK_Config *Config = NULL;
 
 void ConvertBin(char *filename);
 
-#ifdef NDS//There is no module loading available for homebrew on NDS, so fake module loading.
-//Trick the code into thinking loading was successful. Actually, there's code in the source directory, which are named
-//the same as the filenames in the module code, however, these include the code from the module.
-//Yes, it's not a very good scheme, but doing it any other way would mean maintaining duplicate
-//code. That would be a pain to maintain. One change in code in one file would mean copying the changed
-//code/file to the other file.
-bool LoadDLL(const char *filename, char *error_buffer = NULL)
-{
-return 1;
-}
-bool CloseDLL(char *error_buffer = NULL)
-{
-return 1;
-}
-void* LoadFunctionDLL(const char *func_name, char *error_buffer = NULL)
-{
-return NULL;
-}
-bool LoadAsmDLL(const char *filename ,char *error_buffer = NULL)
-{
-return 1;
-}
-bool CloseAsmDLL(char *error_buffer = NULL)
-{
-return 1;
-}
-#endif
-
 int main(int argc, char *argv[])
 {
 		  #ifdef NDS//The DS can use argc/argv, however, there isn't any loaders/homebrew cards
@@ -296,7 +268,7 @@ int ReadDump(int argc, char *argv[])
 	           if(use_capdir)//If we're using the captures directory for the outputs' directories, process the output directory name for each capture.
 	           {
 
-                    int pos=strlen(cur_file->filename);//Get the length of the capture
+                    int pos=strlen(cur_file->filename);//Get the length of the capture filename
                     bool found=1;
 
                         while(pos<=0 || found)

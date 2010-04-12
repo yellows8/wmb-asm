@@ -11,3 +11,5 @@ Source is available on SVN at http://wmb-asm.googlecode.com/svn/trunk/wc24decryp
 
 Credits:
 Mike Scott for his rijndeal.c
+SquidMan for his endian conversion function from update downloader 
+

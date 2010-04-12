@@ -55,7 +55,7 @@ FILE_LIST *ScanDirectory(FILE_LIST *filelist, char *dirname, char *ext)
     DIR *dir = NULL;
     struct dirent *ent = NULL;
     char *DirName = (char*)malloc(256);
-    strcpy(DirName,dirname);
+    strncpy(DirName,dirname,256);
     if(filelist!=NULL)
     {
         files = filelist;
@@ -140,14 +140,14 @@ FILE_LIST *ScanDirectory(FILE_LIST *filelist, char *dirname, char *ext)
         else
         {
 
-            sprintf(str,"%s%s",DirName,ent->d_name);
+            snprintf(str, 256, "%s%s",DirName,ent->d_name);
             f = fopen(str,"rb");
 
             if(f==NULL)
             {
 
                 char *Str = (char*)malloc(256);
-                strcpy(Str,str);
+                strncpy(Str,str, 256);
 
                     if(ScanDirectory(cur_files,Str,ext)==NULL)
                     {

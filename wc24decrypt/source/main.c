@@ -19,6 +19,8 @@ OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 DEALINGS IN THE SOFTWARE.
 */
 
+//be32 is from SquidMan's update downloader.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -51,14 +53,6 @@ int GetFileLength(FILE* _pfile)
 	return l_iEnd;
 }
 
-void ConvertEndian(void* input, void* output, int input_length);
-
-inline u16 be16(u16 x)
-{
-    return (x>>8) |
-        (x<<8);
-}
-
 inline u32 be32(u32 x)
 {
     return (x>>24) |
@@ -67,78 +61,6 @@ inline u32 be32(u32 x)
         (x<<24);
 }
 
-// __int64 for MSVC, "long long" for gcc
-inline u64 be64(u64 x)
-{
-    u64 out;
-    ConvertEndian(&x, &out, 8);
-    return out;
-
-    /*u64 out;
-    unsigned char temp, *ptr = (unsigned char*)&out;
-    temp = ptr[7];
-    ptr[7] = ptr[0];
-    ptr[0] = temp;
-
-    temp = ptr[6];
-    ptr[6] = ptr[1];
-    ptr[1] = temp;
-
-    temp = ptr[5];
-    ptr[5] = ptr[2];
-    ptr[2] = temp;
-
-    temp = ptr[4];
-    ptr[4] = ptr[3];
-    ptr[3] = temp;
-
-    return out;*/
-
-    /*return (x>>56) |
-        ((x<<40) & (u64)0x00FF000000000000LL) |
-        ((x<<24) & (u64)0x0000FF0000000000LL) |
-        ((x<<8)  & (u64)0x000000FF00000000LL) |
-        ((x>>8)  & (u64)0x00000000FF000000LL) |
-        ((x>>24) & (u64)0x0000000000FF0000LL) |
-        ((x>>40) & (u64)0x000000000000FF00LL) |
-        (x<<56);*/
-}
-
-void ConvertEndian(void* input, void* output, int input_length)
-{
-     //if(machine_endian==ENDIAN_BIG)return;
-
-     unsigned char *in, *out;
-     in=(unsigned char*)malloc((size_t)input_length);
-     out=(unsigned char*)malloc((size_t)input_length);
-     if(in==NULL || out==NULL)
-     {
-            printf("FATAL ERROR: FAILED TO ALLOCATE MEMORY FOR CONVERTENDIAN.\n");
-            system("PAUSE");
-            #ifndef NDS
-            exit(1);
-            #endif
-     }
-
-     memset(out,0,(size_t)input_length);
-     memset(in,0,(size_t)input_length);
-     memcpy(in,input,(size_t)input_length);
-
-     int I=input_length;
-     int i;
-     for(i=1; i<=input_length; i++)
-     {
-             out[I-1]=in[i-1];
-             I--;
-
-             //if(debug)printf("IN %d %d\n",i,(int)in[i-1]);
-     }
-
-     memcpy(output,out,(size_t)input_length);
-
-     free(out);
-     free(in);
-}
 
 int main(int argc, char **argv)
 {
@@ -167,7 +89,7 @@ int main(int argc, char **argv)
             if(strncmp(argv[1], "http", 4)==0)
             {
                 memset(str, 0, 256);
-                strcpy(str, argv[1]);
+                strncpy(str, 256, argv[1]);
                 int i = strlen(str);
                 while(str[i-1]!='/')i--;
                 strncpy(fnstr, &str[i], strlen(str) - i);
@@ -175,20 +97,20 @@ int main(int argc, char **argv)
                 remove(fnstr);
                 if(argv[1][4]!='s')
                 {
-                    sprintf(str, "wget -N %s", argv[1]);
+                    snprintf(str, 256, "wget -N %s", argv[1]);
                     printf("%s\n", str);
                     system(str);
                 }
                 else
                 {
-                    sprintf(str, "curl -o %s %s", fnstr, argv[1]);
+                    snprintf(str, 256, "curl -o %s %s", fnstr, argv[1]);
                     printf("%s\n", str);
                     system(str);
                 }
             }
             else
             {
-                strcpy(fnstr, argv[1]);
+                strncpy(fnstr, 256, argv[1]);
             }
 
             fwc24 = fopen(fnstr, "rb");
@@ -303,6 +225,7 @@ int main(int argc, char **argv)
             fclose(fout);
             free(inbuf);
             free(outbuf);
+	    printf("Done.\n");
     }
     return 0;
 }
