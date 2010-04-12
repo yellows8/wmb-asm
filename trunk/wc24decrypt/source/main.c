@@ -89,7 +89,7 @@ int main(int argc, char **argv)
             if(strncmp(argv[1], "http", 4)==0)
             {
                 memset(str, 0, 256);
-                strncpy(str, 256, argv[1]);
+                strncpy(str, argv[1], 256);
                 int i = strlen(str);
                 while(str[i-1]!='/')i--;
                 strncpy(fnstr, &str[i], strlen(str) - i);
@@ -110,7 +110,7 @@ int main(int argc, char **argv)
             }
             else
             {
-                strncpy(fnstr, 256, argv[1]);
+                strncpy(fnstr, argv[1], 256);
             }
 
             fwc24 = fopen(fnstr, "rb");
