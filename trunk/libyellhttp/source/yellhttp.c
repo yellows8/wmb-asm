@@ -23,6 +23,7 @@
 #endif
 
 #include "yellhttp.h"
+#define LIBYELLHTTPVERSIONSTR "v1.0.0"
 #define SENDBUFSZ 1024
 #define RECVBUFSZ 1024
 
@@ -215,7 +216,7 @@ int YellHttp_DoRequest(YellHttp_Ctx *ctx, char *url)
 	}	
 	#endif
 
-	snprintf((char*)ctx->sendbuf, SENDBUFSZ, "GET %s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n", ctx->uri, ctx->hostname);
+	snprintf((char*)ctx->sendbuf, SENDBUFSZ, "GET %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: libyellhttp %s\r\nConnection: close\r\n\r\n", ctx->uri, ctx->hostname, LIBYELLHTTPVERSIONSTR);
 	if(!ctx->SSL)
 	{
 		YellHttp_SendData(ctx->sock_client, ctx->sendbuf, strlen((char*)ctx->sendbuf));
