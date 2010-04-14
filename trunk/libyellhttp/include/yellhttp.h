@@ -1,0 +1,31 @@
+#ifndef _H_YELLHTTP
+
+#define YELLHTTP_SRVFLAG_RESUME 1<<0
+#define YELLHTTP_SRVFLAG_DISABLEREDIR 1<<1//optional flag to disable automatically sending a request for redirection.
+#define YELLHTTP_SRVFLAG_USRFLAGS YELLHTTP_SRVFLAG_DISABLEREDIR //Flags that the user can set, used to determine which flags to not clear.
+
+typedef struct sYellHttp_Ctx
+{
+	char url[256];
+	char uri[256];
+	char hostname[256];
+	char portstr[8];
+	char filename[256];
+	char redirecturl[256];
+	unsigned short port;
+	int SSL;
+	int sock_client;
+	unsigned char *sendbuf;
+	unsigned char *recvbuf;
+	unsigned int http_status;
+	unsigned int server_flags;
+} YellHttp_Ctx;
+
+typedef void (*YellHttp_HeaderCb)(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx);
+
+YellHttp_Ctx *YellHttp_InitCtx();
+void YellHttp_FreeCtx(YellHttp_Ctx *ctx);
+int YellHttp_DoRequest(YellHttp_Ctx *ctx, char *url);
+
+#endif
+
