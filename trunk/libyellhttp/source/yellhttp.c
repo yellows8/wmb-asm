@@ -198,9 +198,9 @@ int YellHttp_DoRequest(YellHttp_Ctx *ctx, char *url)
 		CyaSSL_Debugging_ON();
 		method = SSLv3_client_method();
     		sslctx = SSL_CTX_new(method);
+		SSL_CTX_set_verify(sslctx, SSL_VERIFY_NONE, 0);
         	ssl = SSL_new(sslctx);
 		SSL_set_fd(ssl, ctx->sock_client);
-		SSL_CTX_set_verify(sslctx, SSL_VERIFY_NONE, 0);
      		if(SSL_connect(ssl)!=SSL_SUCCESS)
 		{
 			int  err = SSL_get_error(ssl, 0);
