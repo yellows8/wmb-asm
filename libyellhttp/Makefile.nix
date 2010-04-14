@@ -13,6 +13,8 @@ export AS	:=	$(PREFIX)as
 export AR	:=	$(PREFIX)ar
 export OBJCOPY	:=	$(PREFIX)objcopy
 
+LIBYELLHTTPVERSION	:=	1.0.0
+
 #---------------------------------------------------------------------------------
 %.a:
 #---------------------------------------------------------------------------------
@@ -58,7 +60,7 @@ INCLUDES	:=	include
 # options for code generation
 #---------------------------------------------------------------------------------
 
-CFLAGS	:=	-Wall -O2 -fPIC -DLINUX -DENABLESSL
+CFLAGS	:=	-Wall -O2 -fPIC -DLINUX -DENABLESSL -DLIBYELLHTTPVERSION=$(LIBYELLHTTPVERSION)
 
 CFLAGS	+=	$(INCLUDE)
 CXXFLAGS	:= $(CFLAGS)
@@ -134,7 +136,7 @@ clean:
 	@rm -fr $(BUILD) $(TARGET) $(OUTPUT).so.1.0.0
 
 install:
-	cp $(OUTPUT).so.1.0.0 /usr/lib
+	cp $(OUTPUT).so.$(LIBYELLHTTPVERSION) /usr/lib
 	cp include/yellhttp.h /usr/include
 	ldconfig -n /usr/lib
 
@@ -145,7 +147,7 @@ else
 # main targets
 #---------------------------------------------------------------------------------
 $(OUTPUT).so	:	$(OFILES)
-	$(LD) -shared -Wl,-soname,libyellhttp.so.1 -o $(OUTPUT).so.1.0.0 $<
+	$(LD) -shared -Wl,-soname,libyellhttp.so.1 -o $(OUTPUT).so.$(LIBYELLHTTPVERSION) $<
 
 #---------------------------------------------------------------------------------
 %.bin.o	:	%.bin

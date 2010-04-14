@@ -23,6 +23,8 @@ export AS	:=	$(PREFIX)as
 export AR	:=	$(PREFIX)ar
 export OBJCOPY	:=	$(PREFIX)objcopy
 
+LIBYELLHTTPVERSION	:=	1.0.0
+
 #---------------------------------------------------------------------------------
 %.a:
 #---------------------------------------------------------------------------------
@@ -68,7 +70,7 @@ INCLUDES	:=	include
 # options for code generation
 #---------------------------------------------------------------------------------
 
-CFLAGS	:=	-Wall -O2 -DWIN32
+CFLAGS	:=	-Wall -O2 -DWIN32 -DLIBYELLHTTPVERSION=$(LIBYELLHTTPVERSION)
 
 CFLAGS	+=	$(INCLUDE)
 CXXFLAGS	:= $(CFLAGS)
