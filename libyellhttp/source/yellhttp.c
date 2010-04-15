@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/stat.h>
 
 #ifdef LINUX
 #include <netinet/in.h>
@@ -36,6 +37,8 @@ typedef struct sYellHttp_HeaderCbStruct
 void YellHttp_HdrCbAcceptRanges(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx);
 void YellHttp_HdrCbLocation(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx);
 void YellHttp_HdrCbDate(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx);
+
+void YellHttp_GenDate(char *outdate, time_t date);
 
 YellHttp_HeaderCbStruct headercb_array[32] = {{YellHttp_HdrCbAcceptRanges, "Accept-Ranges"}, {YellHttp_HdrCbLocation, "Location"}, {YellHttp_HdrCbDate, "Date"}, {YellHttp_HdrCbDate, "Last-Modified"}};
 
@@ -115,7 +118,10 @@ int YellHttp_DoRequest(YellHttp_Ctx *ctx, char *url)
 	struct hostent *host;
 	struct sockaddr_in client_addr;
 	FILE *fhttpdump;
-	
+	struct stat filestatus;
+	char modifiedsincedate[256];
+	char hdrstr[256];
+	int send_modifiedsince_hdr = 0;
 
 	if(url==NULL)return -1;
 	memset(ctx->url, 0, 256);
@@ -220,7 +226,20 @@ int YellHttp_DoRequest(YellHttp_Ctx *ctx, char *url)
 	}	
 	#endif
 
-	snprintf((char*)ctx->sendbuf, SENDBUFSZ, "GET %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: libyellhttp %s\r\nConnection: close\r\n\r\n", ctx->uri, ctx->hostname, LIBYELLHTTPVERSIONSTR);
+	if(stat(ctx->filename, &filestatus)==0 && !(ctx->server_flags & YELLHTTP_SRVFLAG_NOCACHE))
+	{
+		memset(modifiedsincedate, 0, 256);
+		memset(hdrstr, 0, 256);
+		YellHttp_GenDate(modifiedsincedate, filestatus.st_mtime);
+		sprintf(hdrstr, "If-Modified-Since: %s\r\n", modifiedsincedate);
+		send_modifiedsince_hdr = 1;
+	}
+
+	snprintf((char*)ctx->sendbuf, SENDBUFSZ, "GET %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: libyellhttp %s\r\nConnection: close\r\n", ctx->uri, ctx->hostname, LIBYELLHTTPVERSIONSTR);
+
+	if(send_modifiedsince_hdr)strncat((char*)ctx->sendbuf, hdrstr, SENDBUFSZ);
+
+	strncat((char*)ctx->sendbuf, "\r\n", SENDBUFSZ);
 	if(!ctx->SSL)
 	{
 		YellHttp_SendData(ctx->sock_client, ctx->sendbuf, strlen((char*)ctx->sendbuf));
@@ -445,7 +464,7 @@ void YellHttp_GenDate(char *outdate, time_t date)
 	char month[4];
 	strncpy(weekday, weekdaystr[time->tm_wday], 4);
 	strncpy(month, month_strs[time->tm_mon], 4);
-	sprintf(outdate, "%s, %02d %s %04d %02d:%02d:%02d", weekday, time->tm_mday, month, time->tm_year, time->tm_hour, time->tm_min, time->tm_sec);
+	sprintf(outdate, "%s, %02d %s %04d %02d:%02d:%02d GMT", weekday, time->tm_mday, month, time->tm_year + 1900, time->tm_hour, time->tm_min, time->tm_sec);
 }
 
 void YellHttp_HdrCbAcceptRanges(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx)
