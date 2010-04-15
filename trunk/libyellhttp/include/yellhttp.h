@@ -5,7 +5,7 @@
 #define YELLHTTP_SRVFLAG_RESUME 1<<0
 #define YELLHTTP_SRVFLAG_DISABLEREDIR 1<<1//optional flag to disable automatically sending a request for redirection.
 #define YELLHTTP_SRVFLAG_NOCACHE 1<<2//optional flag to disable caching: don't send the If-Modified-Since header, always download the file regardless of modification timestamp.
-#define YELLHTTP_SRVFLAG_USRFLAGS YELLHTTP_SRVFLAG_DISABLEREDIR //Flags that the user can set, used to determine which flags to not clear.
+#define YELLHTTP_SRVFLAG_USRFLAGS YELLHTTP_SRVFLAG_DISABLEREDIR | YELLHTTP_SRVFLAG_NOCACHE //Flags that the user can set, used to determine which flags to not clear.
 
 typedef struct sYellHttp_Ctx
 {
