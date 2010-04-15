@@ -35,8 +35,12 @@ typedef struct sYellHttp_HeaderCbStruct
 
 void YellHttp_HdrCbAcceptRanges(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx);
 void YellHttp_HdrCbLocation(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx);
+void YellHttp_HdrCbDate(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx);
 
-YellHttp_HeaderCbStruct headercb_array[32] = {{YellHttp_HdrCbAcceptRanges, "Accept-Ranges"}, {YellHttp_HdrCbLocation, "Location"}};
+YellHttp_HeaderCbStruct headercb_array[32] = {{YellHttp_HdrCbAcceptRanges, "Accept-Ranges"}, {YellHttp_HdrCbLocation, "Location"}, {YellHttp_HdrCbDate, "Date"}, {YellHttp_HdrCbDate, "Last-Modified"}};
+
+char weekdaystr[7][4] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+char month_strs[12][4] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 
 YellHttp_Ctx *YellHttp_InitCtx()
 {
@@ -265,6 +269,7 @@ int YellHttp_DoRequest(YellHttp_Ctx *ctx, char *url)
 				{
 					sscanf((char*)&ctx->recvbuf[9], "%d", &ctx->http_status);
 					printf("HTTP status: %d\n", ctx->http_status);
+					if(ctx->http_status==304)stop = 1;
 				}
 				else
 				{
@@ -353,6 +358,96 @@ int YellHttp_DoRequest(YellHttp_Ctx *ctx, char *url)
 	return 0;
 }
 
+int YellHttp_GetTimezoneoffset()
+{
+	int timezoneoffset;
+	int localhour;	
+	time_t curtime = time(NULL);
+	time_t utctime;
+	struct tm *Time = gmtime(&curtime);
+	struct tm timetm;
+	memcpy(&timetm, Time, sizeof(struct tm));	
+	timetm.tm_hour = 12;
+	localhour = timetm.tm_hour;
+	utctime = mktime(&timetm);
+	Time = gmtime(&utctime);
+	if(localhour < Time->tm_hour)//UTC- timezones
+	{
+		timezoneoffset = Time->tm_hour - localhour;
+		timezoneoffset = -timezoneoffset;
+	}
+	else//UTC+ timezones
+	{
+		timezoneoffset = localhour - Time->tm_hour;
+	}
+
+	return timezoneoffset;
+}
+
+time_t YellHttp_ParseDate(char *date)
+{
+	struct tm time;
+	int i, found = -1;
+	char weekday[4];
+	char month[4];
+	int monthday, year, hour, minute, second;
+	time_t timestamp;
+	time.tm_isdst = 0;
+	sscanf(date, "%s %02d %s %04d %02d:%02d:%02d", weekday, &monthday, month, &year, &hour, &minute, &second);
+	for(i=0; i<7; i++)
+	{
+		if(strncmp(weekday, weekdaystr[i], 3)==0)
+		{
+			found = i;
+			break;
+		}
+	}
+
+	if(found==-1)
+	{
+		printf("Invalid weekday.\n");
+		return 0;
+	}
+	time.tm_wday = found;
+	time.tm_mday = monthday;
+
+	found = -1;
+	for(i=0; i<12; i++)
+	{
+		if(strncmp(month, month_strs[i], 3)==0)
+		{
+			found = i;
+			break;
+		}
+	}
+
+	if(found==-1)
+	{
+		printf("Invalid month.\n");
+		return 0;
+	}
+	time.tm_mon = found;
+	time.tm_year = year - 1900;
+	time.tm_hour = hour;
+	time.tm_min = minute;
+	time.tm_sec = second;
+
+	time.tm_hour+= YellHttp_GetTimezoneoffset();
+	timestamp = mktime(&time);
+
+	return timestamp;
+}
+
+void YellHttp_GenDate(char *outdate, time_t date)
+{
+	struct tm *time = gmtime(&date);
+	char weekday[4];
+	char month[4];
+	strncpy(weekday, weekdaystr[time->tm_wday], 4);
+	strncpy(month, month_strs[time->tm_mon], 4);
+	sprintf(outdate, "%s, %02d %s %04d %02d:%02d:%02d", weekday, time->tm_mday, month, time->tm_year, time->tm_hour, time->tm_min, time->tm_sec);
+}
+
 void YellHttp_HdrCbAcceptRanges(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx)
 {
 	ctx->server_flags |= YELLHTTP_SRVFLAG_RESUME;
@@ -361,5 +456,20 @@ void YellHttp_HdrCbAcceptRanges(char *hdr, char *hdrfield, char *hdrval, YellHtt
 void YellHttp_HdrCbLocation(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx)
 {
 	strncpy(ctx->redirecturl, hdrval, 255);
+}
+
+void YellHttp_HdrCbDate(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx)
+{
+	time_t timestamp = YellHttp_ParseDate(hdrval);
+	if(strcmp(hdrfield, "Date")==0)
+	{
+		ctx->server_date = timestamp;
+		printf("Date: %s", ctime(&timestamp));
+	}
+	if(strcmp(hdrfield, "Last-Modified")==0)
+	{
+		ctx->lastmodified = timestamp;
+		printf("Last-Modified: %s", ctime(&timestamp));
+	}
 }
 
