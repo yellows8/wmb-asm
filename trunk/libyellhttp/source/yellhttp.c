@@ -248,7 +248,7 @@ int YellHttp_ExecRequest(YellHttp_Ctx *ctx, char *url)
 	ctx->sock_client = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if(ctx->sock_client<0)
 	{
-		if(ctx->sock_client == SOCKET_ERROR)
+		if(ctx->sock_client == -1)
 		{
 			printf("Failed to create socket: %d\n", ctx->sock_client);
 			return YELLHTTP_ESOCK;
