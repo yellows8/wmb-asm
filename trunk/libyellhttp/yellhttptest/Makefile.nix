@@ -58,7 +58,7 @@ INCLUDES	:=	include
 # options for code generation
 #---------------------------------------------------------------------------------
 
-CFLAGS	:=	-Wall -O2 -DENABLESSL
+CFLAGS	:=	-Wall -O2 -DLINUX -DENABLESSL
 
 CFLAGS	+=	$(INCLUDE)
 CXXFLAGS	:= $(CFLAGS)

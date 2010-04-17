@@ -5,18 +5,39 @@
 #include <sys/stat.h>
 
 #ifdef LINUX
-#include <netinet/in.h>
-#include <netdb.h>
-#include <sys/socket.h>
 #include <arpa/inet.h>
 #endif
 
 #ifdef WIN32
 #include <winsock2.h>
+#else
+	#ifndef HW_RVL
+	#include <netinet/in.h>
+	#include <netdb.h>
+	#include <sys/socket.h>
+	#else
+	#include <ogcsys.h>
+	#include <gccore.h>
+	#include <network.h>
+	#include <debug.h>
+	#include <errno.h>
+	#define socket net_socket
+	#define gethostbyname net_gethostbyname
+	#define connect net_connect
+	#define shutdown net_shutdown
+	#define send net_send
+	#define recv net_recv
+	#endif
 #endif
 
-#ifdef NDS
+#ifdef ARM9
+#include <nds.h>
 #include <dswifi9.h>
+
+#ifndef IPPROTO_TCP
+#define IPPROTO_TCP 0
+#endif
+
 #endif
 
 #ifdef ENABLESSL
@@ -27,20 +48,23 @@
 #define LIBYELLHTTPVERSIONSTR "v1.0.0"
 #define SENDBUFSZ 1024
 #define RECVBUFSZ 1024
+#define TOTALHDRCBSTRUCTS 32
 
 typedef struct sYellHttp_HeaderCbStruct
 {
 	YellHttp_HeaderCb cb;
+	void* usrarg;
 	char hdrfield[256];
 } YellHttp_HeaderCbStruct;
 
-void YellHttp_HdrCbAcceptRanges(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx);
-void YellHttp_HdrCbLocation(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx);
-void YellHttp_HdrCbDate(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx);
+void YellHttp_HdrCbAcceptRanges(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx, void* usrarg);
+void YellHttp_HdrCbLocation(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx, void* usrarg);
+void YellHttp_HdrCbDate(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx, void* usrarg);
+void YellHttp_HdrCbContentLength(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx, void* usrarg);
 
 void YellHttp_GenDate(char *outdate, time_t date);
 
-YellHttp_HeaderCbStruct headercb_array[32] = {{YellHttp_HdrCbAcceptRanges, "Accept-Ranges"}, {YellHttp_HdrCbLocation, "Location"}, {YellHttp_HdrCbDate, "Date"}, {YellHttp_HdrCbDate, "Last-Modified"}};
+YellHttp_HeaderCbStruct headercb_array[32] = {{YellHttp_HdrCbAcceptRanges, 0, "Accept-Ranges"}, {YellHttp_HdrCbLocation,  0, "Location"}, {YellHttp_HdrCbDate, 0, "Date"}, {YellHttp_HdrCbDate, 0, "Last-Modified"}, {YellHttp_HdrCbContentLength, 0, "Content-Length"}};
 
 char weekdaystr[7][4] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
 char month_strs[12][4] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
@@ -59,6 +83,9 @@ YellHttp_Ctx *YellHttp_InitCtx()
 	}
 	memset(ctx->sendbuf, 0, SENDBUFSZ);
 	memset(ctx->recvbuf, 0, RECVBUFSZ);
+	memset(ctx->useragent, 0, 256);
+	memset(ctx->request_type, 0, 8);
+	sprintf(ctx->useragent, "libyellhttp %s", LIBYELLHTTPVERSIONSTR);
 
 	return ctx;
 }
@@ -104,8 +131,9 @@ int YellHttp_RecvData(int sock, unsigned char *data, int len)
 	return recievedlen;
 }
 
-int YellHttp_DoRequest(YellHttp_Ctx *ctx, char *url)
+int YellHttp_ExecRequest(YellHttp_Ctx *ctx, char *url)
 {
+	int retval;
 	int i=0;
 	int hostnamei;
 	int porti = 0;
@@ -122,8 +150,12 @@ int YellHttp_DoRequest(YellHttp_Ctx *ctx, char *url)
 	char modifiedsincedate[256];
 	char hdrstr[256];
 	int send_modifiedsince_hdr = 0;
+	int valid_domain_name;
+	unsigned long serverip;
+	char request_type[8];
+	unsigned int content_len;
 
-	if(url==NULL)return -1;
+	if(url==NULL)return YELLHTTP_EINVAL;
 	memset(ctx->url, 0, 256);
 	strncpy(ctx->url, url, 255);	
 	ctx->server_flags &= YELLHTTP_SRVFLAG_USRFLAGS;
@@ -133,24 +165,24 @@ int YellHttp_DoRequest(YellHttp_Ctx *ctx, char *url)
 		#ifdef ENABLESSL
 		ctx->SSL = 1;
 		#else
-		return -2;
+		return YELLHTTP_ESSLDISABLED;
 		#endif
 		i+= 8;
 	}
-	else if(strncmp(ctx->url, "https", 4)==0)
+	else if(strncmp(ctx->url, "http", 4)==0)
 	{
 		ctx->SSL = 0;
 		i+= 7;
 	}
 	else
 	{
-		return -2;
+		return YELLHTTP_EINVAL;
 	}
 	hostnamei = i;
 
 	memset(ctx->hostname, 0, 256);
 	while(ctx->url[i]!='/' && ctx->url[i]!=':')i++;
-	if(i>255)return -2;
+	if(i>255)return YELLHTTP_EINVAL;
 	strncpy(ctx->hostname, &ctx->url[hostnamei], i - hostnamei);
 
 	memset(ctx->uri, 0, 256);
@@ -170,6 +202,7 @@ int YellHttp_DoRequest(YellHttp_Ctx *ctx, char *url)
 		sscanf(ctx->portstr, "%hd", &ctx->port);
 	}
 	strcpy(ctx->uri, &ctx->url[i]);
+	i = strlen(ctx->url) - 1;
 
 	memset(ctx->filename, 0, 256);
 	while(ctx->url[i]!='/' && i>0)i--;
@@ -183,19 +216,52 @@ int YellHttp_DoRequest(YellHttp_Ctx *ctx, char *url)
 		strncpy(ctx->filename, &ctx->url[i], 256);
 	}
 
-	if ((host = gethostbyname(ctx->hostname)) == NULL)
-        {
-		return -3;
-        }
+	printf("Looking up %s...\n", ctx->hostname);
+	valid_domain_name = 0;
+	for(hostnamei=0; hostnamei<strlen(ctx->hostname); hostnamei++)
+	{
+		if(ctx->hostname[hostnamei]>='A' && ctx->hostname[hostnamei]<='z')
+		{
+			valid_domain_name = 1;
+			break;
+		}
+	}
+
+	if(valid_domain_name)
+	{
+		if((host = gethostbyname(ctx->hostname)) == NULL)
+        	{
+			return YELLHTTP_EDNSRESOLV;
+        	}
+		serverip = *((unsigned long *) host->h_addr_list[0]);
+	}
+	else
+	{
+		serverip = inet_addr(ctx->hostname);
+	}
 
 	client_addr.sin_family = AF_INET;
 	client_addr.sin_port = htons(ctx->port);
-	client_addr.sin_addr.s_addr = *((unsigned long *) host->h_addr_list[0]);
+	client_addr.sin_addr.s_addr = serverip;
 
 	ctx->sock_client = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if(connect(ctx->sock_client, (struct sockaddr *)&client_addr, sizeof(client_addr))<0)
+	if(ctx->sock_client<0)
 	{
-		return -4;
+		if(ctx->sock_client == SOCKET_ERROR)
+		{
+			printf("Failed to create socket: %d\n", ctx->sock_client);
+			return YELLHTTP_ESOCK;
+		}
+		else
+		{
+			printf("socket() returned %d, ignoring...\n", ctx->sock_client);
+		}
+	}
+	printf("Connecting to %s...\n", ctx->hostname);
+	if((retval = connect(ctx->sock_client, (struct sockaddr *)&client_addr, sizeof(client_addr)))<0)
+	{
+		printf("Failed: %d\n", retval);
+		return YELLHTTP_ECONN;
 	}
 
 	#ifdef ENABLESSL
@@ -211,6 +277,7 @@ int YellHttp_DoRequest(YellHttp_Ctx *ctx, char *url)
 		SSL_CTX_set_verify(sslctx, SSL_VERIFY_NONE, 0);
         	ssl = SSL_new(sslctx);
 		SSL_set_fd(ssl, ctx->sock_client);
+		printf("Connecting to %s with SSL...\n", ctx->hostname);
      		if(SSL_connect(ssl)!=SSL_SUCCESS)
 		{
 			int  err = SSL_get_error(ssl, 0);
@@ -235,11 +302,22 @@ int YellHttp_DoRequest(YellHttp_Ctx *ctx, char *url)
 		send_modifiedsince_hdr = 1;
 	}
 
-	snprintf((char*)ctx->sendbuf, SENDBUFSZ, "GET %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: libyellhttp %s\r\nConnection: close\r\n", ctx->uri, ctx->hostname, LIBYELLHTTPVERSIONSTR);
+	memset(request_type, 0, 8);
+	if(strlen(ctx->request_type)>0)
+	{
+		strncpy(request_type, ctx->request_type, 8);
+		if(strncmp(request_type, "HEAD", 4)==0)stop = 1;
+	}
+	else
+	{
+		strncpy(request_type, "GET", 8);
+	}
+	snprintf((char*)ctx->sendbuf, SENDBUFSZ, "%s %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: %s\r\nConnection: close\r\n", request_type, ctx->uri, ctx->hostname, ctx->useragent);
 
 	if(send_modifiedsince_hdr)strncat((char*)ctx->sendbuf, hdrstr, SENDBUFSZ);
 
 	strncat((char*)ctx->sendbuf, "\r\n", SENDBUFSZ);
+	printf("Sending request...\n");
 	if(!ctx->SSL)
 	{
 		YellHttp_SendData(ctx->sock_client, ctx->sendbuf, strlen((char*)ctx->sendbuf));
@@ -254,7 +332,24 @@ int YellHttp_DoRequest(YellHttp_Ctx *ctx, char *url)
 	hdrfield = (char*)malloc(256);
 	hdrval = (char*)malloc(256);
 
+	printf("Waiting for response...(Headers)\n");
 	fhttpdump = fopen("httpheaders", "wb");
+	if(fhttpdump==NULL)
+	{
+		#ifdef ENABLESSL
+		if(ctx->SSL)
+		{
+			SSL_CTX_free(sslctx);
+     			SSL_free(ssl);
+			FreeCyaSSL();
+		}	
+		#endif
+		shutdown(ctx->sock_client,0);
+		close(ctx->sock_client);
+		free(hdrfield);
+		free(hdrval);
+		return YELLHTTP_EFILE;
+	}
 	while(1)
 	{
 		if(!ctx->SSL)
@@ -320,7 +415,7 @@ int YellHttp_DoRequest(YellHttp_Ctx *ctx, char *url)
 						if(headercb_array[i].cb==NULL)continue;
 						if(strcmp(headercb_array[i].hdrfield, hdrfield)==0)
 						{
-							headercb_array[i].cb((char*)ctx->recvbuf, hdrfield, hdrval, ctx);
+							headercb_array[i].cb((char*)ctx->recvbuf, hdrfield, hdrval, ctx, headercb_array[i].usrarg);
 						}
 					}
 				}
@@ -337,20 +432,61 @@ int YellHttp_DoRequest(YellHttp_Ctx *ctx, char *url)
 
 	if(!stop)
 	{
+		printf("Receiving content, filename %s ...\n", ctx->filename);
 		fhttpdump = fopen(ctx->filename, "wb");
+		content_len = ctx->content_length;
+		if(fhttpdump==NULL)
+		{
+			#ifdef ENABLESSL
+			if(ctx->SSL)
+			{
+				SSL_CTX_free(sslctx);
+     				SSL_free(ssl);
+			FreeCyaSSL();
+			}	
+			#endif
+			shutdown(ctx->sock_client,0);
+			close(ctx->sock_client);
+			return YELLHTTP_EFILE;
+		}
+
 		if(!ctx->SSL)
 		{
-			while((recvlen = YellHttp_RecvData(ctx->sock_client, ctx->recvbuf, RECVBUFSZ))!=0)
+			if(content_len)
 			{
-				fwrite(ctx->recvbuf, 1, recvlen, fhttpdump);
+				while(content_len)
+				{
+					recvlen = YellHttp_RecvData(ctx->sock_client, ctx->recvbuf, RECVBUFSZ);
+					fwrite(ctx->recvbuf, 1, recvlen, fhttpdump);
+					content_len-= recvlen;
+				}
+			}
+			else
+			{
+				while((recvlen = YellHttp_RecvData(ctx->sock_client, ctx->recvbuf, RECVBUFSZ))!=0)
+				{
+					fwrite(ctx->recvbuf, 1, recvlen, fhttpdump);
+				}
 			}
 		}
 		else
 		{
 			#ifdef ENABLESSL
-			while((recvlen = SSL_read(ssl, ctx->recvbuf, RECVBUFSZ))!=0)
+			if(content_len)
 			{
-				fwrite(ctx->recvbuf, 1, recvlen, fhttpdump);
+				while(content_len)
+				{
+					recvlen = SSL_read(ssl, ctx->recvbuf, RECVBUFSZ);
+					fwrite(ctx->recvbuf, 1, recvlen, fhttpdump);
+					content_len-= recvlen;
+				}
+			}
+			else
+			{
+				while((recvlen = SSL_read(ssl, ctx->recvbuf, RECVBUFSZ))!=0)
+				{
+					fwrite(ctx->recvbuf, 1, recvlen, fhttpdump);
+				}
 			}
 			#endif
 		}
@@ -371,9 +507,100 @@ int YellHttp_DoRequest(YellHttp_Ctx *ctx, char *url)
 	if((ctx->http_status>=301 && ctx->http_status<=303) && !(ctx->server_flags & YELLHTTP_SRVFLAG_DISABLEREDIR))
 	{
 		printf("Redirected: %s\n", ctx->redirecturl);
-		YellHttp_DoRequest(ctx, ctx->redirecturl);
+		YellHttp_ExecRequest(ctx, ctx->redirecturl);
 	}
 	if(ctx->http_status>=400)return -ctx->http_status;
+	return 0;
+}
+
+void YellHttp_GetErrorStr(int error, char *errstr, int errstrlen)
+{
+	if(errstr==NULL)return;
+	memset(errstr, 0, errstrlen);
+	if(error>=YELLHTTP_LASTERROR)
+	{
+		switch(error)
+		{
+			case 0:
+				snprintf(errstr, errstrlen, "Success.\n");
+			break;
+
+			case YELLHTTP_EINVAL:
+				snprintf(errstr, errstrlen, "Invalid input.\n");
+			break;
+
+			case YELLHTTP_ESSLDISABLED:
+				snprintf(errstr, errstrlen, "User attempted to use SSL when SSL is disabled.\n");
+			break;
+
+			case YELLHTTP_EDNSRESOLV:
+				snprintf(errstr, errstrlen, "Failed to resolve DNS domain name.\n");
+			break;
+
+			case YELLHTTP_ESOCK:
+				snprintf(errstr, errstrlen, "Failed to create socket.\n");
+			break;
+
+			case YELLHTTP_ECONN:
+				snprintf(errstr, errstrlen, "Failed to connect to server.\n");
+			break;
+
+			case YELLHTTP_EFILE:
+				snprintf(errstr, errstrlen, "Failed to open file.\n");
+			break;
+		}
+		return;
+	}
+	
+	if(error>-400)
+	{
+		snprintf(errstr, errstrlen, "SSL error: %d\n", error);
+		return;
+	}
+	else
+	{
+		snprintf(errstr, errstrlen, "HTTP error: %d\n", -error);
+		return;
+	}
+}
+
+int YellHttp_SetHeaderCb(YellHttp_HeaderCb cb, char *header)
+{
+	int i, found = -1;
+	char hdr[256];
+	if(header==NULL)return -2;
+	strncpy(hdr, header, 256);
+	for(i=0; i<TOTALHDRCBSTRUCTS; i++)
+	{
+		if(strncmp(headercb_array[i].hdrfield, hdr, 256)==0)
+		{
+			found = i;
+			break;
+		}
+	}
+	
+	if(found==-1)
+	{
+		for(i=0; i<TOTALHDRCBSTRUCTS; i++)
+		{
+			if(headercb_array[i].cb==NULL)
+			{
+				found = i;
+				break;
+			}
+		}
+	}
+
+	if(found==-1)return -1;
+	headercb_array[found].cb = cb;
+	if(strlen(hdr)>0)
+	{
+		strncpy(headercb_array[found].hdrfield, hdr, 256);
+	}
+	else
+	{
+		memset(headercb_array[found].hdrfield, 0, 256);
+	}
 	return 0;
 }
 
@@ -467,17 +694,17 @@ void YellHttp_GenDate(char *outdate, time_t date)
 	sprintf(outdate, "%s, %02d %s %04d %02d:%02d:%02d GMT", weekday, time->tm_mday, month, time->tm_year + 1900, time->tm_hour, time->tm_min, time->tm_sec);
 }
 
-void YellHttp_HdrCbAcceptRanges(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx)
+void YellHttp_HdrCbAcceptRanges(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx, void* usrarg)
 {
 	ctx->server_flags |= YELLHTTP_SRVFLAG_RESUME;
 }
 
-void YellHttp_HdrCbLocation(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx)
+void YellHttp_HdrCbLocation(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx, void* usrarg)
 {
 	strncpy(ctx->redirecturl, hdrval, 255);
 }
 
-void YellHttp_HdrCbDate(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx)
+void YellHttp_HdrCbDate(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx, void* usrarg)
 {
 	time_t timestamp = YellHttp_ParseDate(hdrval);
 	if(strcmp(hdrfield, "Date")==0)
@@ -490,5 +717,10 @@ void YellHttp_HdrCbDate(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *c
 		ctx->lastmodified = timestamp;
 		printf("Last-Modified: %s", ctime(&timestamp));
 	}
+}
+
+void YellHttp_HdrCbContentLength(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx, void* usrarg)
+{
+	sscanf(hdrval, "%d", &ctx->content_length);
 }
 
