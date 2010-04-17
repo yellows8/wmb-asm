@@ -36,6 +36,7 @@ typedef struct sYellHttp_Ctx
 	char redirecturl[256];
 	char useragent[256];//YellHttp_InitCtx sets this to the default user agent, which is "libyellhttp v%s" where %s is the version number.
 	char request_type[8];//If not set, default is GET.(This isn't modified when it is not set.)
+	char headers[256];//Optional custom headers, each line must end with \r\n.
 } YellHttp_Ctx;
 
 typedef void (*YellHttp_HeaderCb)(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx, void* usrarg);

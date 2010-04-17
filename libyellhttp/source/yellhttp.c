@@ -86,6 +86,7 @@ YellHttp_Ctx *YellHttp_InitCtx()
 	memset(ctx->useragent, 0, 256);
 	memset(ctx->request_type, 0, 8);
 	sprintf(ctx->useragent, "libyellhttp %s", LIBYELLHTTPVERSIONSTR);
+	memset(ctx->headers, 0, 256);
 
 	return ctx;
 }
@@ -313,6 +314,7 @@ int YellHttp_ExecRequest(YellHttp_Ctx *ctx, char *url)
 		strncpy(request_type, "GET", 8);
 	}
 	snprintf((char*)ctx->sendbuf, SENDBUFSZ, "%s %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: %s\r\nConnection: close\r\n", request_type, ctx->uri, ctx->hostname, ctx->useragent);
+	if(strlen(ctx->headers)>0)strncat((char*)ctx->sendbuf, ctx->headers, SENDBUFSZ);
 
 	if(send_modifiedsince_hdr)strncat((char*)ctx->sendbuf, hdrstr, SENDBUFSZ);
 
