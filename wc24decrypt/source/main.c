@@ -95,7 +95,10 @@ int main(int argc, char **argv)
             memset(str, 0, 256);
             memset(fnstr, 0, 256);
 
-	    if(strcmp(argv[4], "--cache")==0)cache = 1;
+	    if(argc>=5)
+	    {	    
+		if(strcmp(argv[4], "--cache")==0)cache = 1;
+	    }
 
             if(strncmp(argv[1], "http", 4)==0)
             {
