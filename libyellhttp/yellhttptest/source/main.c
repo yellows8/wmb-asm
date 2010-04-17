@@ -210,7 +210,7 @@ void init_wii()
 	}
 	else
 	{
-		printf("Network config done.\n");
+		printf("Network config done ip: %s, gw: %s, mask %s\n", localip, gateway, netmask);
 	}
 }
 #endif

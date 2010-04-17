@@ -182,7 +182,7 @@ int YellHttp_ExecRequest(YellHttp_Ctx *ctx, char *url)
 	hostnamei = i;
 
 	memset(ctx->hostname, 0, 256);
-	while(ctx->url[i]!='/' && ctx->url[i]!=':')i++;
+	while(ctx->url[i]!='/' && ctx->url[i]!=':' && i<strlen(ctx->url))i++;
 	if(i>255)return YELLHTTP_EINVAL;
 	strncpy(ctx->hostname, &ctx->url[hostnamei], i - hostnamei);
 
@@ -194,7 +194,7 @@ int YellHttp_ExecRequest(YellHttp_Ctx *ctx, char *url)
 	{
 		i++;
 		memset(ctx->portstr, 0, 8);
-		while((ctx->url[i]>('0'-1) && ctx->url[i]<('9'+1)) && porti<8)
+		while((ctx->url[i]>('0'-1) && ctx->url[i]<('9'+1)) && porti<8 && i<strlen(ctx->url))
 		{
 			ctx->portstr[porti] = ctx->url[i];
 			i++;
@@ -203,18 +203,23 @@ int YellHttp_ExecRequest(YellHttp_Ctx *ctx, char *url)
 		sscanf(ctx->portstr, "%hd", &ctx->port);
 	}
 	strcpy(ctx->uri, &ctx->url[i]);
-	i = strlen(ctx->url) - 1;
+	i = strlen(ctx->uri) - 1;
+	if(i==-1)
+	{
+		ctx->uri[0] = '/';
+		i = 0;
+	}
 
 	memset(ctx->filename, 0, 256);
-	while(ctx->url[i]!='/' && i>0)i--;
-	if(strcmp(&ctx->url[i], "/")==0)
+	while(ctx->uri[i]!='/' && i>0)i--;
+	if(strcmp(&ctx->uri[i], "/")==0)
 	{
 		strncpy(ctx->filename, "index.html", 256);
 	}
 	else
 	{
 		i++;
-		strncpy(ctx->filename, &ctx->url[i], 256);
+		strncpy(ctx->filename, &ctx->uri[i], 256);
 	}
 
 	printf("Looking up %s...\n", ctx->hostname);
