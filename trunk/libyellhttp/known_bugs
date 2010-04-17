@@ -1,0 +1,14 @@
+Known Linux/Win32 bugs:
+
+1) Crash occurs when a / is missing from a URL. This crashes, http://example.com while this works: http://example.com/
+
+Known NDS bugs:
+The NDS version has the bugs from the Linux/Win32 versions, as well as:
+
+1) CyaSSL doesn't even try connecting to server, CyaSSL port compiling issue perhaps?
+
+Known Wii bugs:
+The Wii version has the bugs from the Linux/Win32 versions, as well as:
+
+1) Networking doesn't work. net_socket returns -123, net_connect returns -81. Both are unknown errors.
+
