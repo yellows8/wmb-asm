@@ -70,7 +70,7 @@ INCLUDES	:=	include
 # options for code generation
 #---------------------------------------------------------------------------------
 
-CFLAGS	:=	-Wall -O2 -DWIN32 -DLIBYELLHTTPVERSION=$(LIBYELLHTTPVERSION)
+CFLAGS	:=	-Wall -O2 -DWIN32 -DENABLESSL -DLIBYELLHTTPVERSION=$(LIBYELLHTTPVERSION)
 
 CFLAGS	+=	$(INCLUDE)
 CXXFLAGS	:= $(CFLAGS)
@@ -81,14 +81,14 @@ LDFLAGS	=	-g -Wl -shared -Wl,--out-implib=$(OUTPUT).dll.a
 #---------------------------------------------------------------------------------
 # any extra libraries we wish to link with the project (order is important)
 #---------------------------------------------------------------------------------
-LIBS	:=	-lwsock32
+LIBS	:=	-lcyassl -lwsock32
 
 
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing
 # include and lib
 #---------------------------------------------------------------------------------
-LIBDIRS	:=
+LIBDIRS	:=	/usr/i586-mingw32msvc/cyassl
 
 #---------------------------------------------------------------------------------
 # no real need to edit anything past this point unless you need to add additional
@@ -158,7 +158,7 @@ else
 #---------------------------------------------------------------------------------
 $(OUTPUT).dll	:	$(OFILES)
 	@echo linking $(notdir $@)
-	@$(LD)  $(LDFLAGS) $(OFILES) $(LIBS) -o $@
+	@$(LD)  $(LDFLAGS) $(OFILES) $(LIBPATHS) $(LIBS) -o $@
 
 #---------------------------------------------------------------------------------
 %.bin.o	:	%.bin

@@ -80,14 +80,14 @@ LDFLAGS	=	-g -Wl
 #---------------------------------------------------------------------------------
 # any extra libraries we wish to link with the project (order is important)
 #---------------------------------------------------------------------------------
-LIBS	:=	-lyellhttp
+LIBS	:=	-lyellhttp -lcyassl
 
 
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing
 # include and lib
 #---------------------------------------------------------------------------------
-LIBDIRS	:=
+LIBDIRS	:=	/usr/i586-mingw32msvc/cyassl
 
 #---------------------------------------------------------------------------------
 # no real need to edit anything past this point unless you need to add additional

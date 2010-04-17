@@ -1,6 +1,6 @@
 /*
 wc24decrypt is licensed under the MIT license:
-Copyright (c) 2009 yellowstar6
+Copyright (c) 2009 - 2010 yellowstar6
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this
 software and associated documentation files (the “Software”), to deal in the Software
@@ -24,6 +24,7 @@ DEALINGS IN THE SOFTWARE.
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <yellhttp.h>
 
 typedef unsigned char u8;
 typedef unsigned short u16;
@@ -40,6 +41,9 @@ typedef struct _swc24pubkmod
     unsigned char aes_key[16];
     unsigned char aes_iv[16];//always zero in wc24pubk.mod
 } swc24pubkmod;
+
+char str[256];
+char fnstr[256];
 
 int GetFileLength(FILE* _pfile)
 {
@@ -67,46 +71,61 @@ int main(int argc, char **argv)
     unsigned char magic[4] = "WC24";
     u32 temp;
     swc24pubkmod keys;
-    char str[256];
-    char fnstr[256];
     printf("wc24decrypt v1.0 by yellowstar6\n");
-    if(argc<3 || argc>4)
+    if(argc<3 || argc>5)
     {
         printf("Decrypt WC24 content, content downloaded with WC24 with the WC24 header.\n");
         printf("Usage:\n");
-        printf("wc24decrypt <content.bin> <decrypt.bin> <wc24pubk.mod>\n");
+        printf("wc24decrypt <content.bin> <decrypt.bin> <wc24pubk.mod> <options>\n");
         printf("The wc24pubk.mod can also by a 16 byte key.\n");
         printf("The mod/key filename can be excluded if the content is not encrypted.\n");
         printf("The content.bin filename can be a http(s) URL to download and decrypt.\n");
+	printf("Options:\n");
+	printf("--cache: Cache the download, don't delete it before downloading and don't disable sending the If-Modified header. Default is no cache.\n");
     }
     else
     {
             FILE *fwc24, *fout, *fkeys = NULL;
             unsigned char *inbuf, *outbuf;
             unsigned int inlen;
+	    int retval;
+	    YellHttp_Ctx *ctx;
+	    int cache = 0;
+	    char errstr[256];
             memset(str, 0, 256);
             memset(fnstr, 0, 256);
+
+	    if(strcmp(argv[4], "--cache")==0)cache = 1;
+
             if(strncmp(argv[1], "http", 4)==0)
             {
+		ctx = YellHttp_InitCtx();
+	    	if(ctx==NULL)
+	    	{
+			printf("YellHttp ctx alloc failed.\n");
+			return -1;
+	    	}
+
                 memset(str, 0, 256);
+		memset(errstr, 0, 256);
                 strncpy(str, argv[1], 256);
                 int i = strlen(str);
                 while(str[i-1]!='/')i--;
                 strncpy(fnstr, &str[i], strlen(str) - i);
 
-                remove(fnstr);
-                if(argv[1][4]!='s')
-                {
-                    snprintf(str, 256, "wget -N %s", argv[1]);
-                    printf("%s\n", str);
-                    system(str);
-                }
-                else
-                {
-                    snprintf(str, 256, "curl -o %s %s", fnstr, argv[1]);
-                    printf("%s\n", str);
-                    system(str);
-                }
+		if(!cache)
+		{
+			remove(fnstr);
+		}
+		else
+		{
+			ctx->server_flags |= YELLHTTP_SRVFLAG_NOCACHE;
+		}
+                retval = YellHttp_ExecRequest(ctx, str);
+		YellHttp_GetErrorStr(retval, errstr, 256);
+		if(retval!=0)printf("Error: retval = %d str: %s", retval, errstr);
+
+		YellHttp_FreeCtx(ctx);
             }
             else
             {
