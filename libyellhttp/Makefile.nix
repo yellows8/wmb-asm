@@ -147,7 +147,7 @@ else
 # main targets
 #---------------------------------------------------------------------------------
 $(OUTPUT).so	:	$(OFILES)
-	$(LD) -shared -Wl,-soname,libyellhttp.so.1 -o $(OUTPUT).so.$(LIBYELLHTTPVERSION) $<
+	$(LD) -shared -Wl,-soname,libyellhttp.so.1 -o $(OUTPUT).so.$(LIBYELLHTTPVERSION) $(OFILES)
 
 #---------------------------------------------------------------------------------
 %.bin.o	:	%.bin

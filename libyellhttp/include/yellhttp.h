@@ -27,6 +27,8 @@ typedef struct sYellHttp_Ctx
 	unsigned int content_length;
 	time_t server_date;//Current timestamp from server Date header.
 	time_t lastmodified;//From Last-Modified server header.
+	unsigned int authenticated;
+	unsigned int range_start, range_end;//Zero based. Can only be used if server supports resuming. If this is used and the server supports resuming/partial downloads, the http status should be 216, otherwise 200. If the range_end is outside the file size, http status should be 416.
 
 	char url[256];
 	char uri[256];
@@ -40,11 +42,13 @@ typedef struct sYellHttp_Ctx
 } YellHttp_Ctx;
 
 typedef void (*YellHttp_HeaderCb)(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx, void* usrarg);
+typedef void (*YellHttp_WWWAuthenticateCb)(YellHttp_Ctx *ctx, char *realm, char *authout, void* usrarg);//authout is the user:pass string.
 
 YellHttp_Ctx *YellHttp_InitCtx();
 void YellHttp_FreeCtx(YellHttp_Ctx *ctx);
 int YellHttp_ExecRequest(YellHttp_Ctx *ctx, char *url);
 int YellHttp_SetHeaderCb(YellHttp_HeaderCb cb, char *header);//Sets a header handler callback. These callbacks are global, they are not specific to YellHttp_Ctx structs. If cb is NULL, the callback handler is removed. This function can override default libyellhttp hdr handlers, see yellhttp.c source for currently implementated handlers.
+void YellHttp_SetAuthCb(YellHttp_WWWAuthenticateCb cb, void* usrarg);//Set an authentication callback.
 void YellHttp_GetErrorStr(int error, char *errstr, int errstrlen);
 
 #endif
