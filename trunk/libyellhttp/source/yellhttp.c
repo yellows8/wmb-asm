@@ -1,3 +1,24 @@
+/*
+libyellhttp is licensed under the MIT license:
+Copyright (c) 2010 - 2010 yellowstar6
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this
+software and associated documentation files (the Software), to deal in the Software
+without restriction, including without limitation the rights to use, copy, modify, merge,
+publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
+to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies
+or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED AS IS, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
+FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
+*/
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -61,13 +82,19 @@ void YellHttp_HdrCbAcceptRanges(char *hdr, char *hdrfield, char *hdrval, YellHtt
 void YellHttp_HdrCbLocation(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx, void* usrarg);
 void YellHttp_HdrCbDate(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx, void* usrarg);
 void YellHttp_HdrCbContentLength(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx, void* usrarg);
+void YellHttp_HdrCbWWWAuthenticate(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx, void* usrarg);
 
 void YellHttp_GenDate(char *outdate, time_t date);
 
-YellHttp_HeaderCbStruct headercb_array[32] = {{YellHttp_HdrCbAcceptRanges, 0, "Accept-Ranges"}, {YellHttp_HdrCbLocation,  0, "Location"}, {YellHttp_HdrCbDate, 0, "Date"}, {YellHttp_HdrCbDate, 0, "Last-Modified"}, {YellHttp_HdrCbContentLength, 0, "Content-Length"}};
+void Base64_EncodeChars(unsigned char *input, char *output, int inlen, int outmaxlen);
+
+YellHttp_HeaderCbStruct headercb_array[32] = {{YellHttp_HdrCbAcceptRanges, 0, "Accept-Ranges"}, {YellHttp_HdrCbLocation,  0, "Location"}, {YellHttp_HdrCbDate, 0, "Date"}, {YellHttp_HdrCbDate, 0, "Last-Modified"}, {YellHttp_HdrCbContentLength, 0, "Content-Length"}, {YellHttp_HdrCbWWWAuthenticate, 0, "WWW-Authenticate"}};
 
 char weekdaystr[7][4] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
 char month_strs[12][4] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+
+YellHttp_WWWAuthenticateCb authcb = NULL;
+void* authcb_usrarg;
 
 YellHttp_Ctx *YellHttp_InitCtx()
 {
@@ -87,6 +114,10 @@ YellHttp_Ctx *YellHttp_InitCtx()
 	memset(ctx->request_type, 0, 8);
 	sprintf(ctx->useragent, "libyellhttp %s", LIBYELLHTTPVERSIONSTR);
 	memset(ctx->headers, 0, 256);
+	authcb = NULL;
+	ctx->authenticated = 0;
+	ctx->range_start = 0;
+	ctx->range_end = 0;
 
 	return ctx;
 }
@@ -250,7 +281,7 @@ int YellHttp_ExecRequest(YellHttp_Ctx *ctx, char *url)
 	client_addr.sin_port = htons(ctx->port);
 	client_addr.sin_addr.s_addr = serverip;
 
-	ctx->sock_client = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+	ctx->sock_client = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if(ctx->sock_client<0)
 	{
 		if(ctx->sock_client == -1)
@@ -319,9 +350,15 @@ int YellHttp_ExecRequest(YellHttp_Ctx *ctx, char *url)
 		strncpy(request_type, "GET", 8);
 	}
 	snprintf((char*)ctx->sendbuf, SENDBUFSZ, "%s %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: %s\r\nConnection: close\r\n", request_type, ctx->uri, ctx->hostname, ctx->useragent);
-	if(strlen(ctx->headers)>0)strncat((char*)ctx->sendbuf, ctx->headers, SENDBUFSZ);
-
+	
 	if(send_modifiedsince_hdr)strncat((char*)ctx->sendbuf, hdrstr, SENDBUFSZ);
+	if(ctx->range_end!=0)
+	{
+		memset(hdrstr, 0, 256);
+		snprintf(hdrstr, 256, "Range: bytes=%d-%d\r\n", ctx->range_start, ctx->range_end);
+		strncat((char*)ctx->sendbuf, hdrstr, SENDBUFSZ);
+	}
+	if(strlen(ctx->headers)>0)strncat((char*)ctx->sendbuf, ctx->headers, SENDBUFSZ);
 
 	strncat((char*)ctx->sendbuf, "\r\n", SENDBUFSZ);
 	printf("Sending request...\n");
@@ -514,7 +551,14 @@ int YellHttp_ExecRequest(YellHttp_Ctx *ctx, char *url)
 	if((ctx->http_status>=301 && ctx->http_status<=303) && !(ctx->server_flags & YELLHTTP_SRVFLAG_DISABLEREDIR))
 	{
 		printf("Redirected: %s\n", ctx->redirecturl);
-		YellHttp_ExecRequest(ctx, ctx->redirecturl);
+		return YellHttp_ExecRequest(ctx, ctx->redirecturl);
+	}
+	if(ctx->http_status==401 && ctx->authenticated)
+	{
+		if(ctx->authenticated==1)
+		{
+			return YellHttp_ExecRequest(ctx, url);
+		}
 	}
 	if(ctx->http_status>=400)return -ctx->http_status;
 	return 0;
@@ -609,6 +653,12 @@ int YellHttp_SetHeaderCb(YellHttp_HeaderCb cb, char *header)
 		memset(headercb_array[found].hdrfield, 0, 256);
 	}
 	return 0;
+}
+
+void YellHttp_SetAuthCb(YellHttp_WWWAuthenticateCb cb, void* usrarg)
+{
+	authcb = cb;
+	authcb_usrarg = usrarg;
 }
 
 int YellHttp_GetTimezoneoffset()
@@ -729,5 +779,51 @@ void YellHttp_HdrCbDate(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *c
 void YellHttp_HdrCbContentLength(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx, void* usrarg)
 {
 	sscanf(hdrval, "%d", &ctx->content_length);
+}
+
+void YellHttp_HdrCbWWWAuthenticate(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx, void* usrarg)
+{
+	int i;
+	char realm[256];
+	char auth[256];
+	char authout[256];
+	char header[256];
+	if(ctx->authenticated)
+	{
+		printf("Authentication user and pass already set.\n");
+		ctx->authenticated++;
+		return;
+	}
+
+	if(strncmp(hdrval, "Basic", 5)==0)
+	{
+		if(strncmp(&hdrval[6], "realm", 5)==0)
+		{
+			memset(realm, 0, 256);
+			memset(auth, 0, 256);
+			memset(authout, 0, 256);
+			memset(header, 0, 256);
+			for(i=13; i<strlen(hdrval) && hdrval[i]!='"'; i++)
+			{
+				realm[i-13] = hdrval[i];
+			}
+			if(authcb)
+			{
+				authcb(ctx, realm, auth, authcb_usrarg);
+				Base64_EncodeChars((unsigned char*)auth, authout, strlen(auth), 256);
+				snprintf(header, 256, "Authorization: Basic %s\r\n", authout);
+				strncat(ctx->headers, header, 256);
+				ctx->authenticated = 1;
+			}
+			else
+			{
+				printf("No authentication callback set, request will not be resent with proper authentication.\n");
+			}
+		}
+	}
+	else
+	{
+		printf("Unsupported WWW authentication is required for this URL.\n");
+	}
 }
 

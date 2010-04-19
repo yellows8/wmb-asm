@@ -1,3 +1,24 @@
+/*
+yellhttptest is licensed under the MIT license:
+Copyright (c) 2010 yellowstar6
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this
+software and associated documentation files (the Software), to deal in the Software
+without restriction, including without limitation the rights to use, copy, modify, merge,
+publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
+to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies
+or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED AS IS, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
+FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -26,18 +47,25 @@ void init_wii();
 static void *xfb = NULL;
 static GXRModeObj *rmode = NULL;
 
-char localip[16];
-char gateway[16];
-char netmask[16];
+char localip[16] = {0};
+char gateway[16] = {0};
+char netmask[16] = {0};
 #endif
 
+char errstr[256];
+
 void console_pause();
+
+void authentication_callback(YellHttp_Ctx *ctx, char *realm, char *authout, void* usrarg)
+{
+	printf("Authentication realm: %s\n", realm);
+	strcpy(authout, usrarg);
+}
 
 int main(int argc, char **argv)
 {
 	int retval;	
 	char *url;
-	char errstr[256];
 
 	#ifdef ARM9
 	init_nds();
@@ -60,15 +88,16 @@ int main(int argc, char **argv)
 	
 	#ifdef WIN32
 	printf("yellhttptest\n");
-	if(argc==2)url = argv[1];	
+	if(argc>=2)url = argv[1];
 	#endif
 
 	#ifdef LINUX
 	printf("yellhttptest\n");
-	if(argc==2)url = argv[1];
+	if(argc>=2)url = argv[1];
 	#endif
 
-	if(argc!=2)return -2;
+	#ifndef HW_RVL
+	if(argc==1)return -2;
 	YellHttp_Ctx *ctx = YellHttp_InitCtx();
 	if(ctx==NULL)
 	{
@@ -84,11 +113,17 @@ int main(int argc, char **argv)
 		return -1;
 	}
 	memset(errstr, 0, 256);
+
+	if(argc==3)
+	{
+		YellHttp_SetAuthCb(authentication_callback, argv[2]);
+	}
 	printf("Executing ExecRequest...(URL: %s)\n", url);
 	retval = YellHttp_ExecRequest(ctx, url);
 	YellHttp_GetErrorStr(retval, errstr, 256);
 	printf("retval = %d str: %s", retval, errstr);
 	YellHttp_FreeCtx(ctx);
+	#endif
 
 	#ifdef ARM9
 	free(url);
@@ -152,35 +187,15 @@ void console_pause()
 
 void init_wii()
 {
-	// Initialise the video system
 	VIDEO_Init();
-	
-	// This function initialises the attached controllers
 	WPAD_Init();
-	
-	// Obtain the preferred video mode from the system
-	// This will correspond to the settings in the Wii menu
 	rmode = VIDEO_GetPreferredMode(NULL);
-
-	// Allocate memory for the display in the uncached region
 	xfb = MEM_K0_TO_K1(SYS_AllocateFramebuffer(rmode));
-	
-	// Initialise the console, required for printf
 	console_init(xfb,20,20,rmode->fbWidth,rmode->xfbHeight,rmode->fbWidth*VI_DISPLAY_PIX_SZ);
-	
-	// Set up the video registers with the chosen mode
 	VIDEO_Configure(rmode);
-	
-	// Tell the video hardware where our display memory is
 	VIDEO_SetNextFramebuffer(xfb);
-	
-	// Make the display visible
 	VIDEO_SetBlack(FALSE);
-
-	// Flush the video register changes to the hardware
 	VIDEO_Flush();
-
-	// Wait for Video setup to complete
 	VIDEO_WaitVSync();
 	if(rmode->viTVMode&VI_NON_INTERLACE) VIDEO_WaitVSync();
 
@@ -199,9 +214,9 @@ void init_wii()
 		console_pause();
 	}*/
 	printf("Configuring network ...\n");
-	memset(localip, 0, 16);
-	memset(netmask, 0, 16);
-	memset(gateway, 0, 16);
+	//memset(localip, 0, 16);
+	//memset(netmask, 0, 16);
+	//memset(gateway, 0, 16);
 	s32 ret = if_config (localip, netmask, gateway, true);
 	if(ret<0)
 	{
@@ -212,6 +227,14 @@ void init_wii()
 	{
 		printf("Network config done ip: %s, gw: %s, mask %s\n", localip, gateway, netmask);
 	}
+	while(1)
+	{
+		VIDEO_WaitVSync();
+		WPAD_ScanPads();
+		
+		if (WPAD_ButtonsDown(0) & WPAD_BUTTON_A)break;
+	}
+	printf("test net_socket() retval = %d\n", net_socket(AF_INET, SOCK_STREAM, IPPROTO_TCP));
 }
 #endif
 
