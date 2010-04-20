@@ -4,10 +4,10 @@ There is no known bugs for the Linux/Win32 versions.
 Known NDS bugs:
 The NDS version has the bugs from the Linux/Win32 versions if any, as well as:
 
-1) CyaSSL doesn't even try connecting to server, CyaSSL port compiling issue perhaps?
+1) CyaSSL doesn't even try connecting to server. Must be a flaw with porting/compiling CyaSSL for NDS.
 
 Known Wii bugs:
 The Wii version has the bugs from the Linux/Win32 versions if any, as well as:
 
-1) Networking doesn't work. net_socket returns -123, net_connect returns -81. Both are unknown errors.
+1) Networking doesn't work. net_socket returns -123, net_connect returns -81. Both are unknown errors. This seems to be a libogc bug, seems to only happen when networking is used without threads.(http://sourceforge.net/tracker/?func=detail&aid=2989151&group_id=114505&atid=668551)
 
