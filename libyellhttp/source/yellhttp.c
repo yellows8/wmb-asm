@@ -63,6 +63,7 @@ DEALINGS IN THE SOFTWARE.
 
 #ifdef ENABLESSL
 #include <openssl/ssl.h>
+#include <openssl/md5.h>
 #endif
 
 #include "yellhttp.h"
@@ -110,10 +111,12 @@ YellHttp_Ctx *YellHttp_InitCtx()
 	}
 	memset(ctx->sendbuf, 0, SENDBUFSZ);
 	memset(ctx->recvbuf, 0, RECVBUFSZ);
-	memset(ctx->useragent, 0, 256);
+	memset(ctx->useragent, 0, 1024);
 	memset(ctx->request_type, 0, 8);
 	sprintf(ctx->useragent, "libyellhttp %s", LIBYELLHTTPVERSIONSTR);
-	memset(ctx->headers, 0, 256);
+	memset(ctx->headers, 0, 1024);
+	memset(ctx->auth_nonce, 0, 512);
+	ctx->auth_nc = 0;
 	authcb = NULL;
 	ctx->authenticated = 0;
 	ctx->range_start = 0;
@@ -179,8 +182,8 @@ int YellHttp_ExecRequest(YellHttp_Ctx *ctx, char *url)
 	struct sockaddr_in client_addr;
 	FILE *fhttpdump;
 	struct stat filestatus;
-	char modifiedsincedate[256];
-	char hdrstr[256];
+	char modifiedsincedate[512];
+	char hdrstr[512];
 	int send_modifiedsince_hdr = 0;
 	int valid_domain_name;
 	unsigned long serverip;
@@ -188,8 +191,8 @@ int YellHttp_ExecRequest(YellHttp_Ctx *ctx, char *url)
 	unsigned int content_len;
 
 	if(url==NULL)return YELLHTTP_EINVAL;
-	memset(ctx->url, 0, 256);
-	strncpy(ctx->url, url, 255);	
+	memset(ctx->url, 0, 512);
+	strncpy(ctx->url, url, 511);	
 	ctx->server_flags &= YELLHTTP_SRVFLAG_USRFLAGS;
 
 	if(strncmp(ctx->url, "https", 5)==0)
@@ -212,12 +215,12 @@ int YellHttp_ExecRequest(YellHttp_Ctx *ctx, char *url)
 	}
 	hostnamei = i;
 
-	memset(ctx->hostname, 0, 256);
+	memset(ctx->hostname, 0, 512);
 	while(ctx->url[i]!='/' && ctx->url[i]!=':' && i<strlen(ctx->url))i++;
 	if(i>255)return YELLHTTP_EINVAL;
 	strncpy(ctx->hostname, &ctx->url[hostnamei], i - hostnamei);
 
-	memset(ctx->uri, 0, 256);
+	memset(ctx->uri, 0, 512);
 	memset(ctx->portstr, 0, 8);
 	ctx->port = 80;
 	if(ctx->SSL)ctx->port = 443;
@@ -241,16 +244,16 @@ int YellHttp_ExecRequest(YellHttp_Ctx *ctx, char *url)
 		i = 0;
 	}
 
-	memset(ctx->filename, 0, 256);
+	memset(ctx->filename, 0, 512);
 	while(ctx->uri[i]!='/' && i>0)i--;
 	if(strcmp(&ctx->uri[i], "/")==0)
 	{
-		strncpy(ctx->filename, "index.html", 256);
+		strncpy(ctx->filename, "index.html", 512);
 	}
 	else
 	{
 		i++;
-		strncpy(ctx->filename, &ctx->uri[i], 256);
+		strncpy(ctx->filename, &ctx->uri[i], 512);
 	}
 
 	printf("Looking up %s...\n", ctx->hostname);
@@ -332,8 +335,8 @@ int YellHttp_ExecRequest(YellHttp_Ctx *ctx, char *url)
 
 	if(stat(ctx->filename, &filestatus)==0 && !(ctx->server_flags & YELLHTTP_SRVFLAG_NOCACHE))
 	{
-		memset(modifiedsincedate, 0, 256);
-		memset(hdrstr, 0, 256);
+		memset(modifiedsincedate, 0, 512);
+		memset(hdrstr, 0, 512);
 		YellHttp_GenDate(modifiedsincedate, filestatus.st_mtime);
 		sprintf(hdrstr, "If-Modified-Since: %s\r\n", modifiedsincedate);
 		send_modifiedsince_hdr = 1;
@@ -354,8 +357,8 @@ int YellHttp_ExecRequest(YellHttp_Ctx *ctx, char *url)
 	if(send_modifiedsince_hdr)strncat((char*)ctx->sendbuf, hdrstr, SENDBUFSZ);
 	if(ctx->range_end!=0)
 	{
-		memset(hdrstr, 0, 256);
-		snprintf(hdrstr, 256, "Range: bytes=%d-%d\r\n", ctx->range_start, ctx->range_end);
+		memset(hdrstr, 0, 512);
+		snprintf(hdrstr, 512, "Range: bytes=%d-%d\r\n", ctx->range_start, ctx->range_end);
 		strncat((char*)ctx->sendbuf, hdrstr, SENDBUFSZ);
 	}
 	if(strlen(ctx->headers)>0)strncat((char*)ctx->sendbuf, ctx->headers, SENDBUFSZ);
@@ -373,8 +376,8 @@ int YellHttp_ExecRequest(YellHttp_Ctx *ctx, char *url)
 		#endif
 	}
 
-	hdrfield = (char*)malloc(256);
-	hdrval = (char*)malloc(256);
+	hdrfield = (char*)malloc(512);
+	hdrval = (char*)malloc(512);
 
 	printf("Waiting for response...(Headers)\n");
 	fhttpdump = fopen("httpheaders", "wb");
@@ -431,8 +434,8 @@ int YellHttp_ExecRequest(YellHttp_Ctx *ctx, char *url)
 				}
 				else
 				{
-					memset(hdrfield, 0, 256);
-					memset(hdrval, 0, 256);
+					memset(hdrfield, 0, 512);
+					memset(hdrval, 0, 512);
 					pos = 0;
 					pos2 = 0;
 					while(ctx->recvbuf[pos]!=':' && ctx->recvbuf[pos]!=0x0d && pos2<255)
@@ -561,6 +564,10 @@ int YellHttp_ExecRequest(YellHttp_Ctx *ctx, char *url)
 		}
 	}
 	if(ctx->http_status>=400)return -ctx->http_status;
+	if(ctx->authenticated)
+	{
+		ctx->auth_nc++;
+	}	
 	return 0;
 }
 
@@ -618,12 +625,12 @@ void YellHttp_GetErrorStr(int error, char *errstr, int errstrlen)
 int YellHttp_SetHeaderCb(YellHttp_HeaderCb cb, char *header)
 {
 	int i, found = -1;
-	char hdr[256];
+	char hdr[512];
 	if(header==NULL)return -2;
-	strncpy(hdr, header, 256);
+	strncpy(hdr, header, 512);
 	for(i=0; i<TOTALHDRCBSTRUCTS; i++)
 	{
-		if(strncmp(headercb_array[i].hdrfield, hdr, 256)==0)
+		if(strncmp(headercb_array[i].hdrfield, hdr, 512)==0)
 		{
 			found = i;
 			break;
@@ -646,11 +653,11 @@ int YellHttp_SetHeaderCb(YellHttp_HeaderCb cb, char *header)
 	headercb_array[found].cb = cb;
 	if(strlen(hdr)>0)
 	{
-		strncpy(headercb_array[found].hdrfield, hdr, 256);
+		strncpy(headercb_array[found].hdrfield, hdr, 255);
 	}
 	else
 	{
-		memset(headercb_array[found].hdrfield, 0, 256);
+		memset(headercb_array[found].hdrfield, 0, 512);
 	}
 	return 0;
 }
@@ -781,45 +788,162 @@ void YellHttp_HdrCbContentLength(char *hdr, char *hdrfield, char *hdrval, YellHt
 	sscanf(hdrval, "%d", &ctx->content_length);
 }
 
+#ifdef ENABLESSL
+void MD5(unsigned char *hash, unsigned char *data, int datalen)
+{
+	MD5_CTX ctx;
+	MD5_Init(&ctx);
+	MD5_Update(&ctx, data, datalen);
+	MD5_Final(hash, &ctx);
+}
+#endif
+
+int YellHTTP_HdrCbWWWAuthenticate_GetField(char *hdrval, char *name, char *value)
+{
+	int i, startpos;
+	char *val = strstr(hdrval, name);
+	if(val==NULL)return -1;
+	startpos = strlen(name)+2;
+	if(val[startpos-1]!='"')startpos--;
+	for(i = startpos; i<strlen(val) && val[i]!='"' && val[i]!=','; i++)
+	{
+		value[i-startpos] = val[i];
+	}
+	return 0;
+}
+
 void YellHttp_HdrCbWWWAuthenticate(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx, void* usrarg)
 {
-	int i;
-	char realm[256];
-	char auth[256];
-	char authout[256];
-	char header[256];
+	int i, stale = 0;
+	char realm[512];
+	char auth[512];
+	char authout[512];
+	char header[512];
+	char tempval[512];
+	unsigned char HA1[16];
+	unsigned char HA2[16];
+	unsigned char HA3[16];
+	char response[33];
+	char HA1_text[33];
+	char HA2_text[33];
+	char request_data[512];
+	char qop[32];
+	char nc[17];
+	char username[512];
 	if(ctx->authenticated)
 	{
-		printf("Authentication user and pass already set.\n");
-		ctx->authenticated++;
-		return;
+		if(strncmp(hdrval, "Digest", 6)!=0)
+		{
+			printf("Authentication user and pass already set.\n");
+			ctx->authenticated++;
+			return;
+		}
+		else
+		{
+			memset(tempval, 0, 512);
+			if(YellHTTP_HdrCbWWWAuthenticate_GetField(hdrval, "stale", tempval)==0)
+			{
+				if(strcmp(tempval, "true")==0)
+				{
+					stale = 1;
+				}
+			}
+
+			if(!stale)
+			{
+				printf("Authentication user and pass already set.\n");
+				ctx->authenticated++;
+				return;
+			}
+		}
 	}
 
 	if(strncmp(hdrval, "Basic", 5)==0)
 	{
-		if(strncmp(&hdrval[6], "realm", 5)==0)
+		memset(realm, 0, 512);
+		memset(auth, 0, 512);
+		memset(authout, 0, 512);
+		memset(header, 0, 512);
+		YellHTTP_HdrCbWWWAuthenticate_GetField(hdrval, "realm", realm);
+		if(authcb)
 		{
-			memset(realm, 0, 256);
-			memset(auth, 0, 256);
-			memset(authout, 0, 256);
-			memset(header, 0, 256);
-			for(i=13; i<strlen(hdrval) && hdrval[i]!='"'; i++)
+			authcb(ctx, realm, auth, authcb_usrarg, 0);
+			Base64_EncodeChars((unsigned char*)auth, authout, strlen(auth), 512);
+			snprintf(header, 512, "Authorization: Basic %s\r\n", authout);
+			strncat(ctx->headers, header, 512);
+			ctx->authenticated = 1;
+		}
+		else
+		{
+			printf("No authentication callback set, request will not be resent with proper authentication.\n");
+		}
+	}
+	else if(strncmp(hdrval, "Digest", 6)==0)
+	{
+		#ifndef ENABLESSL
+		printf("Digest authentication is disabled since SSL is disabled.\n");
+		#else
+
+		memset(realm, 0, 512);
+		memset(auth, 0, 512);
+		memset(authout, 0, 512);
+		memset(header, 0, 512);
+		memset(tempval, 0, 512);
+		YellHTTP_HdrCbWWWAuthenticate_GetField(hdrval, "realm", realm);
+		YellHTTP_HdrCbWWWAuthenticate_GetField(hdrval, "nonce", ctx->auth_nonce);
+		YellHTTP_HdrCbWWWAuthenticate_GetField(hdrval, "algorithm", tempval);
+		if(strcmp(tempval, "MD5")!=0)
+		{
+			printf("Server uses digest authentication algorithm %s, libyellhttp only supports MD5.\n", tempval);
+			return;
+		}
+
+		if(authcb)
+		{
+			authcb(ctx, realm, auth, authcb_usrarg, 1);
+			MD5(HA1, (unsigned char*)auth, strlen(auth));
+
+			memset(request_data, 0, 512);
+			if(strlen(ctx->request_type)>0)
 			{
-				realm[i-13] = hdrval[i];
-			}
-			if(authcb)
-			{
-				authcb(ctx, realm, auth, authcb_usrarg);
-				Base64_EncodeChars((unsigned char*)auth, authout, strlen(auth), 256);
-				snprintf(header, 256, "Authorization: Basic %s\r\n", authout);
-				strncat(ctx->headers, header, 256);
-				ctx->authenticated = 1;
+				strncpy(request_data, ctx->request_type, 8);
 			}
 			else
 			{
-				printf("No authentication callback set, request will not be resent with proper authentication.\n");
+				strncpy(request_data, "GET", 8);
 			}
+			strncat(request_data, ":", 512);
+			strncat(request_data, ctx->uri, 511);
+			MD5(HA2, (unsigned char*)request_data, strlen(request_data));
+			memset(qop, 0, 32);
+			strncpy(qop, "auth", 32);
+			memset(nc, 0, 16);
+			ctx->auth_nc = 1;
+			snprintf(nc, 16, "%04x%04x", ((unsigned int)(ctx->auth_nc >> 32)), (unsigned int)ctx->auth_nc);
+			//nc[7] = '1';
+			memset(ctx->auth_cnonce, 0, 9);
+			snprintf(ctx->auth_cnonce, 17, "%04x%04x", rand(), rand());
+			memset(HA1_text, 0, 33);
+			memset(HA2_text, 0, 33);
+			for(i=0; i<16; i++)sprintf((char*)&HA1_text[i*2], "%02x", HA1[i]);
+			for(i=0; i<16; i++)sprintf((char*)&HA2_text[i*2], "%02x", HA2[i]);
+			snprintf(tempval, 512, "%s:%s:%s:%s:%s:%s", HA1_text, ctx->auth_nonce, nc, ctx->auth_cnonce, qop, HA2_text);
+			MD5(HA3, (unsigned char*)tempval, strlen(tempval));
+			memset(response, 0, 33);
+			for(i=0; i<16; i++)sprintf((char*)&response[i*2], "%02x", HA3[i]);
+			memset(username, 0, 512);
+			for(i=0; i<strlen(auth) && auth[i]!=':'; i++)username[i] = auth[i];
+
+			snprintf(header, 512, "Authorization: Digest username=\"%s\", realm=\"%s\", nonce=\"%s\", uri=\"%s\", algorithm=MD5, response=\"%s\", qop=%s, nc=%s, cnonce=\"%s\"\r\n", username, realm, ctx->auth_nonce, ctx->uri, response, qop, nc, ctx->auth_cnonce);
+			strncat(ctx->headers, header, 512);
+			ctx->authenticated = 1;
 		}
+		else
+		{
+			printf("No authentication callback set, request will not be resent with proper authentication.\n");
+		}
+
+		#endif
 	}
 	else
 	{

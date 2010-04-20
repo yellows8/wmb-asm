@@ -71,7 +71,7 @@ LDFLAGS	=	-g
 #---------------------------------------------------------------------------------
 # any extra libraries we wish to link with the project (order is important)
 #---------------------------------------------------------------------------------
-LIBS	:= 	-lcyassl
+LIBS	:= 	-lcyassl -lm
  
  
 #---------------------------------------------------------------------------------
@@ -147,7 +147,7 @@ else
 # main targets
 #---------------------------------------------------------------------------------
 $(OUTPUT).so	:	$(OFILES)
-	$(LD) -shared -Wl,-soname,libyellhttp.so.1 -o $(OUTPUT).so.$(LIBYELLHTTPVERSION) $(OFILES)
+	$(LD) -shared -Wl,-soname,libyellhttp.so.1 -o $(OUTPUT).so.$(LIBYELLHTTPVERSION) $(LIBS) $(LIBPATHS) $(OFILES)
 
 #---------------------------------------------------------------------------------
 %.bin.o	:	%.bin

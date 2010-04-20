@@ -56,10 +56,23 @@ char errstr[256];
 
 void console_pause();
 
-void authentication_callback(YellHttp_Ctx *ctx, char *realm, char *authout, void* usrarg)
+void authentication_callback(YellHttp_Ctx *ctx, char *realm, char *authout, void* usrarg, int digest)
 {
+	int i, passi;
+	char *auth = (char*)usrarg;
 	printf("Authentication realm: %s\n", realm);
-	strcpy(authout, usrarg);
+	if(!digest)strcpy(authout, auth);
+	if(digest)
+	{
+		for(i=0; i<strlen(auth) && auth[i]!=':'; i++)authout[i] = auth[i];
+		authout[i] = ':';
+		i++;
+		strncat(authout, realm, 256);	
+		passi = strlen(authout);
+		authout[passi] = ':';
+		passi++;
+		strncpy(&authout[passi], &auth[i], 256);
+	}
 }
 
 int main(int argc, char **argv)

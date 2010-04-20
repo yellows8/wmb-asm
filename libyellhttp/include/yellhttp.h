@@ -28,21 +28,24 @@ typedef struct sYellHttp_Ctx
 	time_t server_date;//Current timestamp from server Date header.
 	time_t lastmodified;//From Last-Modified server header.
 	unsigned int authenticated;
-	unsigned int range_start, range_end;//Zero based. Can only be used if server supports resuming. If this is used and the server supports resuming/partial downloads, the http status should be 216, otherwise 200. If the range_end is outside the file size, http status should be 416.
+	unsigned int range_start, range_end;//Zero based. Can only be used if server supports resuming. If this is used and the server supports resuming/partial downloads, the http status should be 206, otherwise 200. If the range_end is outside the file size, http status should be 416.
+	unsigned long long auth_nc;
 
-	char url[256];
-	char uri[256];
-	char hostname[256];
+	char url[512];
+	char uri[512];
+	char hostname[512];
 	char portstr[8];
-	char filename[256];
-	char redirecturl[256];
-	char useragent[256];//YellHttp_InitCtx sets this to the default user agent, which is "libyellhttp v%s" where %s is the version number.
+	char filename[512];
+	char redirecturl[512];
+	char useragent[512];//YellHttp_InitCtx sets this to the default user agent, which is "libyellhttp v%s" where %s is the version number.
 	char request_type[8];//If not set, default is GET.(This isn't modified when it is not set.)
-	char headers[256];//Optional custom headers, each line must end with \r\n.
+	char headers[512];//Optional custom headers, each line must end with \r\n.
+	char auth_nonce[512];
+	char auth_cnonce[18];
 } YellHttp_Ctx;
 
 typedef void (*YellHttp_HeaderCb)(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx, void* usrarg);
-typedef void (*YellHttp_WWWAuthenticateCb)(YellHttp_Ctx *ctx, char *realm, char *authout, void* usrarg);//authout is the user:pass string.
+typedef void (*YellHttp_WWWAuthenticateCb)(YellHttp_Ctx *ctx, char *realm, char *authout, void* usrarg, int digest);//authout is the user:pass string. If digest is one, authout should be the user:realm:pass string for digest authentication.
 
 YellHttp_Ctx *YellHttp_InitCtx();
 void YellHttp_FreeCtx(YellHttp_Ctx *ctx);
