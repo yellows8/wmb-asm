@@ -47,9 +47,9 @@ void init_wii();
 static void *xfb = NULL;
 static GXRModeObj *rmode = NULL;
 
-char localip[16] = {0};
-char gateway[16] = {0};
-char netmask[16] = {0};
+char localip[16];
+char gateway[16];
+char netmask[16];
 #endif
 
 char errstr[256];
@@ -109,7 +109,6 @@ int main(int argc, char **argv)
 	if(argc>=2)url = argv[1];
 	#endif
 
-	#ifndef HW_RVL
 	if(argc==1)return -2;
 	YellHttp_Ctx *ctx = YellHttp_InitCtx();
 	if(ctx==NULL)
@@ -136,7 +135,6 @@ int main(int argc, char **argv)
 	YellHttp_GetErrorStr(retval, errstr, 256);
 	printf("retval = %d str: %s", retval, errstr);
 	YellHttp_FreeCtx(ctx);
-	#endif
 
 	#ifdef ARM9
 	free(url);
@@ -220,16 +218,16 @@ void init_wii()
 	printf("\x1b[2;0H");
 
 	printf("yellhttptest\n");
-	/*printf("Initializing FAT...\n");
+	printf("Initializing FAT...\n");
 	if(!fatInitDefault())
 	{
 		printf("FAT init failed.\n");
 		console_pause();
-	}*/
+	}
 	printf("Configuring network ...\n");
-	//memset(localip, 0, 16);
-	//memset(netmask, 0, 16);
-	//memset(gateway, 0, 16);
+	memset(localip, 0, 16);
+	memset(netmask, 0, 16);
+	memset(gateway, 0, 16);
 	s32 ret = if_config (localip, netmask, gateway, true);
 	if(ret<0)
 	{
@@ -240,14 +238,6 @@ void init_wii()
 	{
 		printf("Network config done ip: %s, gw: %s, mask %s\n", localip, gateway, netmask);
 	}
-	while(1)
-	{
-		VIDEO_WaitVSync();
-		WPAD_ScanPads();
-		
-		if (WPAD_ButtonsDown(0) & WPAD_BUTTON_A)break;
-	}
-	printf("test net_socket() retval = %d\n", net_socket(AF_INET, SOCK_STREAM, IPPROTO_TCP));
 }
 #endif
 

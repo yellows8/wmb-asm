@@ -1,6 +1,6 @@
 /*
 libyellhttp is licensed under the MIT license:
-Copyright (c) 2010 - 2010 yellowstar6
+Copyright (c) 2010 yellowstar6
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this
 software and associated documentation files (the Software), to deal in the Software
@@ -284,7 +284,7 @@ int YellHttp_ExecRequest(YellHttp_Ctx *ctx, char *url)
 	client_addr.sin_port = htons(ctx->port);
 	client_addr.sin_addr.s_addr = serverip;
 
-	ctx->sock_client = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	ctx->sock_client = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
 	if(ctx->sock_client<0)
 	{
 		if(ctx->sock_client == -1)

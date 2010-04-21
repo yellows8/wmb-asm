@@ -126,7 +126,12 @@ int main(int argc, char **argv)
 		}
                 retval = YellHttp_ExecRequest(ctx, str);
 		YellHttp_GetErrorStr(retval, errstr, 256);
-		if(retval!=0)printf("Error: retval = %d str: %s", retval, errstr);
+		if(retval!=0)
+		{
+			printf("Error: retval = %d str: %s", retval, errstr);
+			YellHttp_FreeCtx(ctx);
+			return retval;
+		}
 
 		YellHttp_FreeCtx(ctx);
             }
