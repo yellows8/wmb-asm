@@ -170,6 +170,7 @@ int YellHttp_ExecRequest(YellHttp_Ctx *ctx, char *url)
 {
 	int retval;
 	int i=0;
+	int endi;
 	int hostnamei;
 	int porti = 0;
 	int recvlen;
@@ -189,6 +190,8 @@ int YellHttp_ExecRequest(YellHttp_Ctx *ctx, char *url)
 	unsigned long serverip;
 	char request_type[8];
 	unsigned int content_len;
+	int err;
+	char errbuffer[80];
 
 	if(url==NULL)return YELLHTTP_EINVAL;
 	memset(ctx->url, 0, 512);
@@ -243,9 +246,15 @@ int YellHttp_ExecRequest(YellHttp_Ctx *ctx, char *url)
 		ctx->uri[0] = '/';
 		i = 0;
 	}
+	endi = i;
 
 	memset(ctx->filename, 0, 512);
-	while(ctx->uri[i]!='/' && i>0)i--;
+	while(ctx->uri[i]!='/' && i>0)
+	{
+		if(ctx->uri[i]=='?')endi = i - 1;
+		i--;
+	}
+
 	if(strcmp(&ctx->uri[i], "/")==0)
 	{
 		strncpy(ctx->filename, "index.html", 512);
@@ -253,7 +262,7 @@ int YellHttp_ExecRequest(YellHttp_Ctx *ctx, char *url)
 	else
 	{
 		i++;
-		strncpy(ctx->filename, &ctx->uri[i], 512);
+		strncpy(ctx->filename, &ctx->uri[i], (endi + 1) - i);
 	}
 
 	printf("Looking up %s...\n", ctx->hostname);
@@ -313,15 +322,29 @@ int YellHttp_ExecRequest(YellHttp_Ctx *ctx, char *url)
 		InitCyaSSL();
 		CyaSSL_Debugging_ON();
 		method = SSLv3_client_method();
-    		sslctx = SSL_CTX_new(method);
-		SSL_CTX_set_verify(sslctx, SSL_VERIFY_NONE, 0);
-        	ssl = SSL_new(sslctx);
-		SSL_set_fd(ssl, ctx->sock_client);
+    		if(method)sslctx = SSL_CTX_new(method);
+		if(sslctx)SSL_CTX_set_verify(sslctx, SSL_VERIFY_NONE, 0);
+        	if(sslctx)ssl = SSL_new(sslctx);
+		if(ssl)SSL_set_fd(ssl, ctx->sock_client);
+		
+		if(method==NULL || sslctx==NULL || ssl==NULL)
+		{
+			if(method==NULL)printf("Method init failure ");
+			if(method==NULL)printf("SSL ctx init failure ");
+			if(method==NULL)printf("SSL init failure ");
+			err = SSL_get_error(ssl, 0);
+			printf("sslerr = %d, %s\n", err, ERR_error_string(err, errbuffer));
+			shutdown(ctx->sock_client,0);
+			close(ctx->sock_client);
+			if(sslctx)SSL_CTX_free(sslctx);
+     			if(ssl)SSL_free(ssl);
+			FreeCyaSSL();
+			return err;
+		}		
 		printf("Connecting to %s with SSL...\n", ctx->hostname);
      		if(SSL_connect(ssl)!=SSL_SUCCESS)
 		{
-			int  err = SSL_get_error(ssl, 0);
-			char errbuffer[80];
+			err = SSL_get_error(ssl, 0);
 			printf("sslerr = %d, %s\n", err, ERR_error_string(err, errbuffer));
 			shutdown(ctx->sock_client,0);
 			close(ctx->sock_client);
