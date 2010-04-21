@@ -399,6 +399,32 @@ int YellHttp_ExecRequest(YellHttp_Ctx *ctx, char *url)
 		#endif
 	}
 
+	if(strncmp(ctx->request_type, "POST", 4)==0)
+	{
+		printf("Sending POST data...\n");
+		if(ctx->postdata==NULL || ctx->postdata_length==0)
+		{
+			printf("Ctx->postdata is NULL, or postdata_length is zero.\n");
+			shutdown(ctx->sock_client,0);
+			close(ctx->sock_client);
+			SSL_CTX_free(sslctx);
+     			SSL_free(ssl);
+			FreeCyaSSL();
+			return YELLHTTP_EINVAL;
+		}
+
+		if(!ctx->SSL)
+		{
+			YellHttp_SendData(ctx->sock_client, ctx->postdata, ctx->postdata_length);
+		}
+		else
+		{
+			#ifdef ENABLESSL
+			SSL_write(ssl, ctx->postdata, ctx->postdata_length);
+			#endif
+		}
+	}
+
 	hdrfield = (char*)malloc(512);
 	hdrval = (char*)malloc(512);
 
