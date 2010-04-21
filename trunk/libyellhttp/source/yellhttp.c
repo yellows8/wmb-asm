@@ -55,8 +55,8 @@ DEALINGS IN THE SOFTWARE.
 #include <nds.h>
 #include <dswifi9.h>
 
-#ifndef IPPROTO_TCP
-#define IPPROTO_TCP 0
+#ifndef IPPROTO_IP
+#define IPPROTO_IP 0
 #endif
 
 #endif
