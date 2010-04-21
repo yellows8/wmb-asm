@@ -43,6 +43,8 @@ typedef struct sYellHttp_Ctx
 	int sock_client;
 	unsigned char *sendbuf;
 	unsigned char *recvbuf;
+	unsigned char *postdata;//Raw POST data.
+	unsigned int postdata_length;
 	unsigned int http_status;
 	unsigned int server_flags;
 	unsigned int content_length;
