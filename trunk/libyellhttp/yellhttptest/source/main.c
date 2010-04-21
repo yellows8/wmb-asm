@@ -77,7 +77,7 @@ void authentication_callback(YellHttp_Ctx *ctx, char *realm, char *authout, void
 
 int main(int argc, char **argv)
 {
-	int retval;	
+	int retval, argi;
 	char *url;
 
 	#ifdef ARM9
@@ -126,9 +126,13 @@ int main(int argc, char **argv)
 	}
 	memset(errstr, 0, 256);
 
-	if(argc==3)
+	if(argc>=3)
 	{
-		YellHttp_SetAuthCb(authentication_callback, argv[2]);
+		for(argi=2; argi<argc; argi++)
+		{
+			if(strncmp(argv[argi], "-a", 2)==0)YellHttp_SetAuthCb(authentication_callback, &argv[argi][2]);
+			if(strncmp(argv[argi], "-u", 2)==0)strcpy(ctx->useragent, &argv[argi][2]);
+		}
 	}
 	printf("Executing ExecRequest...(URL: %s)\n", url);
 	retval = YellHttp_ExecRequest(ctx, url);
