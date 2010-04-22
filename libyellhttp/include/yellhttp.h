@@ -52,6 +52,8 @@ typedef struct sYellHttp_Ctx
 	time_t server_date;//Current timestamp from server Date header.
 	time_t lastmodified;//From Last-Modified server header.
 	unsigned int authenticated;
+	unsigned int auth_type;
+	unsigned auth_requirederrors;//Number of times we got the 401 error. Reset to zero when we get an status code other than 401.
 	unsigned int range_start, range_end;//Zero based. Can only be used if server supports resuming. If this is used and the server supports resuming/partial downloads, the http status should be 206, otherwise 200. If the range_end is outside the file size, http status should be 416.
 	unsigned long long auth_nc;
 
