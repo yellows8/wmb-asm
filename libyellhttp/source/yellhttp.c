@@ -85,7 +85,7 @@ void YellHttp_HdrCbDate(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *c
 void YellHttp_HdrCbContentLength(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx, void* usrarg);
 void YellHttp_HdrCbWWWAuthenticate(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx, void* usrarg);
 
-void YellHttp_GenDate(char *outdate, time_t date);
+void YellHttp_GenDate(char *outdate, time_t date, YellHttp_Ctx *ctx);
 
 void Base64_EncodeChars(unsigned char *input, char *output, int inlen, int outmaxlen);
 
@@ -367,7 +367,7 @@ int YellHttp_ExecRequest(YellHttp_Ctx *ctx, char *url)
 	{
 		memset(modifiedsincedate, 0, 512);
 		memset(hdrstr, 0, 512);
-		YellHttp_GenDate(modifiedsincedate, filestatus.st_mtime);
+		YellHttp_GenDate(modifiedsincedate, filestatus.st_mtime, ctx);
 		sprintf(hdrstr, "If-Modified-Since: %s\r\n", modifiedsincedate);
 		send_modifiedsince_hdr = 1;
 	}
@@ -766,7 +766,7 @@ int YellHttp_GetTimezoneoffset()
 	return timezoneoffset;
 }
 
-time_t YellHttp_ParseDate(char *date)
+time_t YellHttp_ParseDate(char *date, YellHttp_Ctx *ctx)
 {
 	struct tm time;
 	int i, found = -1;
@@ -775,7 +775,16 @@ time_t YellHttp_ParseDate(char *date)
 	int monthday, year, hour, minute, second;
 	time_t timestamp;
 	time.tm_isdst = 0;
-	sscanf(date, "%s %02d %s %04d %02d:%02d:%02d", weekday, &monthday, month, &year, &hour, &minute, &second);
+
+	if(strcmp(ctx->httpversion, "1.1")==0)
+	{
+		sscanf(date, "%s %02d %s %04d %02d:%02d:%02d", weekday, &monthday, month, &year, &hour, &minute, &second);
+	}
+	else if(strcmp(ctx->httpversion, "1.0")==0)
+	{
+		sscanf(date, "%s %s %02d %02d:%02d:%02d %04d", weekday, month, &monthday, &hour, &minute, &second, &year);
+	}
+
 	for(i=0; i<7; i++)
 	{
 		if(strncmp(weekday, weekdaystr[i], 3)==0)
@@ -814,20 +823,31 @@ time_t YellHttp_ParseDate(char *date)
 	time.tm_min = minute;
 	time.tm_sec = second;
 
-	time.tm_hour+= YellHttp_GetTimezoneoffset();
+	if(strcmp(ctx->httpversion, "1.1")==0)time.tm_hour+= YellHttp_GetTimezoneoffset();
 	timestamp = mktime(&time);
 
 	return timestamp;
 }
 
-void YellHttp_GenDate(char *outdate, time_t date)
+void YellHttp_GenDate(char *outdate, time_t date, YellHttp_Ctx *ctx)
 {
-	struct tm *time = gmtime(&date);
+	struct tm *time;
+	if(strcmp(ctx->httpversion, "1.1")==0)time = gmtime(&date);
+	if(strcmp(ctx->httpversion, "1.0")==0)time = localtime(&date);
 	char weekday[4];
-	char month[4];
+	char month[4];	
+
 	strncpy(weekday, weekdaystr[time->tm_wday], 4);
 	strncpy(month, month_strs[time->tm_mon], 4);
-	sprintf(outdate, "%s, %02d %s %04d %02d:%02d:%02d GMT", weekday, time->tm_mday, month, time->tm_year + 1900, time->tm_hour, time->tm_min, time->tm_sec);
+	if(strcmp(ctx->httpversion, "1.1")==0)
+	{
+		sprintf(outdate, "%s, %02d %s %04d %02d:%02d:%02d GMT", weekday, time->tm_mday, month, time->tm_year + 1900, time->tm_hour, time->tm_min, time->tm_sec);
+	}
+	else if(strcmp(ctx->httpversion, "1.0")==0)
+	{
+		
+		sprintf(outdate, "%s %s %02d %02d:%02d:%02d %04d", weekday, month, time->tm_mday, time->tm_hour, time->tm_min, time->tm_sec, time->tm_year + 1900);
+	}
 }
 
 void YellHttp_HdrCbAcceptRanges(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx, void* usrarg)
@@ -884,7 +904,7 @@ void YellHttp_HdrCbLocation(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ct
 
 void YellHttp_HdrCbDate(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx, void* usrarg)
 {
-	time_t timestamp = YellHttp_ParseDate(hdrval);
+	time_t timestamp = YellHttp_ParseDate(hdrval, ctx);
 	if(strcmp(hdrfield, "Date")==0)
 	{
 		ctx->server_date = timestamp;
