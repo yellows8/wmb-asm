@@ -35,6 +35,7 @@ DEALINGS IN THE SOFTWARE.
 #define YELLHTTP_ECONN -5
 #define YELLHTTP_EFILE -6
 #define YELLHTTP_LASTERROR -6
+#define YELLHTTP_ENOCREDS -7//If a authentication callback returns this, that means it doesn't have any more users/passwords to try using when the server returns 401 again. 
 
 typedef struct sYellHttp_Ctx
 {
@@ -65,10 +66,12 @@ typedef struct sYellHttp_Ctx
 	char headers[512];//Optional custom headers, each line must end with \r\n.
 	char auth_nonce[512];
 	char auth_cnonce[18];
+	char realm[512];
+	char authorization_header[512];
 } YellHttp_Ctx;
 
 typedef void (*YellHttp_HeaderCb)(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx, void* usrarg);
-typedef void (*YellHttp_WWWAuthenticateCb)(YellHttp_Ctx *ctx, char *realm, char *authout, void* usrarg, int digest);//authout is the user:pass string. If digest is one, authout should be the user:realm:pass string for digest authentication.
+typedef int (*YellHttp_WWWAuthenticateCb)(YellHttp_Ctx *ctx, char *realm, char *authout, void* usrarg, int digest, int invalidcreds);//authout is the user:pass string. If digest is one, authout should be the user:realm:pass string for digest authentication.
 
 YellHttp_Ctx *YellHttp_InitCtx();
 void YellHttp_FreeCtx(YellHttp_Ctx *ctx);
