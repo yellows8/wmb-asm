@@ -384,6 +384,7 @@ int YellHttp_ExecRequest(YellHttp_Ctx *ctx, char *url)
 		snprintf(hdrstr, 512, "Range: bytes=%d-%d\r\n", ctx->range_start, ctx->range_end);
 		strncat((char*)ctx->sendbuf, hdrstr, SENDBUFSZ);
 	}
+	if(ctx->authenticated)strncat((char*)ctx->sendbuf, ctx->authorization_header, SENDBUFSZ);
 	if(strlen(ctx->headers)>0)strncat((char*)ctx->sendbuf, ctx->headers, SENDBUFSZ);
 
 	strncat((char*)ctx->sendbuf, "\r\n", SENDBUFSZ);
@@ -812,9 +813,54 @@ void YellHttp_HdrCbAcceptRanges(char *hdr, char *hdrfield, char *hdrval, YellHtt
 	ctx->server_flags |= YELLHTTP_SRVFLAG_RESUME;
 }
 
+void YellHttp_ExpandURL(char *in, char *out, YellHttp_Ctx *ctx)
+{
+	char str[512];
+	int i;
+	memset(str, 0, 512);
+	if(strstr(in, "http"))
+	{
+		strncpy(str, in, 511);
+		printf("Regular redirection.\n");
+	}
+	else if(in[0]=='/')
+	{
+		if(!ctx->SSL)strncat(str, "http://", 511);
+		if(ctx->SSL)strncat(str, "http://", 511);
+		strncat(str, ctx->hostname, 511);
+		strncat(str, in, 511);
+		printf("Root URI redirection.\n");
+	}
+	else
+	{
+		for(i=strlen(ctx->uri)-1; i>0; i--)
+		{
+			if(ctx->uri[i]=='/')break;
+		}
+		i++;
+		if(!ctx->SSL)strncat(str, "http://", 511);
+		if(ctx->SSL)strncat(str, "https://", 511);
+		strncat(str, ctx->hostname, 511);
+		if(!ctx->SSL && ctx->port!=80)
+		{
+			strncat(str, ":", 511);
+			strncat(str, ctx->portstr, 511);
+		}		
+		if(ctx->SSL && ctx->port!=443)
+		{
+			strncat(str, ":", 511);
+			strncat(str, ctx->portstr, 511);
+		}		
+		strncat(str, ctx->uri, i);
+		strncat(str, in, 511);
+		printf("Local redirection. %s\n", str);
+	}
+	strncpy(out, str, 511);
+}
+
 void YellHttp_HdrCbLocation(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx, void* usrarg)
 {
-	strncpy(ctx->redirecturl, hdrval, 255);
+	YellHttp_ExpandURL(hdrval, ctx->redirecturl, ctx);
 }
 
 void YellHttp_HdrCbDate(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx, void* usrarg)
@@ -864,10 +910,9 @@ int YellHTTP_HdrCbWWWAuthenticate_GetField(char *hdrval, char *name, char *value
 void YellHttp_HdrCbWWWAuthenticate(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx, void* usrarg)
 {
 	int i, stale = 0;
-	char realm[512];
+	int retval;
 	char auth[512];
 	char authout[512];
-	char header[512];
 	char tempval[512];
 	unsigned char HA1[16];
 	unsigned char HA2[16];
@@ -879,15 +924,11 @@ void YellHttp_HdrCbWWWAuthenticate(char *hdr, char *hdrfield, char *hdrval, Yell
 	char qop[32];
 	char nc[17];
 	char username[512];
+
+	memset(ctx->authorization_header, 0, 512);
 	if(ctx->authenticated)
 	{
-		if(strncmp(hdrval, "Digest", 6)!=0)
-		{
-			printf("Authentication user and pass already set.\n");
-			ctx->authenticated++;
-			return;
-		}
-		else
+		if(strncmp(hdrval, "Digest", 6)==0)
 		{
 			memset(tempval, 0, 512);
 			if(YellHTTP_HdrCbWWWAuthenticate_GetField(hdrval, "stale", tempval)==0)
@@ -897,29 +938,26 @@ void YellHttp_HdrCbWWWAuthenticate(char *hdr, char *hdrfield, char *hdrval, Yell
 					stale = 1;
 				}
 			}
-
-			if(!stale)
-			{
-				printf("Authentication user and pass already set.\n");
-				ctx->authenticated++;
-				return;
-			}
 		}
 	}
 
 	if(strncmp(hdrval, "Basic", 5)==0)
 	{
-		memset(realm, 0, 512);
+		memset(ctx->realm, 0, 512);
 		memset(auth, 0, 512);
 		memset(authout, 0, 512);
-		memset(header, 0, 512);
-		YellHTTP_HdrCbWWWAuthenticate_GetField(hdrval, "realm", realm);
+		YellHTTP_HdrCbWWWAuthenticate_GetField(hdrval, "realm", ctx->realm);
 		if(authcb)
 		{
-			authcb(ctx, realm, auth, authcb_usrarg, 0);
+			retval = authcb(ctx, ctx->realm, auth, authcb_usrarg, 0, ctx->authenticated);
+			if(retval==YELLHTTP_ENOCREDS)
+			{
+				printf("Invalid user/pass, no more users/passwords are available from the authentication callback.\n");
+				ctx->authenticated = 0;
+				return;
+			}
 			Base64_EncodeChars((unsigned char*)auth, authout, strlen(auth), 512);
-			snprintf(header, 512, "Authorization: Basic %s\r\n", authout);
-			strncat(ctx->headers, header, 512);
+			snprintf(ctx->authorization_header, 511, "Authorization: Basic %s\r\n", authout);
 			ctx->authenticated = 1;
 		}
 		else
@@ -933,12 +971,11 @@ void YellHttp_HdrCbWWWAuthenticate(char *hdr, char *hdrfield, char *hdrval, Yell
 		printf("Digest authentication is disabled since SSL is disabled.\n");
 		#else
 
-		memset(realm, 0, 512);
+		memset(ctx->realm, 0, 512);
 		memset(auth, 0, 512);
 		memset(authout, 0, 512);
-		memset(header, 0, 512);
 		memset(tempval, 0, 512);
-		YellHTTP_HdrCbWWWAuthenticate_GetField(hdrval, "realm", realm);
+		YellHTTP_HdrCbWWWAuthenticate_GetField(hdrval, "realm", ctx->realm);
 		YellHTTP_HdrCbWWWAuthenticate_GetField(hdrval, "nonce", ctx->auth_nonce);
 		YellHTTP_HdrCbWWWAuthenticate_GetField(hdrval, "algorithm", tempval);
 		if(strcmp(tempval, "MD5")!=0)
@@ -949,9 +986,15 @@ void YellHttp_HdrCbWWWAuthenticate(char *hdr, char *hdrfield, char *hdrval, Yell
 
 		if(authcb)
 		{
-			authcb(ctx, realm, auth, authcb_usrarg, 1);
-			MD5(HA1, (unsigned char*)auth, strlen(auth));
+			retval = authcb(ctx, ctx->realm, auth, authcb_usrarg, 1, ctx->authenticated);
+			if(retval==YELLHTTP_ENOCREDS)
+			{
+				printf("Invalid user/pass, no more users/passwords are available from the authentication callback.\n");
+				ctx->authenticated = 0;
+				return;
+			}
 
+			MD5(HA1, (unsigned char*)auth, strlen(auth));
 			memset(request_data, 0, 512);
 			if(strlen(ctx->request_type)>0)
 			{
@@ -969,7 +1012,6 @@ void YellHttp_HdrCbWWWAuthenticate(char *hdr, char *hdrfield, char *hdrval, Yell
 			memset(nc, 0, 16);
 			ctx->auth_nc = 1;
 			snprintf(nc, 16, "%04x%04x", ((unsigned int)(ctx->auth_nc >> 32)), (unsigned int)ctx->auth_nc);
-			//nc[7] = '1';
 			memset(ctx->auth_cnonce, 0, 9);
 			snprintf(ctx->auth_cnonce, 17, "%04x%04x", rand(), rand());
 			memset(HA1_text, 0, 33);
@@ -983,8 +1025,7 @@ void YellHttp_HdrCbWWWAuthenticate(char *hdr, char *hdrfield, char *hdrval, Yell
 			memset(username, 0, 512);
 			for(i=0; i<strlen(auth) && auth[i]!=':'; i++)username[i] = auth[i];
 
-			snprintf(header, 512, "Authorization: Digest username=\"%s\", realm=\"%s\", nonce=\"%s\", uri=\"%s\", algorithm=MD5, response=\"%s\", qop=%s, nc=%s, cnonce=\"%s\"\r\n", username, realm, ctx->auth_nonce, ctx->uri, response, qop, nc, ctx->auth_cnonce);
-			strncat(ctx->headers, header, 512);
+			snprintf(ctx->authorization_header, 511, "Authorization: Digest username=\"%s\", realm=\"%s\", nonce=\"%s\", uri=\"%s\", algorithm=MD5, response=\"%s\", qop=%s, nc=%s, cnonce=\"%s\"\r\n", username, ctx->realm, ctx->auth_nonce, ctx->uri, response, qop, nc, ctx->auth_cnonce);
 			ctx->authenticated = 1;
 		}
 		else
