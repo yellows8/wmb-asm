@@ -120,6 +120,8 @@ YellHttp_Ctx *YellHttp_InitCtx()
 	sprintf(ctx->useragent, "libyellhttp %s", LIBYELLHTTPVERSIONSTR);
 	memset(ctx->headers, 0, 1024);
 	memset(ctx->auth_nonce, 0, 512);
+	memset(ctx->httpversion, 0, 4);
+	strncpy(ctx->httpversion, "1.1", 4);
 	ctx->auth_nc = 0;
 	authcb = NULL;
 	ctx->authenticated = 0;
@@ -380,7 +382,7 @@ int YellHttp_ExecRequest(YellHttp_Ctx *ctx, char *url)
 	{
 		strncpy(request_type, "GET", 8);
 	}
-	snprintf((char*)ctx->sendbuf, SENDBUFSZ, "%s %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: %s\r\nConnection: close\r\n", request_type, ctx->uri, ctx->hostname, ctx->useragent);
+	snprintf((char*)ctx->sendbuf, SENDBUFSZ, "%s %s HTTP/%s\r\nHost: %s\r\nUser-Agent: %s\r\nConnection: close\r\n",  request_type, ctx->uri, ctx->httpversion, ctx->hostname, ctx->useragent);
 	
 	if(send_modifiedsince_hdr)strncat((char*)ctx->sendbuf, hdrstr, SENDBUFSZ);
 	if(ctx->range_end!=0)
@@ -490,6 +492,7 @@ int YellHttp_ExecRequest(YellHttp_Ctx *ctx, char *url)
 				if(linenum==0)
 				{
 					sscanf((char*)&ctx->recvbuf[9], "%d", &ctx->http_status);
+					memcpy(ctx->httpversion, &ctx->recvbuf[5], 3);
 					printf("HTTP status: %d\n", ctx->http_status);
 					if(ctx->http_status==304)stop = 1;
 					if(ctx->http_status==401)
