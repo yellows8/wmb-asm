@@ -34,8 +34,9 @@ DEALINGS IN THE SOFTWARE.
 #define YELLHTTP_ESOCK -4
 #define YELLHTTP_ECONN -5
 #define YELLHTTP_EFILE -6
-#define YELLHTTP_LASTERROR -6
-#define YELLHTTP_ENOCREDS -7//If a authentication callback returns this, that means it doesn't have any more users/passwords to try using when the server returns 401 again. 
+#define YELLHTTP_ENOCREDS -7//If a authentication callback returns this, that means it doesn't have any more users/passwords to try using when the server returns 401 again.
+#define YELLHTTP_ENOMEM -8
+#define YELLHTTP_LASTERROR -8
 
 typedef struct sYellHttp_Ctx
 {
@@ -77,7 +78,7 @@ typedef struct sYellHttp_Ctx
 typedef struct sYellHttp_MIMEFormEntryField
 {
 	char *name;
-	char *value;
+	char *value;//Doesn't include the quotes.
 } YellHttp_MIMEFormEntryField;
 
 typedef struct sYellHttp_MIMEFormEntry
@@ -86,6 +87,8 @@ typedef struct sYellHttp_MIMEFormEntry
 	int numfields;
 	char *path;//Path to file, if any.
 	char content_type[512];
+	unsigned char *data;//Data of the entry. Can be NULL for files, but if not NULL for files, this buffer is used instead of reading the file from path.
+	int data_length;
 } YellHttp_MIMEFormEntry;
 
 typedef void (*YellHttp_HeaderCb)(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx, void* usrarg);

@@ -751,21 +751,148 @@ void YellHttp_SetAuthCb(YellHttp_WWWAuthenticateCb cb, void* usrarg)
 
 int YellHttp_EncodePostMIME_MultipartFormData(YellHttp_Ctx *ctx, YellHttp_MIMEFormEntry *entries, int numentries)
 {
-	int i;
+	int enti, fieldi, bufi = 0;
+	int isfile;
+	int bufsize = 4096;
+	int hasbuf;
+	int filesize;
+	FILE *f;
+	struct stat filestats;
 	char boundary[256];
 	char line[512];
+	unsigned char *tempbuf;
 	if(ctx==NULL || entries==NULL || numentries==0)return YELLHTTP_EINVAL;
 
 	snprintf(boundary, 256, "-----------------------------%02d%02d%02d%02d%02d%02d%02d%02d%02d%02d%02d%02d%02d%02d",
 	rand()%100, rand()%100, rand()%100, rand()%100, rand()%100, rand()%100, rand()%100, rand()%100, rand()%100, rand()%100, rand()%100, rand()%100, rand()%100, rand()%100);
 	memset(ctx->content_type, 0, 512);
-	strncpy(ctx->content_type, "multipart/form-data; boundary=", 512);
-	strncat(ctx->content_type, boundary, 512);
+	strncpy(ctx->content_type, "multipart/form-data; boundary=", 511);
+	strncat(ctx->content_type, boundary, 511);
+	ctx->postdata = (unsigned char*)malloc(bufsize);
+	if(ctx->postdata==NULL)return YELLHTTP_ENOMEM;
 
-	for(i=0; i<numentries; i++)
+	for(enti=0; enti<numentries; enti++)
 	{
+		if(entries[enti].fields==NULL)
+		{
+			printf("MIME form-data entry fields ptr is NULL.\n");
+			free(ctx->postdata);
+			ctx->postdata = NULL;
+			return YELLHTTP_EINVAL;
+		}
+
+		memset(line, 0, 512);
+		strncpy((char*)&ctx->postdata[bufi], boundary, 511);
+		strncpy(line, "Content-Disposition: form-data; ", 511);
+		isfile = 0;
+		for(fieldi=0; fieldi<entries[enti].numfields; fieldi++)
+		{
+			if(entries[enti].fields[fieldi].name==NULL || entries[enti].fields[fieldi].value==NULL)
+			{
+				printf("MIME form-data entry fields' name/value is NULL.\n");
+				free(ctx->postdata);
+				ctx->postdata = NULL;
+				return YELLHTTP_EINVAL;
+			}
+			if(strcmp(entries[enti].fields[fieldi].name, "filename")==0)isfile = 1;
+			strncat(line, entries[enti].fields[fieldi].name, 511);
+			strncat(line, "=\"", 511);
+			strncat(line, entries[enti].fields[fieldi].value, 511);
+			strncat(line, "\"; ", 511);
+			strncpy((char*)&ctx->postdata[bufi], line, 511);
+			bufi+= strlen(line);
+		}
+		strncat((char*)&ctx->postdata[bufi], "\r\n", 511);
+		bufi+=2;
+		memset(line, 0, 512);
 		
+		if(strlen(entries[enti].content_type) > 0)
+		{
+			snprintf(line, 511, "Content-Type: %s\r\n", entries[enti].content_type);
+			strncpy((char*)&ctx->postdata[bufi], line, 511);
+			bufi+= strlen(line);
+		}
+		strncat((char*)&ctx->postdata[bufi], "\r\n", 511);
+		bufi+=2;
+
+		hasbuf = 0;
+		if(entries[enti].data)hasbuf = 1;
+		if(!hasbuf && !isfile)
+		{
+			printf("MIME form-data entry data buf is NULL, and the entry isn't a file.\n");
+			free(ctx->postdata);
+			ctx->postdata = NULL;
+			return YELLHTTP_EINVAL;
+		}
+		if(!hasbuf && isfile && entries[enti].path==NULL)
+		{
+			printf("MIME form-data entry data buf is NULL, path is NULL, and the entry is a file.\n");
+			free(ctx->postdata);
+			ctx->postdata = NULL;
+			return YELLHTTP_EINVAL;
+		}
+
+		if(!hasbuf && isfile)
+		{
+			f = fopen(entries[enti].path, "rb");
+			if(f==NULL)
+			{
+				printf("Failed to open file %s\n", entries[enti].path);
+				free(ctx->postdata);
+				ctx->postdata = NULL;
+				return YELLHTTP_EINVAL;
+			}
+			stat(entries[enti].path, &filestats);
+			filesize = (int)filestats.st_size;
+			entries[enti].data = (unsigned char*)malloc(filesize);
+			if(entries[enti].data==NULL)
+			{
+				printf("Failed to allocate memory for file data.\n");
+				free(ctx->postdata);
+				ctx->postdata = NULL;
+				return YELLHTTP_EINVAL;
+			}
+			fread(entries[enti].data, 1, filesize, f);
+			fclose(f);
+		}
+		else if(hasbuf)
+		{
+			filesize = entries[enti].data_length;
+		}
+
+		bufsize+= filesize + 4096;
+		tempbuf = realloc(ctx->postdata, bufsize);
+		if(tempbuf==NULL)
+		{
+			printf("Failed to reallocate memory for postdata buffer.\n");
+			free(ctx->postdata);
+			ctx->postdata = NULL;
+			return YELLHTTP_EINVAL;
+		}
+		ctx->postdata = tempbuf;
+
+		memcpy(&ctx->postdata[bufi], entries[enti].data, filesize);
+		bufi+= filesize;
+		strncat((char*)&ctx->postdata[bufi], "\r\n", 511);
+		bufi+=2;
+		strncpy((char*)&ctx->postdata[bufi], boundary, 511);
+		bufi+=strlen(boundary);
+		if(enti==numentries-1)
+		{
+			strncat((char*)&ctx->postdata[bufi], "--", 511);
+			bufi+=2;
+		}
+		strncat((char*)&ctx->postdata[bufi], "\r\n", 511);
+		bufi+=2;
+
+		if(!hasbuf && entries[enti].data)
+		{
+			free(entries[enti].data);
+			entries[enti].data = NULL;
+		}
 	}
+	ctx->postdata_length = bufi;
+	strncpy(ctx->request_type, "POST", 7);
 
 	return 0;
 }
