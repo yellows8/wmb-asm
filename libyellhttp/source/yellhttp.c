@@ -82,7 +82,7 @@ typedef struct sYellHttp_HeaderCbStruct
 void YellHttp_HdrCbAcceptRanges(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx, void* usrarg);
 void YellHttp_HdrCbLocation(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx, void* usrarg);
 void YellHttp_HdrCbDate(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx, void* usrarg);
-void YellHttp_HdrCbContentLength(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx, void* usrarg);
+void YellHttp_HdrCbContentLengthType(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx, void* usrarg);
 void YellHttp_HdrCbWWWAuthenticate(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx, void* usrarg);
 
 void YellHttp_GenDate(char *outdate, time_t date, YellHttp_Ctx *ctx);
@@ -93,7 +93,7 @@ void Base64_EncodeChars(unsigned char *input, char *output, int inlen, int outma
 void YellHttp_GenDigestAuthHdr(YellHttp_Ctx *ctx);
 #endif
 
-YellHttp_HeaderCbStruct headercb_array[32] = {{YellHttp_HdrCbAcceptRanges, 0, "Accept-Ranges"}, {YellHttp_HdrCbLocation,  0, "Location"}, {YellHttp_HdrCbDate, 0, "Date"}, {YellHttp_HdrCbDate, 0, "Last-Modified"}, {YellHttp_HdrCbContentLength, 0, "Content-Length"}, {YellHttp_HdrCbWWWAuthenticate, 0, "WWW-Authenticate"}};
+YellHttp_HeaderCbStruct headercb_array[32] = {{YellHttp_HdrCbAcceptRanges, 0, "Accept-Ranges"}, {YellHttp_HdrCbLocation,  0, "Location"}, {YellHttp_HdrCbDate, 0, "Date"}, {YellHttp_HdrCbDate, 0, "Last-Modified"}, {YellHttp_HdrCbContentLengthType, 0, "Content-Length"}, {YellHttp_HdrCbContentLengthType, 0, "Content-Type"},  {YellHttp_HdrCbWWWAuthenticate, 0, "WWW-Authenticate"}};
 
 char weekdaystr[7][4] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
 char month_strs[12][4] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
@@ -122,6 +122,7 @@ YellHttp_Ctx *YellHttp_InitCtx()
 	memset(ctx->auth_nonce, 0, 512);
 	memset(ctx->httpversion, 0, 4);
 	strncpy(ctx->httpversion, "1.1", 4);
+	memset(ctx->content_type, 0, 512);
 	ctx->auth_nc = 0;
 	authcb = NULL;
 	ctx->authenticated = 0;
@@ -397,7 +398,15 @@ int YellHttp_ExecRequest(YellHttp_Ctx *ctx, char *url)
 		if(ctx->auth_type==1)YellHttp_GenDigestAuthHdr(ctx);
 		#endif
 		strncat((char*)ctx->sendbuf, ctx->authorization_header, SENDBUFSZ);
-	}	
+	}
+	if(strncmp(ctx->request_type, "POST", 4)==0)
+	{
+		if(ctx->postdata && ctx->postdata>0)
+		{
+			snprintf(hdrstr, 512, "Content-Type: %s\r\nContent-Length: %d\r\n", ctx->content_type, ctx->postdata_length);
+			strncat((char*)ctx->sendbuf, hdrstr, SENDBUFSZ);
+		}
+	}
 	if(strlen(ctx->headers)>0)strncat((char*)ctx->sendbuf, ctx->headers, SENDBUFSZ);
 
 	strncat((char*)ctx->sendbuf, "\r\n", SENDBUFSZ);
@@ -740,6 +749,27 @@ void YellHttp_SetAuthCb(YellHttp_WWWAuthenticateCb cb, void* usrarg)
 	authcb_usrarg = usrarg;
 }
 
+int YellHttp_EncodePostMIME_MultipartFormData(YellHttp_Ctx *ctx, YellHttp_MIMEFormEntry *entries, int numentries)
+{
+	int i;
+	char boundary[256];
+	char line[512];
+	if(ctx==NULL || entries==NULL || numentries==0)return YELLHTTP_EINVAL;
+
+	snprintf(boundary, 256, "-----------------------------%02d%02d%02d%02d%02d%02d%02d%02d%02d%02d%02d%02d%02d%02d",
+	rand()%100, rand()%100, rand()%100, rand()%100, rand()%100, rand()%100, rand()%100, rand()%100, rand()%100, rand()%100, rand()%100, rand()%100, rand()%100, rand()%100);
+	memset(ctx->content_type, 0, 512);
+	strncpy(ctx->content_type, "multipart/form-data; boundary=", 512);
+	strncat(ctx->content_type, boundary, 512);
+
+	for(i=0; i<numentries; i++)
+	{
+		
+	}
+
+	return 0;
+}
+
 int YellHttp_GetTimezoneoffset()
 {
 	int timezoneoffset;
@@ -917,9 +947,14 @@ void YellHttp_HdrCbDate(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *c
 	}
 }
 
-void YellHttp_HdrCbContentLength(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx, void* usrarg)
+void YellHttp_HdrCbContentLengthType(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx, void* usrarg)
 {
-	sscanf(hdrval, "%d", &ctx->content_length);
+	if(strcmp(hdrfield, "Content-Length")==0)sscanf(hdrval, "%d", &ctx->content_length);
+	if(strcmp(hdrfield, "Content-Type")==0)
+	{
+		memset(ctx->content_type, 0, 512);
+		strncpy(ctx->content_type, hdrval, 512);
+	}
 }
 
 #ifdef ENABLESSL
