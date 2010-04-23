@@ -71,7 +71,22 @@ typedef struct sYellHttp_Ctx
 	char auth_cnonce[18];
 	char realm[512];
 	char authorization_header[512];
+	char content_type[512];//MIME type. Needs to be set when using the POST request. When the server sends the response headers, this is set to the value of the Content-Type header from the server.
 } YellHttp_Ctx;
+
+typedef struct sYellHttp_MIMEFormEntryField
+{
+	char *name;
+	char *value;
+} YellHttp_MIMEFormEntryField;
+
+typedef struct sYellHttp_MIMEFormEntry
+{
+	YellHttp_MIMEFormEntryField *fields;
+	int numfields;
+	char *path;//Path to file, if any.
+	char content_type[512];
+} YellHttp_MIMEFormEntry;
 
 typedef void (*YellHttp_HeaderCb)(char *hdr, char *hdrfield, char *hdrval, YellHttp_Ctx *ctx, void* usrarg);
 typedef int (*YellHttp_WWWAuthenticateCb)(YellHttp_Ctx *ctx, char *realm, char *authout, void* usrarg, int digest, int invalidcreds);//authout is the user:pass string. If digest is one, authout should be the user:realm:pass string for digest authentication.
@@ -82,6 +97,7 @@ int YellHttp_ExecRequest(YellHttp_Ctx *ctx, char *url);
 int YellHttp_SetHeaderCb(YellHttp_HeaderCb cb, char *header);//Sets a header handler callback. These callbacks are global, they are not specific to YellHttp_Ctx structs. If cb is NULL, the callback handler is removed. This function can override default libyellhttp hdr handlers, see yellhttp.c source for currently implementated handlers.
 void YellHttp_SetAuthCb(YellHttp_WWWAuthenticateCb cb, void* usrarg);//Set an authentication callback.
 void YellHttp_GetErrorStr(int error, char *errstr, int errstrlen);
+int YellHttp_EncodePostMIME_MultipartFormData(YellHttp_Ctx *ctx, YellHttp_MIMEFormEntry *entries, int numentries);
 
 #endif
 
