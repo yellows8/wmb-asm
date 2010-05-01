@@ -546,6 +546,8 @@ fs_getattr(const char *path, struct stat *stbuf)
         	stbuf->st_nlink = 1;
         	stbuf->st_size = be32(cur.size);
 		stbuf->st_blksize = 2048;
+		stbuf->st_blocks = stbuf->st_size / 512;
+		stbuf->st_ino = nand_nodeindex;
 		syslog(0, "Type file %s %02x %d", cur.name, cur.attr, perms);
 	}
 	return 0;
@@ -634,15 +636,17 @@ fs_open(const char *path, struct fuse_file_info *fi)
 	fd_array[i].offset = 0;
 
 	fi->fh = (uint64_t)i;
-	return i;
+	return 0;
 }
 
 static int
 fs_release(const char *path, struct fuse_file_info *fi)
 {
+	syslog(0, "closing fd %d", fi->fh);
 	if(!(used_fds & 1<<fi->fh))return -EBADF;
 	used_fds &= ~1<<(unsigned int)fi->fh;
 	memset(&fd_array[(int)fi->fh], 0, sizeof(nandfs_fp));
+	syslog(0, "done");
 	return 0;
 }
 
@@ -650,8 +654,9 @@ static int
 fs_read(const char *path, char *buf, size_t size, off_t offset,
         struct fuse_file_info *fi)
 {
+	syslog(0, "read fd %d offset %x size %x", (int)fi->fh, (int)offset, (int)size);
 	if(!(used_fds & 1<<fi->fh))return -EBADF;
-	syslog(0, "read fd %x offset %x size %x", (int)fi->fh, (int)offset, (int)size);
+	syslog(0, "fd valid");
 	memset(buf, 0, size);
 	nandfs_seek(&fd_array[(int)fi->fh], offset, SEEK_SET);
 	int num = nandfs_read(buf, size, 1, &fd_array[(int)fi->fh]);

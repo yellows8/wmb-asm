@@ -2,5 +2,3 @@ Known wiinandfuse bugs:
 
 1) With the -p option, permissions aren't set correctly in stbuf->st_mode.
 
-2) Sometimes you may get error "read bytes out of range", etc, when opening files. This seems to happen when trying to open a second file when another file is already opened.
-
