@@ -1,5 +1,5 @@
 wiinandfuse v1.0 by yellowstar6
-Mount Wii NAND images and SFFS dumps with FUSE. SVN checkout command: svn co http://wmb-asm.googlecode.com/svn/trunk/wiinandfuse/
+Mount Wii NAND images and SFFS dumps with FUSE. wiinandfuse supports Bootmii dumps, raw NAND dumps with ECC and without ECC. SVN checkout command: svn co http://wmb-asm.googlecode.com/svn/trunk/wiinandfuse/
 wiinandfuse uses the MIT license.
 wiinandfuse output when run without params:
 
