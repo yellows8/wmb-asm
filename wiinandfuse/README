@@ -1,0 +1,6 @@
+wiinandfuse v1.0 by yellowstar6
+Mount Wii NAND images and SFFS dumps with FUSE. Run wiinandfuse without parameters for usage and options.
+
+Credits:
+Bootmii MINI and ppcskel for nandfs structures and functions from nandfs.c, and MINI nand.c nand_correct function
+
