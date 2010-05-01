@@ -450,6 +450,26 @@ void fs_destroy(void* usr)
 	closelog();
 }
 
+int fs_statfs(const char *path, struct statvfs *fsinfo)
+{
+	int freeblocks = 0;
+	int i;
+	memset(fsinfo, 0, sizeof(struct statvfs));
+	fsinfo->f_bsize = 2048;
+	fsinfo->f_frsize = 2048 * 8;
+	fsinfo->f_blocks = 0x8000 * 8;
+	fsinfo->f_flag = ST_RDONLY;
+	fsinfo->f_namemax = 12;
+	for(i=0; i<32768; i++)
+	{
+		if(be16(SFFS.cluster_table[i])==0xFFFE)freeblocks++;
+	}
+	freeblocks*= 8;
+	fsinfo->f_bfree = 0;
+	fsinfo->f_bavail = freeblocks;
+	return 0;
+}
+
 static int
 fs_getattr(const char *path, struct stat *stbuf)
 {
@@ -648,6 +668,7 @@ fs_write(const char *path, const char *buf, size_t size, off_t offset,
 
 static const struct fuse_operations fsops = {
    .destroy = fs_destroy,
+   .statfs = fs_statfs,
    .getattr = fs_getattr,
    .readdir = fs_readdir,
    .open   = fs_open,
