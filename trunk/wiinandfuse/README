@@ -6,7 +6,7 @@ wiinandfuse output when run without params:
 Usage:
 wiinandfuse <nand.bin> <mount point> <options>
 Options:
--s: Dump contains only the 4MB SFFS. Reading/writing files will do nothing, the data reading buffers will be cleared.
+-s: Dump contains only the 4MB SFFS. Reading files will do nothing, the data reading buffers will be cleared.
 -k: Directory name of keys to use for raw NAND images. Default for keyname is "default". Path: $HOME/.wii/<keyname>
 -p: Use NAND permissions. UID and GUI of objects will be set to the NAND UID/GID, as well as the permissions. This option only enables setting the UID/GID and permissions in stat, the open and readdir functions don't check permissions.
 
