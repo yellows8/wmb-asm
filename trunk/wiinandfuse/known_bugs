@@ -1,4 +1,4 @@
 Known wiinandfuse bugs:
 
-There are no known bugs.
+1) With raw NAND dumps with ECC, some files may be corrupted. This might be caused by an ECC correction bug?
 

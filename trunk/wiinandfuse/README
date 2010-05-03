@@ -9,6 +9,8 @@ Options:
 -s: Dump contains only the 4MB SFFS. Reading files will do nothing, the data reading buffers will be cleared.
 -k: Directory name of keys to use for raw NAND images. Default for keyname is "default". Path: $HOME/.wii/<keyname>
 -p: Use NAND permissions. UID and GUI of objects will be set to the NAND UID/GID, as well as the permissions. This option only enables setting the UID/GID and permissions in stat, the open and readdir functions don't check permissions.
+-g<SFFS version number>: Use the SFFS super cluster that has the specified version number. If no number is specified, the version numbers are listed.
+-d: Dump SFFS info of all nodes to stdout.
 
 Features:
 Read-only, writing is not supported. ECC correction is done for dumps with ECC. Usage of the UID/GID, and permissions from NAND is supported with the -p option. This doesn't restrict file access.

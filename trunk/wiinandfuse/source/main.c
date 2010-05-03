@@ -34,6 +34,7 @@ DEALINGS IN THE SOFTWARE.
 #include <unistd.h>
 #include <errno.h>
 #include <syslog.h>
+#include "tools.h"
 
 #define	NANDFS_NAME_LEN	12
 
@@ -50,6 +51,9 @@ DEALINGS IN THE SOFTWARE.
 #define NAND_ECC_OK 0//From Bootmii MINI nand.h
 #define NAND_ECC_CORRECTED 1
 #define NAND_ECC_UNCORRECTABLE -1
+
+#define be32 be32_wrapper
+#define be16 be16_wrapper
 
 typedef struct _nandfs_file_node {//These _nandfs structs are based on MINI ppcskel nandfs.c
 	char name[NANDFS_NAME_LEN];
@@ -104,6 +108,9 @@ unsigned short nand_nodeindex = 0;
 void aes_set_key(unsigned char *key);
 void aes_decrypt(unsigned char *iv, unsigned char *inbuf, unsigned char *outbuf, unsigned long long len);
 void aes_encrypt(unsigned char *iv, unsigned char *inbuf, unsigned char *outbuf, unsigned long long len);
+
+unsigned int be32_wrapper(unsigned int x);
+unsigned short be16_wrapper(unsigned short x);
 
 int nand_correct(unsigned int pageno, void *data, void *ecc)//From Bootmii MINI nand.c, not used currently.
 {
@@ -238,7 +245,7 @@ void nand_write_cluster_encrypted(int cluster_number, unsigned char *cluster, un
 	nand_write_cluster(cluster_number, nand_cryptbuf, ecc);
 }
 
-inline unsigned int be32(unsigned int x)//From update_download by SquidMan.
+/*inline unsigned int be32(unsigned int x)//From update_download by SquidMan.
 {
     #if BYTE_ORDER==BIG_ENDIAN
     return x;
@@ -280,12 +287,13 @@ inline unsigned short le16(unsigned short x)//From update_download by SquidMan.
     return (x>>8) |
         (x<<8);
     #endif
-}
+}*/
 
-int sffs_init()
+int sffs_init(int ver)//Somewhat based on Bootmii MINI ppcskel nandfs.c SFFS init code.
 {
 	unsigned int sffs_version = 0, sffs_cluster = 0;
 	int i;
+	int supercluster = -1;
 	unsigned char buf[0x800];
 	nandfs_sffs *bufptr = (nandfs_sffs*)buf;
 	unsigned char *sffsptr = (unsigned char*)&SFFS;
@@ -294,25 +302,57 @@ int sffs_init()
 
 	for(; i<0x7fff; i+=0x10)
 	{
+		supercluster++;
 		nand_read_sector(i*8, 1, buf, NULL);
 		if(memcmp(bufptr->magic, "SFFS", 4)!=0)continue;
-		if(sffs_cluster==0 || sffs_version < bufptr->version)
+		if(ver==-2)
 		{
-			sffs_cluster = i;
-			sffs_version = bufptr->version;
+			if(sffs_cluster==0 || sffs_version < be32(bufptr->version))
+			{
+				sffs_cluster = i;
+				sffs_version = be32(bufptr->version);
+			}
+		}
+		else if(ver==-1)
+		{
+			printf("SFFS supercluster %x cluster %x version %x\n", supercluster, i, be32(bufptr->version));
+		}
+		else
+		{
+			if(be32(bufptr->version) == (unsigned int)ver)
+			{
+				sffs_cluster = i;
+				sffs_version = be32(bufptr->version);
+			}
 		}
 	}
 
-	if(sffs_cluster==0)
+	if(sffs_cluster==0 && ver!=-1)
 	{
-		printf("No SFFS supercluster found. Your NAND SFFS is seriously broken.\n");
+		if(ver<0)printf("No SFFS supercluster found. Your NAND SFFS is seriously broken.\n");
+		if(ver>=0)printf("Failed to find SFFS supercluster with version %x.\n", ver);
 		return -1;
 	}
+	else if(ver==-1)return -1;
 
 	for(i=0; i<16; i++)
 	{
 		nand_read_cluster(sffs_cluster + i, sffsptr, NULL);
 		sffsptr+= 0x4000;
+	}
+
+	return 0;
+}
+
+int DumpSFFS()
+{
+	int i;
+	char str[16];
+	for(i=0; i<6143; i++)
+	{
+		memset(str, 0, 16);
+		strncpy(str, SFFS.files[i].name, 12);
+		printf("%s\n", str);
 	}
 
 	return 0;
@@ -576,7 +616,7 @@ fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 			memset(fn, 0, 13);
 			strncpy(fn, cur.name, 12);
 			filler(buf, fn, NULL, 0);
-			memset(str, 0, 256);
+			//memset(str, 0, 256);
 			//sprintf(str, "sib %x fn %s", be16(cur.sibling), fn);
 			//syslog(0, str);
 			if(cur.sibling!=0xffff)
@@ -665,6 +705,19 @@ fs_write(const char *path, const char *buf, size_t size, off_t offset,
 	return 0;
 }
 
+#undef be32
+#undef be16
+
+unsigned int be32_wrapper(unsigned int x)
+{
+	return be32(&x);
+}
+
+unsigned short be16_wrapper(unsigned short x)
+{
+	return be16(&x);
+}
+
 static const struct fuse_operations fsops = {
    .destroy = fs_destroy,
    .statfs = fs_statfs,
@@ -684,6 +737,8 @@ int main(int argc, char **argv)
 	char keyname[256];
 	int argi;
 	FILE *fkey;
+	int ver = -2;
+	int dump = 0;
 
 	printf("wiinandfuse v1.0 by yellowstar6\n");
 	memset(keyname, 0, 256);
@@ -697,6 +752,8 @@ int main(int argc, char **argv)
 		printf("-s: Dump contains only the 4MB SFFS. Reading/writing files will do nothing, the data reading buffers will be cleared.\n");
 		printf("-k: Directory name of keys to use for raw NAND images. Default for keyname is \"default\". Path: $HOME/.wii/<keyname>\n");
 		printf("-p: Use NAND permissions. UID and GUI of objects will be set to the NAND UID/GID, as well as the permissions. This option only enables setting the UID/GID and permissions in stat, the open and readdir functions don't check permissions.\n");
+		printf("-g<SFFS version number>: Use the SFFS super cluster that has the specified version number. If no number is specified, the version numbers are listed.\n");
+		printf("-d: Dump SFFS info of all nodes to stdout.\n");
 		return 0;
 	}
 	
@@ -708,6 +765,18 @@ int main(int argc, char **argv)
 			strncpy(keyname, &argv[argi][2], 255);
 		}
 		if(strcmp(argv[argi], "-p")==0)use_nand_permissions = 1;
+		if(strncmp(argv[argi], "-g", 2)==0)
+		{
+			if(strlen(argv[argi])>2)
+			{
+				sscanf(&argv[argi][2], "%x", &ver);
+			}
+			else
+			{
+				ver=-1;
+			}
+		}
+		if(strcmp(argv[argi], "-d")==0)dump = 1;
 	}
 
 	nandfd = open(argv[1], O_RDWR);
@@ -716,12 +785,6 @@ int main(int argc, char **argv)
 
 		printf("Failed to open %s\n", argv[1]);
 		return -1;
-	}
-
-	if(sffs_init()<0)
-	{
-		close(nandfd);
-		return 0;
 	}
 
 	fuse_opt_add_arg(&args, argv[0]);
@@ -772,7 +835,6 @@ int main(int argc, char **argv)
 
 			memset(str, 0, 256);
 			sprintf(str, "%s/.wii/%s/nand-key", getenv("HOME"), keyname);
-			printf("%s\n", str);
 			fkey = fopen(str, "r");
 			if(fkey==NULL)
 			{
@@ -802,6 +864,21 @@ int main(int argc, char **argv)
 			closelog();
 			return 0;
 		}
+	}
+
+	if(sffs_init(ver)<0)
+	{
+		close(nandfd);
+		closelog();
+		return 0;
+	}
+
+	if(dump)
+	{
+		DumpSFFS();
+		close(nandfd);
+		closelog();
+		return 0;
 	}
 
 	aes_set_key(nand_aeskey);
