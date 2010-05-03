@@ -13,7 +13,8 @@ Options:
 -d: Dump SFFS info of all nodes to stdout.
 
 Features:
-Read-only, writing is not supported. ECC correction is done for dumps with ECC. Usage of the UID/GID, and permissions from NAND is supported with the -p option. This doesn't restrict file access.
+Read-only, writing is not supported. ECC correction is done for dumps with ECC. ECC correction seems to be currently broken for raw dumps however.(Some files are corrupted with raw dumps.) Usage of the UID/GID, and permissions from NAND is supported with the -p option. This doesn't restrict file access. Listing and usage of certain SFFS supercluster versions is supported with the -g option. Dumping of nodes' raw filename is supported with the -d option.
+
 Supported FUSE fs functions:
 statfs(statvfs)
 getattr(stat)
