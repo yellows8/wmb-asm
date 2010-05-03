@@ -157,12 +157,12 @@ void nand_read_sector(int sector, int num_sectors, unsigned char *buffer, unsign
 	for(; num_sectors>0; num_sectors--)
 	{
 		read(nandfd, buffer, 0x800);
-		buffer+= 0x800;
 		if(has_ecc)
 		{
 			if(ecc)
 			{
 				read(nandfd, ecc, 0x40);
+				nand_correct(sector, buffer, ecc);
 				ecc+= 0x40;
 			}
 			else
@@ -170,6 +170,7 @@ void nand_read_sector(int sector, int num_sectors, unsigned char *buffer, unsign
 				lseek(nandfd, 0x40, SEEK_CUR);
 			}
 		}
+		buffer+= 0x800;
 	}
 }
 
@@ -294,12 +295,6 @@ int sffs_init()
 	for(; i<0x7fff; i+=0x10)
 	{
 		nand_read_sector(i*8, 1, buf, NULL);
-		if(i==0x7f00)
-		{
-			FILE *fdump = fopen("dump", "w");
-			fwrite(buf, 1, 0x800, fdump);
-			fclose(fdump);
-		}
 		if(memcmp(bufptr->magic, "SFFS", 4)!=0)continue;
 		if(sffs_cluster==0 || sffs_version < bufptr->version)
 		{
@@ -320,9 +315,6 @@ int sffs_init()
 		sffsptr+= 0x4000;
 	}
 
-	FILE *fmeta = fopen("sffs", "w");
-	fwrite(&SFFS, 1, sizeof(nandfs_sffs), fmeta);
-	fclose(fmeta);
 	return 0;
 }
 
@@ -467,6 +459,13 @@ int fs_statfs(const char *path, struct statvfs *fsinfo)
 	freeblocks*= 8;
 	fsinfo->f_bfree = 0;
 	fsinfo->f_bavail = freeblocks;
+	freeblocks = 6143;
+	for(i=0; i<6143; i++)
+	{
+		if(SFFS.files[i].unk!=0)freeblocks--;
+	}
+	fsinfo->f_ffree = freeblocks;
+	fsinfo->f_files = 6143 - freeblocks;
 	return 0;
 }
 
@@ -477,7 +476,7 @@ fs_getattr(const char *path, struct stat *stbuf)
 	int type = -1;
 	unsigned int perms = 0;
 	int i;
-	unsigned int perm = 400;
+	unsigned int perm = 0400;
 	syslog(0, "getattr %s", path);
 	memset(stbuf, 0, sizeof(struct stat));
 	if(nandfs_open(&cur, path, 1, &nand_nodeindex)>-1)
@@ -497,12 +496,8 @@ fs_getattr(const char *path, struct stat *stbuf)
 
 	if(type==-1)
 	{
-		//stbuf->st_mode = S_IFREG | 0444;
-        	//stbuf->st_nlink = 1;
-        	//stbuf->st_size = 0;
 		syslog(0, "no ent");
 		return -ENOENT;
-		//return 0;
 	}
 
 
@@ -518,26 +513,26 @@ fs_getattr(const char *path, struct stat *stbuf)
 		{
 			if((cur.attr >> (6-(i*2))) & 1)
 			{
-				perms += perm;
-				syslog(0, "perm %x has r new perms %d %d", i, perms, perm);
+				perms |= perm;
+				syslog(0, "perm %03x has r new perms %o %o", i, perms, perm);
 			}
 			if((cur.attr >> (6-(i*2))) & 2)
 			{
-				perms += (perm / 2);
-				syslog(0, "perm %x has w new perms %d %d", i, perms, perm / 2);
+				perms |= perm / 02;
+				syslog(0, "perm %03x has w new perms %o %o", i, perms, perm / 02);
 			}
-			perm /= 10;
+			perm /= 010;
 		}
 	}
 
 	if(type==0)
 	{
 		if(!use_nand_permissions)perms = 0755;
-		if(use_nand_permissions)perms+= 111;
+		if(use_nand_permissions)perms |= 0111;
 	        stbuf->st_mode = S_IFDIR | perms;
 	        stbuf->st_nlink = 2;
 		stbuf->st_blksize = 2048;
-		syslog(0, "Type directory perms %d", perms);
+		syslog(0, "Type directory perms %o", perms);
     	}
 	else
 	{
@@ -548,7 +543,7 @@ fs_getattr(const char *path, struct stat *stbuf)
 		stbuf->st_blksize = 2048;
 		stbuf->st_blocks = stbuf->st_size / 512;
 		stbuf->st_ino = nand_nodeindex;
-		syslog(0, "Type file %s %02x %d", cur.name, cur.attr, perms);
+		syslog(0, "Type file %s %02x %o", cur.name, cur.attr, perms);
 	}
 	return 0;
 }
@@ -566,8 +561,7 @@ fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 	//syslog(0, "readdir: %s", path);
 	if(nandfs_open(&cur, path, 2, &nand_nodeindex)==-1)
 	{
-		sprintf(str, "no ent: %s", path);
-		syslog(0, str);
+		syslog(0, "no ent: %s", path);
 		return -ENOENT;
 	}
 	filler(buf, ".", NULL, 0);
@@ -642,7 +636,7 @@ fs_open(const char *path, struct fuse_file_info *fi)
 static int
 fs_release(const char *path, struct fuse_file_info *fi)
 {
-	syslog(0, "closing fd %d", fi->fh);
+	syslog(0, "closing fd %d", (int)fi->fh);
 	if(!(used_fds & 1<<fi->fh))return -EBADF;
 	used_fds &= ~1<<(unsigned int)fi->fh;
 	memset(&fd_array[(int)fi->fh], 0, sizeof(nandfs_fp));
@@ -778,6 +772,7 @@ int main(int argc, char **argv)
 
 			memset(str, 0, 256);
 			sprintf(str, "%s/.wii/%s/nand-key", getenv("HOME"), keyname);
+			printf("%s\n", str);
 			fkey = fopen(str, "r");
 			if(fkey==NULL)
 			{

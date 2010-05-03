@@ -1,4 +1,4 @@
 Known wiinandfuse bugs:
 
-1) With the -p option, permissions aren't set correctly in stbuf->st_mode.
+There are no known bugs.
 
