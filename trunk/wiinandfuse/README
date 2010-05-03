@@ -26,4 +26,5 @@ Credits:
 Bootmii MINI and ppcskel for nandfs structures and functions from nandfs.c, and MINI nand.c nand_correct function
 Mike Scott for his rijndeal.c
 Segher's zestig for SFFS node permissions format
+fs_hmac.c by gray and bushing
 
