@@ -11,7 +11,7 @@ Options:
 -p: Use NAND permissions. UID and GUI of objects will be set to the NAND UID/GID, as well as the permissions. This option only enables setting the UID/GID and permissions in stat, the open and readdir functions don't check permissions.
 
 Features:
-Read-only, writing is not supported.
+Read-only, writing is not supported. ECC correction is done for dumps with ECC. Usage of the UID/GID, and permissions from NAND is supported with the -p option. This doesn't restrict file access.
 Supported FUSE fs functions:
 statfs(statvfs)
 getattr(stat)
