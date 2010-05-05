@@ -104,6 +104,7 @@ int hmac_abort = 0;
 int round_robin = -1;
 int round_robin_didupdate = 0;
 int write_enable = 1;
+int ignore_ecc = 0;
 
 int supercluster = -1;
 unsigned int sffs_cluster = 0;
@@ -212,12 +213,14 @@ void nand_write_cluster(int cluster_number, unsigned char *cluster, unsigned cha
 	nand_write_sector(cluster_number * 8, 8, cluster, eccbuf);
 }
 
-void nand_read_cluster_decrypted(int cluster_number, unsigned char *cluster, unsigned char *ecc)
+int nand_read_cluster_decrypted(int cluster_number, unsigned char *cluster, unsigned char *ecc)
 {
 	unsigned char iv[16];
+	int retval;	
 	memset(iv, 0, 16);
-	nand_read_cluster(cluster_number, nand_cryptbuf, ecc);
+	retval = nand_read_cluster(cluster_number, nand_cryptbuf, ecc);
 	aes_decrypt(iv, nand_cryptbuf, cluster, 0x4000);
+	return retval;
 }
 
 void nand_write_cluster_encrypted(int cluster_number, unsigned char *cluster, unsigned char *ecc)
@@ -442,10 +445,11 @@ int nandfs_open(nandfs_file_node *fp, const char *path, int type, unsigned short
 	return 0;
 }
 
-int nandfs_read(void *ptr, unsigned int size, unsigned int nmemb, nandfs_fp *fp)//From Bootmii MINI ppcskel nandfs.c
+int nandfs_read(void *ptr, unsigned int size, unsigned int nmemb, nandfs_fp *fp)//Based on Bootmii MINI ppcskel nandfs.c
 {
 	unsigned int total = size*nmemb;
 	unsigned int copy_offset, copy_len;
+	int retval;
 	int realtotal = (unsigned int)total;
 
 	if (fp->offset + total > fp->size)
@@ -456,7 +460,8 @@ int nandfs_read(void *ptr, unsigned int size, unsigned int nmemb, nandfs_fp *fp)
 
 	realtotal = (unsigned int)total;
 	while(total > 0) {
-		nand_read_cluster_decrypted(fp->cur_cluster, buffer, NULL);
+		retval = nand_read_cluster_decrypted(fp->cur_cluster, buffer, NULL);
+		if(retval<0 && !ignore_ecc)return -EIO;		
 		copy_offset = fp->offset % (2048 * 8);
 		copy_len = (2048 * 8) - copy_offset;
 		if(copy_len > total)
@@ -796,6 +801,7 @@ int main(int argc, char **argv)
 		printf("-h: Disable SFFS HMAC verification. Default is enabled.\n");
 		printf("-v: Abort/EIO if HMAC verification of SFFS or file data fails. If SFFS verification fails, wiinandfuse aborts and NAND isn't mounted. If file data verification fails, read will return EIO.\n");
 		printf("-r<version>: Disable round-robin SFFS updating, default is on. When disabled, only the first metadata update has the version and supercluster increased. If version is specified, the supercluster with the specified version, has the version set to the version of the oldest supercluster minus one.\n");
+		printf("-e: Ignore ECC errors, default is disabled. When disabled, when pages have invalid ECC reads return EIO.\n");
 		return 0;
 	}
 	
@@ -837,6 +843,7 @@ int main(int argc, char **argv)
 				round_robin_didupdate = 0;
 			}
 		}
+		if(strcmp(argv[argi], "-e")==0)ignore_ecc = 1;
 	}
 
 	nandfd = open(argv[1], O_RDWR);
