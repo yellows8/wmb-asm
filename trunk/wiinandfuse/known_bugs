@@ -1,4 +1,4 @@
 Known wiinandfuse bugs:
 
-1) With raw NAND dumps with ECC, some files may be corrupted. This might be caused by an ECC correction bug?
+1) With raw NAND dumps with ECC, some files may be corrupted. This happened with a YaWND NAND image, it's unknown if this happens with flash programmer dumps.
 

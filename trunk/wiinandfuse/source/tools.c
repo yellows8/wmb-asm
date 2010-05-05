@@ -114,7 +114,7 @@ void debugf(const unsigned int verbosity, const char * stuff, ...) {
 	MD5Final(hash, &ctx);
 }*/
 
-void sha(u8 *data, u32 len, u8 *hash)
+/*void sha(u8 *data, u32 len, u8 *hash)
 {
 	struct SHA1Context ctx;
 	int i;
@@ -130,7 +130,7 @@ void sha(u8 *data, u32 len, u8 *hash)
 		*hash++ = ctx.Message_Digest[i] >> 8 & 0xff;
 		*hash++ = ctx.Message_Digest[i] & 0xff;
 	}
-}
+}*/
 
 static struct wii_keys keys;
 struct wii_keys *get_keys()

@@ -50,6 +50,7 @@ void hmac_final(hmac_ctx *ctx, unsigned char *hmac)
 	for(i=0;i<5;++i){
 		wbe32(hash + 4*i, ctx->hash_ctx.Message_Digest[i]);
 	}
+	memcpy(hmac, hash, 20);
 }
 
 void hmac_print(FILE *f,const unsigned char *hmac){
