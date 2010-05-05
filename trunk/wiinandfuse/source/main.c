@@ -234,7 +234,7 @@ void nand_write_cluster_encrypted(int cluster_number, unsigned char *cluster, un
 int sffs_init(int ver)//Somewhat based on Bootmii MINI ppcskel nandfs.c SFFS init code.
 {
 	int i;
-	int si = 0;
+	int si = -1;
 	unsigned char buf[0x800];
 	nandfs_sffs *bufptr = (nandfs_sffs*)buf;
 	unsigned char *sffsptr = (unsigned char*)&SFFS;
@@ -260,7 +260,7 @@ int sffs_init(int ver)//Somewhat based on Bootmii MINI ppcskel nandfs.c SFFS ini
 		}
 		else if(ver==-1)
 		{
-			printf("SFFS supercluster %x cluster %x version %x\n", supercluster, i, be32(bufptr->version));
+			printf("SFFS supercluster %x cluster %x version %x\n", si, i, be32(bufptr->version));
 		}
 		else
 		{
@@ -281,6 +281,7 @@ int sffs_init(int ver)//Somewhat based on Bootmii MINI ppcskel nandfs.c SFFS ini
 	}
 	else if(ver==-1)return -1;
 
+	printf("supercluster %x cluster %x\n", supercluster, sffs_cluster);
 	memset(&SFFS, 0, 0x40000);
 	for(i=0; i<16; i++)
 	{
