@@ -244,6 +244,8 @@ int sffs_init(int ver)//Somewhat based on Bootmii MINI ppcskel nandfs.c SFFS ini
 	if(!SFFS_only)i = 0x7f00;
 	if(SFFS_only)i = 0;
 
+	if(round_robin>=0)ver = round_robin;
+
 	for(; i<0x7fff; i+=0x10)
 	{
 		si++;
@@ -281,7 +283,6 @@ int sffs_init(int ver)//Somewhat based on Bootmii MINI ppcskel nandfs.c SFFS ini
 	}
 	else if(ver==-1)return -1;
 
-	printf("supercluster %x cluster %x\n", supercluster, sffs_cluster);
 	memset(&SFFS, 0, 0x40000);
 	for(i=0; i<16; i++)
 	{
@@ -306,6 +307,13 @@ int sffs_init(int ver)//Somewhat based on Bootmii MINI ppcskel nandfs.c SFFS ini
 			fclose(f);
 			if(hmac_abort)return -1;
 		}
+	}
+
+	if(round_robin>=0)
+	{
+		round_robin = -2;
+		round_robin_didupdate = 1;
+		update_sffs();
 	}
 
 	/*
@@ -857,6 +865,8 @@ int main(int argc, char **argv)
 
 	fuse_opt_add_arg(&args, argv[0]);
 	fuse_opt_add_arg(&args, argv[2]);
+	fuse_opt_add_arg(&args, "-o");
+	fuse_opt_add_arg(&args, "allow_root");//Allow root to access the FS.
 
 	openlog("wiinandfuse", 0, LOG_USER);
 	syslog(0, "STARTED");
