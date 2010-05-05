@@ -171,13 +171,19 @@ void nand_write_sector(int sector, int num_sectors, unsigned char *buffer, unsig
 		{
 			if(ecc)
 			{
+				calc_ecc(buffer, ecc + 0x30);
+				calc_ecc(buffer + 512, ecc + 0x30 + 4);
+				calc_ecc(buffer + 1024, ecc + 0x30 + 8);
+				calc_ecc(buffer + 1536, ecc + 0x30 + 12);
 				write(nandfd, ecc, 0x40);
+				ecc+=0x40;
 			}
 			else
 			{
 				write(nandfd, null, 0x40);
 			}
 		}
+		buffer+=0x800;
 	}
 }
 
@@ -225,6 +231,7 @@ void nand_write_cluster_encrypted(int cluster_number, unsigned char *cluster, un
 int sffs_init(int ver)//Somewhat based on Bootmii MINI ppcskel nandfs.c SFFS init code.
 {
 	int i;
+	int si = 0;
 	unsigned char buf[0x800];
 	nandfs_sffs *bufptr = (nandfs_sffs*)buf;
 	unsigned char *sffsptr = (unsigned char*)&SFFS;
@@ -236,7 +243,7 @@ int sffs_init(int ver)//Somewhat based on Bootmii MINI ppcskel nandfs.c SFFS ini
 
 	for(; i<0x7fff; i+=0x10)
 	{
-		supercluster++;
+		si++;
 		nand_read_sector(i*8, 1, buf, NULL);
 		if(memcmp(bufptr->magic, "SFFS", 4)!=0)continue;
 		if(ver==-2)
@@ -245,6 +252,7 @@ int sffs_init(int ver)//Somewhat based on Bootmii MINI ppcskel nandfs.c SFFS ini
 			{
 				sffs_cluster = i;
 				sffs_version = be32(bufptr->version);
+				supercluster = si;
 			}
 		}
 		else if(ver==-1)
@@ -257,6 +265,7 @@ int sffs_init(int ver)//Somewhat based on Bootmii MINI ppcskel nandfs.c SFFS ini
 			{
 				sffs_cluster = i;
 				sffs_version = be32(bufptr->version);
+				supercluster = si;
 			}
 		}
 	}
