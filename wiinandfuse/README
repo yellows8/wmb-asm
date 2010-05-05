@@ -27,6 +27,7 @@ open
 release
 read
 rename(renaming only, no moving)
+chown
 
 Credits:
 Bootmii MINI and ppcskel for nandfs structures and functions from nandfs.c
