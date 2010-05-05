@@ -11,9 +11,12 @@ Options:
 -p: Use NAND permissions. UID and GUI of objects will be set to the NAND UID/GID, as well as the permissions. This option only enables setting the UID/GID and permissions in stat, the open and readdir functions don't check permissions.
 -g<SFFS version number>: Use the SFFS super cluster that has the specified version number. If no number is specified, the version numbers are listed.
 -d: Dump SFFS info of all nodes to stdout.
+-h: Disable SFFS HMAC verification. Default is enabled.
+-v: Abort/EIO if HMAC verification of SFFS or file data fails. If SFFS verification fails, wiinandfuse aborts and NAND isn't mounted. If file data verification fails, read will return EIO, but that's not implemented yet.
+-r<version>: Disable round-robin SFFS updating, default is on. When disabled, only the first metadata update has the version and supercluster increased. If version is specified, the supercluster with the specified version, has the version set to the version of the oldest supercluster minus one. Modifying the speciefied supercluster version isn't implemented yet.
 
 Features:
-Read-only, writing is not supported. ECC correction is done for dumps with ECC. ECC correction seems to be currently broken for raw dumps however.(Some files are corrupted with raw dumps.) Usage of the UID/GID, and permissions from NAND is supported with the -p option. This doesn't restrict file access. Listing and usage of certain SFFS supercluster versions is supported with the -g option. Dumping of nodes' raw filename is supported with the -d option.
+Read-only, writing is not supported. HMAC verification of SFFS and file data is supported. Writing is disabled if HMAC verification is disabled with the -h option, but writing is a work-in-progress.(ECC isn't written, but HMAC is written.) ECC correction is done for dumps with ECC. ECC correction seems to be currently broken for raw dumps however.(Some files are corrupted with raw dumps.) Only a raw YaWND dump was used to test mounting raw dumps, which had this corruption. Usage of the UID/GID, and permissions from NAND is supported with the -p option. This doesn't restrict file access. Listing and usage of certain SFFS supercluster versions is supported with the -g option. Dumping of nodes' raw filename is supported with the -d option.
 
 Supported FUSE fs functions:
 statfs(statvfs)
@@ -22,10 +25,12 @@ readdir
 open
 release
 read
+rename(renaming only, no moving)
 
 Credits:
-Bootmii MINI and ppcskel for nandfs structures and functions from nandfs.c, and MINI nand.c nand_correct function
+Bootmii MINI and ppcskel for nandfs structures and functions from nandfs.c
 Mike Scott for his rijndeal.c
-Segher's zestig for SFFS node permissions format
+Segher for zestig, for SFFS node permissions format, and tools.c
 fs_hmac.c by gray and bushing
+Steve Reid's sha1.c
 

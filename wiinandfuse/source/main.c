@@ -19,7 +19,7 @@ OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 DEALINGS IN THE SOFTWARE.
 */
 
-//Some nandfs structures and functions are based on Bootmii MINI ppcskel nandfs.c and MINI nand.c
+//Some nandfs structures and functions are based on Bootmii MINI ppcskel nandfs.c
 
 #define FUSE_USE_VERSION  26
 #define _FILE_OFFSET_BITS 64
@@ -34,7 +34,10 @@ DEALINGS IN THE SOFTWARE.
 #include <unistd.h>
 #include <errno.h>
 #include <syslog.h>
+
 #include "tools.h"
+#include "fs_hmac.h"
+#include "ecc.h"
 
 #define	NANDFS_NAME_LEN	12
 
@@ -77,6 +80,7 @@ typedef struct _nandfs_sffs {
 
 	unsigned short cluster_table[32768];
 	nandfs_file_node files[6143];
+	unsigned char padding[0x14];//Added by yellowstar6.
 } __attribute__((packed)) nandfs_sffs;
 
 typedef struct _nandfs_fp {
@@ -95,6 +99,15 @@ int nandfd;
 int has_ecc = 1;
 int SFFS_only = 0;
 int use_nand_permissions = 0;
+int check_sffs_hmac = 1;
+int hmac_abort = 0;
+int round_robin = -1;
+int round_robin_didupdate = 0;
+int write_enable = 1;
+
+int supercluster = -1;
+unsigned int sffs_cluster = 0;
+unsigned int sffs_version = 0;
 
 unsigned char nand_hmackey[20];
 unsigned char nand_aeskey[16];
@@ -112,52 +125,11 @@ void aes_encrypt(unsigned char *iv, unsigned char *inbuf, unsigned char *outbuf,
 unsigned int be32_wrapper(unsigned int x);
 unsigned short be16_wrapper(unsigned short x);
 
-int nand_correct(unsigned int pageno, void *data, void *ecc)//From Bootmii MINI nand.c, not used currently.
+int nand_read_sector(int sector, int num_sectors, unsigned char *buffer, unsigned char *ecc)
 {
-	unsigned char *dp = (unsigned char*)data;
-	unsigned int *ecc_read = (unsigned int*)((unsigned char*)ecc+0x30);
-	unsigned int *ecc_calc = (unsigned int*)((unsigned char*)ecc+0x40);
-	int i;
-	int uncorrectable = 0;
-	int corrected = 0;
-	
-	for(i=0;i<4;i++) {
-		unsigned int syndrome = *ecc_read ^ *ecc_calc; //calculate ECC syncrome
-		// don't try to correct unformatted pages (all FF)
-		if ((*ecc_read != 0xFFFFFFFF) && syndrome) {
-			if(!((syndrome-1)&syndrome)) {
-				// single-bit error in ECC
-				corrected++;
-			} else {
-				// byteswap and extract odd and even halves
-				unsigned short even = (syndrome >> 24) | ((syndrome >> 8) & 0xf00);
-				unsigned short odd = ((syndrome << 8) & 0xf00) | ((syndrome >> 8) & 0x0ff);
-				if((even ^ odd) != 0xfff) {
-					// oops, can't fix this one
-					uncorrectable++;
-				} else {
-					// fix the bad bit
-					dp[odd >> 3] ^= 1<<(odd&7);
-					corrected++;
-				}
-			}
-		}
-		dp += 0x200;
-		ecc_read++;
-		ecc_calc++;
-	}
-	if(uncorrectable || corrected)
-		syslog(0, "ECC stats for NAND page 0x%x: %d uncorrectable, %d corrected\n", pageno, uncorrectable, corrected);
-	if(uncorrectable)
-		return NAND_ECC_UNCORRECTABLE;
-	if(corrected)
-		return NAND_ECC_CORRECTED;
-	return NAND_ECC_OK;
-}
-
-void nand_read_sector(int sector, int num_sectors, unsigned char *buffer, unsigned char *ecc)
-{
-	if(sector<0 || num_sectors<=0 || buffer==NULL)return;
+	int retval = NAND_ECC_OK;
+	unsigned char buf[0x840];
+	if(sector<0 || num_sectors<=0 || buffer==NULL)return NAND_ECC_OK;
 
 	if(has_ecc)lseek(nandfd, sector * 0x840, SEEK_SET);
 	if(!has_ecc)lseek(nandfd, sector * 0x800, SEEK_SET);
@@ -169,7 +141,9 @@ void nand_read_sector(int sector, int num_sectors, unsigned char *buffer, unsign
 			if(ecc)
 			{
 				read(nandfd, ecc, 0x40);
-				nand_correct(sector, buffer, ecc);
+				memcpy(buf, buffer, 0x800);
+				memcpy(&buf[0x800], ecc, 0x40);
+				retval = check_ecc(buf);
 				ecc+= 0x40;
 			}
 			else
@@ -179,6 +153,7 @@ void nand_read_sector(int sector, int num_sectors, unsigned char *buffer, unsign
 		}
 		buffer+= 0x800;
 	}
+	return retval;
 }
 
 void nand_write_sector(int sector, int num_sectors, unsigned char *buffer, unsigned char *ecc)
@@ -206,25 +181,27 @@ void nand_write_sector(int sector, int num_sectors, unsigned char *buffer, unsig
 	}
 }
 
-void nand_read_cluster(int cluster_number, unsigned char *cluster, unsigned char *ecc)
+int nand_read_cluster(int cluster_number, unsigned char *cluster, unsigned char *ecc)
 {
 	unsigned char eccbuf[0x200];
-	nand_read_sector(cluster_number * 8, 8, cluster, eccbuf);
+	int retval = nand_read_sector(cluster_number * 8, 8, cluster, eccbuf);
 	if(ecc)
 	{	
 		memcpy(ecc, &eccbuf[0x40 * 6], 0x40);
-		if(strnlen((char*)ecc, 0x40)==0)memcpy(ecc, &eccbuf[0x40 * 7], 0x40);//HMAC is in the 7th and 8th sectors.
+		memcpy(&ecc[0x40], &eccbuf[0x40 * 7], 0x40);//HMAC is in the 7th and 8th sectors.
 	}
+	return retval;
 }
 
-void nand_write_cluster(int cluster_number, unsigned char *cluster, unsigned char *ecc)
+void nand_write_cluster(int cluster_number, unsigned char *cluster, unsigned char *hmac)
 {
 	unsigned char eccbuf[0x200];
 	memset(eccbuf, 0, 0x200);
-	if(ecc)
-	{	
-		memcpy(&eccbuf[0x40 * 6], ecc, 0x40);
-		memcpy(&eccbuf[0x40 * 7], ecc, 0x40);//HMAC is in the 7th and 8th sectors.
+	if(hmac)
+	{
+		memcpy(&eccbuf[(0x40 * 6) + 1], hmac, 0x14);
+		memcpy(&eccbuf[(0x40 * 6) + 0x15], hmac, 12);
+		memcpy(&eccbuf[(0x40 * 7) + 1], &hmac[12], 8);//HMAC is in the 7th and 8th sectors.
 	}
 	nand_write_sector(cluster_number * 8, 8, cluster, eccbuf);
 }
@@ -245,58 +222,15 @@ void nand_write_cluster_encrypted(int cluster_number, unsigned char *cluster, un
 	nand_write_cluster(cluster_number, nand_cryptbuf, ecc);
 }
 
-/*inline unsigned int be32(unsigned int x)//From update_download by SquidMan.
-{
-    #if BYTE_ORDER==BIG_ENDIAN
-    return x;
-    #else
-    return (x>>24) |
-        ((x<<8) & 0x00FF0000) |
-        ((x>>8) & 0x0000FF00) |
-        (x<<24);
-    #endif
-}
-
-inline unsigned int le32(unsigned int x)//From update_download by SquidMan.
-{
-    #if BYTE_ORDER == LITTLE_ENDIAN
-    return x;
-    #else
-    return (x>>24) |
-        ((x<<8) & 0x00FF0000) |
-        ((x>>8) & 0x0000FF00) |
-        (x<<24);
-    #endif
-}
-
-inline unsigned short be16(unsigned short x)//From update_download by SquidMan.
-{
-    #if BYTE_ORDER==BIG_ENDIAN
-    return x;
-    #else
-    return (x>>8) |
-        (x<<8);
-    #endif
-}
-
-inline unsigned short le16(unsigned short x)//From update_download by SquidMan.
-{
-    #if BYTE_ORDER == LITTLE_ENDIAN
-    return x;
-    #else
-    return (x>>8) |
-        (x<<8);
-    #endif
-}*/
-
 int sffs_init(int ver)//Somewhat based on Bootmii MINI ppcskel nandfs.c SFFS init code.
 {
-	unsigned int sffs_version = 0, sffs_cluster = 0;
 	int i;
-	int supercluster = -1;
 	unsigned char buf[0x800];
 	nandfs_sffs *bufptr = (nandfs_sffs*)buf;
 	unsigned char *sffsptr = (unsigned char*)&SFFS;
+	unsigned char supercluster_hmac[0x80];
+	unsigned char calc_hmac[20];
+	
 	if(!SFFS_only)i = 0x7f00;
 	if(SFFS_only)i = 0;
 
@@ -335,9 +269,82 @@ int sffs_init(int ver)//Somewhat based on Bootmii MINI ppcskel nandfs.c SFFS ini
 	}
 	else if(ver==-1)return -1;
 
+	memset(&SFFS, 0, 0x40000);
 	for(i=0; i<16; i++)
 	{
-		nand_read_cluster(sffs_cluster + i, sffsptr, NULL);
+		nand_read_cluster(sffs_cluster + i, sffsptr, supercluster_hmac);
+		sffsptr+= 0x4000;
+	}
+
+	if(check_sffs_hmac)
+	{
+		memset(calc_hmac, 0, 20);
+		fs_hmac_meta(&SFFS, sffs_cluster, calc_hmac);
+		if(memcmp(&supercluster_hmac[1], calc_hmac, 20)==0)
+		{
+			printf("SFFS HMAC valid.\n");
+		}
+		else
+		{
+			printf("SFFS HMAC calc failed.\n");
+			FILE *f = fopen("debug", "wb");
+			fwrite(supercluster_hmac, 1, 0x80, f);
+			fwrite(calc_hmac, 1, 20, f);
+			fclose(f);
+			if(hmac_abort)return -1;
+		}
+	}
+
+	/*
+	nandfs_file_node testnode;
+		nandfs_open(&testnode, "/shared2/sys/SYSCONF", 1, NULL);		
+		unsigned char *buf_ = (unsigned char*)malloc(0x4000);
+		memset(buf_, 0, 0x4000);
+		nand_read_cluster_decrypted(be16(testnode.first_cluster), buf_, supercluster_hmac);
+		//nandfs_read(buf_, 1, be32(testnode.size), &testnode);
+		FILE *f = fopen("SYSCONF", "w");
+	fwrite(buf_, 1, 0x4000, f);
+	fclose(f);
+		fs_hmac_data(buf_, be32(testnode.uid), testnode.name, nand_nodeindex, be32(testnode.dummy), 0, calc_hmac);
+
+	f = fopen("debug2", "wb");
+	fwrite(supercluster_hmac, 1, 0x80, f);
+	fwrite(calc_hmac, 1, 20, f);
+	fclose(f);
+	*/
+
+	return 0;
+}
+
+int update_sffs()
+{
+	unsigned char calc_hmac[20];
+	int i;
+	unsigned char *sffsptr = (unsigned char*)&SFFS;
+	if(!write_enable)return 0;
+	memset(calc_hmac, 0, 20);
+	
+	if(round_robin==-2)
+	{
+		if(round_robin_didupdate==0)
+		{
+			supercluster++;
+			round_robin_didupdate = 1;
+		}
+	}
+	else
+	{
+		supercluster++;
+	}
+	if(supercluster>15)supercluster = 0;
+	sffs_cluster = 0x7f00 + (supercluster * 0x10);
+	sffs_version++;
+	SFFS.version = be32(sffs_version);
+
+	fs_hmac_meta(&SFFS, sffs_cluster, calc_hmac);
+	for(i=0; i<16; i++)
+	{
+		nand_write_cluster(sffs_cluster + i, sffsptr, i==15?calc_hmac:NULL);
 		sffsptr+= 0x4000;
 	}
 
@@ -490,7 +497,7 @@ int fs_statfs(const char *path, struct statvfs *fsinfo)
 	fsinfo->f_bsize = 2048;
 	fsinfo->f_frsize = 2048 * 8;
 	fsinfo->f_blocks = 0x8000 * 8;
-	fsinfo->f_flag = ST_RDONLY;
+	if(!write_enable)fsinfo->f_flag = ST_RDONLY;
 	fsinfo->f_namemax = 12;
 	for(i=0; i<32768; i++)
 	{
@@ -633,6 +640,28 @@ fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 	return 0;
 }
 
+int fs_rename(const char *path, const char *newpath)
+{
+	int i;
+	nandfs_file_node cur;
+
+	if(!write_enable)return 0;
+	syslog(0, "Rename: path %s newpath %s", path, newpath);
+	if(nandfs_open(&cur, path, 1, &nand_nodeindex)==-1)
+	{
+		syslog(0, "no ent: %s", path);
+		return -ENOENT;
+	}
+	
+	for(i=strlen(newpath)-1; i>0 && newpath[i]!='/'; i--);
+	i++;
+	strncpy(SFFS.files[nand_nodeindex].name, &newpath[i], 12);
+	
+	update_sffs();
+
+	return 0;
+}
+
 static int
 fs_open(const char *path, struct fuse_file_info *fi)
 {
@@ -723,6 +752,7 @@ static const struct fuse_operations fsops = {
    .statfs = fs_statfs,
    .getattr = fs_getattr,
    .readdir = fs_readdir,
+   .rename  = fs_rename,
    .open   = fs_open,
    .release   = fs_release,
    .read   = fs_read,
@@ -754,6 +784,9 @@ int main(int argc, char **argv)
 		printf("-p: Use NAND permissions. UID and GUI of objects will be set to the NAND UID/GID, as well as the permissions. This option only enables setting the UID/GID and permissions in stat, the open and readdir functions don't check permissions.\n");
 		printf("-g<SFFS version number>: Use the SFFS super cluster that has the specified version number. If no number is specified, the version numbers are listed.\n");
 		printf("-d: Dump SFFS info of all nodes to stdout.\n");
+		printf("-h: Disable SFFS HMAC verification. Default is enabled.\n");
+		printf("-v: Abort/EIO if HMAC verification of SFFS or file data fails. If SFFS verification fails, wiinandfuse aborts and NAND isn't mounted. If file data verification fails, read will return EIO.\n");
+		printf("-r<version>: Disable round-robin SFFS updating, default is on. When disabled, only the first metadata update has the version and supercluster increased. If version is specified, the supercluster with the specified version, has the version set to the version of the oldest supercluster minus one.\n");
 		return 0;
 	}
 	
@@ -777,6 +810,24 @@ int main(int argc, char **argv)
 			}
 		}
 		if(strcmp(argv[argi], "-d")==0)dump = 1;
+		if(strcmp(argv[argi], "-h")==0)
+		{
+			check_sffs_hmac = 0;
+			write_enable = 0;
+		}
+		if(strcmp(argv[argi], "-v")==0)hmac_abort = 1;
+		if(strncmp(argv[argi], "-r", 2)==0)
+		{
+			if(strlen(argv[argi])>2)
+			{
+				sscanf(&argv[argi][2], "%x", &round_robin);
+			}
+			else
+			{
+				round_robin=-2;
+				round_robin_didupdate = 0;
+			}
+		}
 	}
 
 	nandfd = open(argv[1], O_RDWR);
@@ -849,6 +900,7 @@ int main(int argc, char **argv)
 	}
 	else
 	{
+		write_enable = 0;
 		if(filestats.st_size==0x420000)
 		{
 			has_ecc = 1;
@@ -866,6 +918,9 @@ int main(int argc, char **argv)
 		}
 	}
 
+	aes_set_key(nand_aeskey);
+	fs_hmac_set_key(nand_hmackey, 20);
+
 	if(sffs_init(ver)<0)
 	{
 		close(nandfd);
@@ -880,8 +935,6 @@ int main(int argc, char **argv)
 		closelog();
 		return 0;
 	}
-
-	aes_set_key(nand_aeskey);
 
 	//close(nandfd);
    return fuse_main(args.argc, args.argv, &fsops, NULL);
