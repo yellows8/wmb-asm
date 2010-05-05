@@ -685,6 +685,27 @@ int fs_rename(const char *path, const char *newpath)
 	return 0;
 }
 
+int fs_chown(const char *path, uid_t uid, gid_t gid)
+{
+	int i;
+	nandfs_file_node cur;
+
+	if(!write_enable)return 0;
+	syslog(0, "Chown: path %s uid %x gid %x", path, uid, gid);
+	if(nandfs_open(&cur, path, 1, &nand_nodeindex)==-1)
+	{
+		syslog(0, "no ent: %s", path);
+		return -ENOENT;
+	}
+	
+	SFFS.files[nand_nodeindex].uid = be32((unsigned int)uid);
+	SFFS.files[nand_nodeindex].gid = be16((unsigned short)gid);
+
+	update_sffs();
+
+	return 0;
+}
+
 static int
 fs_open(const char *path, struct fuse_file_info *fi)
 {
@@ -776,6 +797,7 @@ static const struct fuse_operations fsops = {
    .getattr = fs_getattr,
    .readdir = fs_readdir,
    .rename  = fs_rename,
+   .chown  = fs_chown,
    .open   = fs_open,
    .release   = fs_release,
    .read   = fs_read,
