@@ -17,7 +17,7 @@ Options:
 -e: Ignore ECC errors, default is disabled. When disabled, when pages have invalid ECC reads return EIO.
 
 Features:
-Read-only, writing is not supported. HMAC verification of SFFS is supported. Writing is disabled if HMAC verification is disabled with the -h option, but writing is a work-in-progress. Some modifying of metadata is supported, see the supported FUSE functions list. ECC correction is done for dumps with ECC. ECC correction seems to be currently broken for raw dumps however.(Some files are corrupted with raw dumps.) Only a raw YaWND dump was used to test mounting raw dumps, which had this corruption. Usage of the UID/GID, and permissions from NAND is supported with the -p option. This doesn't restrict file access. Listing and usage of certain SFFS supercluster versions is supported with the -g option. Dumping of nodes' raw filename is supported with the -d option.
+Read-only, writing is not supported. HMAC verification of SFFS is supported. Writing is disabled if HMAC verification is disabled with the -h option, but writing is a work-in-progress. Modifying metadata is supported, see the supported FUSE functions list. ECC correction is done for dumps with ECC. ECC correction seems to be currently broken for raw dumps however.(Some files are corrupted with raw dumps.) Only a raw YaWND dump was used to test mounting raw dumps, which had this corruption. Usage of the UID/GID, and permissions from NAND is supported with the -p option. This doesn't restrict file access. Listing and usage of certain SFFS supercluster versions is supported with the -g option. Dumping of nodes' raw filename is supported with the -d option.
 
 Supported FUSE fs functions:
 statfs(statvfs)
@@ -28,6 +28,11 @@ release
 read
 rename(renaming only, no moving)
 chown
+chmod
+unlink
+rmdir
+mknod
+mkdir
 
 Credits:
 Bootmii MINI and ppcskel for nandfs structures and functions from nandfs.c
