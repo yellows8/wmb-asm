@@ -314,7 +314,12 @@ int sffs_init(int ver)//Somewhat based on Bootmii MINI ppcskel nandfs.c SFFS ini
 		round_robin = -2;
 		round_robin_didupdate = 1;
 		update_sffs();
+		return -1;
 	}
+
+	FILE *f = fopen("metadata", "w");
+	fwrite(&SFFS, 1, 0x40000, f);
+	fclose(f);
 
 	/*
 	nandfs_file_node testnode;
@@ -506,6 +511,153 @@ int nandfs_seek(nandfs_fp *fp, unsigned int where, unsigned int whence)
 	return 0;
 }
 
+int nandfs_unlink(const char *path, int type)
+{
+	int i, endi, stop = 0;
+	nandfs_file_node cur, dir;
+	char parentpath[256];
+	unsigned short index, ind, tempcluster, tempclus;
+
+	if(!write_enable)return 0;
+	syslog(0, "Unlink: path %s type %d", path, type);
+	if(nandfs_open(&cur, path, type, &nand_nodeindex)==-1)
+	{
+		syslog(0, "no ent: %s", path);
+		return -ENOENT;
+	}
+	index = nand_nodeindex;
+
+	for(i=strlen(path)-1; i>0 && path[i]!='/'; i--);
+	memset(parentpath, 0, 256);
+	strncpy(parentpath, path, i);
+
+	if(nandfs_open(&dir, parentpath, 2, &nand_nodeindex)==-1)
+	{
+		syslog(0, "no ent: %s", parentpath);
+		return -ENOENT;
+	}
+	syslog(0, "parent dir %s", parentpath);
+
+	if(dir.first_child!=0xffff)
+	{
+		stop = 0;
+		ind = be16(dir.first_child);
+		memcpy(&dir, &SFFS.files[(int)ind], sizeof(nandfs_file_node));
+		do
+		{
+			if(be16(dir.sibling)==index)break;
+			if(dir.sibling!=0xffff)
+			{
+				ind = be16(dir.sibling);
+				memcpy(&dir, &SFFS.files[ind], sizeof(nandfs_file_node));
+			}
+			else
+			{
+				stop = 1;
+			}
+		} while(!stop);
+	}
+	else if(type==2)return -ENOTEMPTY;
+
+	SFFS.files[ind].sibling = cur.sibling;
+	if(type==1)
+	{
+		tempcluster = SFFS.cluster_table[be16(cur.first_cluster)];	
+		while(tempcluster!=0xfffb)
+		{
+			tempclus = be16(SFFS.cluster_table[tempcluster]);
+			SFFS.cluster_table[tempcluster] = be16(0xfffe);
+			tempcluster = tempclus;
+		}
+		SFFS.cluster_table[tempcluster] = be16(0xfffe);
+	}
+
+	memset(&SFFS.files[index], 0, sizeof(nandfs_file_node));
+
+	update_sffs();
+}
+
+int nandfs_findemptynode()
+{
+	int i;
+	for(i=0; i<6143; i++)
+	{
+		if(SFFS.files[i].attr==0)break;
+	}
+	if(i==6142)return -ENOSPC;
+	return i;
+}
+
+int nandfs_create(const char *path, int type, mode_t newperms, uid_t uid, gid_t gid)
+{
+	int i, endi, stop = 0;
+	int newind = 0;
+	nandfs_file_node cur, dir;
+	char parentpath[256];
+	unsigned short index, ind, tempcluster, tempclus;
+
+	if(!write_enable)return -EROFS;
+	syslog(0, "Create: path %s type %d", path, type);
+
+	for(i=strlen(path)-1; i>0 && path[i]!='/'; i--);
+	memset(parentpath, 0, 256);
+	strncpy(parentpath, path, i);
+
+	if(nandfs_open(&dir, parentpath, 2, &nand_nodeindex)==-1)
+	{
+		syslog(0, "no ent: %s", parentpath);
+		return -ENOENT;
+	}
+	syslog(0, "parent dir %s", parentpath);
+
+	newind = nandfs_findemptynode();
+	memset(&SFFS.files[newind], 0, sizeof(nandfs_file_node));//It should already be all-zero, but make sure it's all zero.
+	memset(parentpath, 0, 256);
+	strncpy(parentpath, &path[i+1], 255);
+	strncpy(SFFS.files[newind].name, parentpath, 12);
+
+	SFFS.files[newind].attr = type;
+	if(newperms & S_IRUSR)SFFS.files[newind].attr |= 1<<6;
+	if(newperms & S_IWUSR)SFFS.files[newind].attr |= 2<<6;
+	if(newperms & S_IRGRP)SFFS.files[newind].attr |= 1<<4;
+	if(newperms & S_IWGRP)SFFS.files[newind].attr |= 2<<4;
+	if(newperms & S_IROTH)SFFS.files[newind].attr |= 1<<2;
+	if(newperms & S_IWOTH)SFFS.files[newind].attr |= 2<<2;
+
+	SFFS.files[newind].first_cluster = 0xffff;
+	SFFS.files[newind].sibling = 0xffff;
+	SFFS.files[newind].uid = be32(uid);
+	SFFS.files[newind].gid = be16(gid);
+
+	if(dir.first_child!=0xffff)
+	{
+		stop = 0;
+		ind = be16(dir.first_child);
+		memcpy(&dir, &SFFS.files[(int)ind], sizeof(nandfs_file_node));
+		do
+		{
+			if(dir.sibling!=0xffff)
+			{
+				ind = be16(dir.sibling);
+				memcpy(&dir, &SFFS.files[ind], sizeof(nandfs_file_node));
+			}
+			else
+			{
+				stop = 1;
+			}
+		} while(!stop);
+		SFFS.files[ind].sibling = be16(newind);
+	}
+	else
+	{
+		SFFS.files[nand_nodeindex].first_child = be16(newind);
+	}
+
+	
+
+	update_sffs();
+}
+
 void fs_destroy(void* usr)
 {
 	close(nandfd);
@@ -532,7 +684,7 @@ int fs_statfs(const char *path, struct statvfs *fsinfo)
 	freeblocks = 6143;
 	for(i=0; i<6143; i++)
 	{
-		if(SFFS.files[i].unk!=0)freeblocks--;
+		if(SFFS.files[i].attr!=0)freeblocks--;
 	}
 	fsinfo->f_ffree = freeblocks;
 	fsinfo->f_files = 6143 - freeblocks;
@@ -694,8 +846,11 @@ int fs_chown(const char *path, uid_t uid, gid_t gid)
 	syslog(0, "Chown: path %s uid %x gid %x", path, uid, gid);
 	if(nandfs_open(&cur, path, 1, &nand_nodeindex)==-1)
 	{
-		syslog(0, "no ent: %s", path);
-		return -ENOENT;
+		if(nandfs_open(&cur, path, 2, &nand_nodeindex)==-1)
+		{
+			syslog(0, "no ent: %s", path);
+			return -ENOENT;
+		}
 	}
 	
 	SFFS.files[nand_nodeindex].uid = be32((unsigned int)uid);
@@ -704,6 +859,56 @@ int fs_chown(const char *path, uid_t uid, gid_t gid)
 	update_sffs();
 
 	return 0;
+}
+
+int fs_chmod(const char *path, mode_t newperms)
+{
+	int i;
+	nandfs_file_node cur;
+
+	if(!write_enable)return 0;
+	syslog(0, "Chmod: path %s newperms %o", path, newperms);
+	if(nandfs_open(&cur, path, 1, &nand_nodeindex)==-1)
+	{
+		if(nandfs_open(&cur, path, 2, &nand_nodeindex)==-1)
+		{
+			syslog(0, "no ent: %s", path);
+			return -ENOENT;
+		}
+	}
+	
+	SFFS.files[nand_nodeindex].attr &= 3;
+	if(newperms & S_IRUSR)SFFS.files[nand_nodeindex].attr |= 1<<6;
+	if(newperms & S_IWUSR)SFFS.files[nand_nodeindex].attr |= 2<<6;
+	if(newperms & S_IRGRP)SFFS.files[nand_nodeindex].attr |= 1<<4;
+	if(newperms & S_IWGRP)SFFS.files[nand_nodeindex].attr |= 2<<4;
+	if(newperms & S_IROTH)SFFS.files[nand_nodeindex].attr |= 1<<2;
+	if(newperms & S_IWOTH)SFFS.files[nand_nodeindex].attr |= 2<<2;
+
+	update_sffs();
+
+	return 0;
+}
+
+int fs_unlink(const char *path)
+{
+	return nandfs_unlink(path, 1);
+}
+
+int fs_rmdir(const char *path)
+{
+	return nandfs_unlink(path, 2);
+}
+
+int fs_mknod(const char *path, mode_t mode, dev_t dev)
+{
+	if(!(mode & S_IFREG))return -EINVAL;
+	return nandfs_create(path, 1, mode, 0, 0);
+}
+
+int fs_mkdir(const char *path, mode_t mode)
+{
+	return nandfs_create(path, 2, mode, 0, 0);
 }
 
 static int
@@ -798,6 +1003,11 @@ static const struct fuse_operations fsops = {
    .readdir = fs_readdir,
    .rename  = fs_rename,
    .chown  = fs_chown,
+   .chmod  = fs_chmod,
+   .unlink  = fs_unlink,
+   .rmdir  = fs_rmdir,
+   .mknod  = fs_mknod,
+   .mkdir  = fs_mkdir,
    .open   = fs_open,
    .release   = fs_release,
    .read   = fs_read,
