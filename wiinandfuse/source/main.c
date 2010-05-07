@@ -569,7 +569,7 @@ int nandfs_unlink(const char *path, int type)
 			SFFS.cluster_table[tempcluster] = be16(0xfffe);
 			tempcluster = tempclus;
 		}
-		SFFS.cluster_table[tempcluster] = be16(0xfffe);
+		
 	}
 
 	memset(&SFFS.files[index], 0, sizeof(nandfs_file_node));
@@ -656,6 +656,20 @@ int nandfs_create(const char *path, int type, mode_t newperms, uid_t uid, gid_t 
 	
 
 	update_sffs();
+}
+
+int nandfs_allocatecluster()
+{
+	int i;
+	unsigned short clus;
+	for(i=0; i<0x8000; i++)
+	{
+		clus = be16(SFFS.cluster_table[i]);
+		if(clus==0xfffe)break;
+	}
+	if(i==0x7fff)return -ENOSPC;
+	SFFS.cluster_table[i] = be16(0xfffb);
+	return i;
 }
 
 void fs_destroy(void* usr)
@@ -842,7 +856,7 @@ int fs_chown(const char *path, uid_t uid, gid_t gid)
 	int i;
 	nandfs_file_node cur;
 
-	if(!write_enable)return 0;
+	if(!write_enable || !use_nand_permissions)return 0;
 	syslog(0, "Chown: path %s uid %x gid %x", path, uid, gid);
 	if(nandfs_open(&cur, path, 1, &nand_nodeindex)==-1)
 	{
@@ -866,7 +880,7 @@ int fs_chmod(const char *path, mode_t newperms)
 	int i;
 	nandfs_file_node cur;
 
-	if(!write_enable)return 0;
+	if(!write_enable || !use_nand_permissions)return 0;
 	syslog(0, "Chmod: path %s newperms %o", path, newperms);
 	if(nandfs_open(&cur, path, 1, &nand_nodeindex)==-1)
 	{
@@ -909,6 +923,77 @@ int fs_mknod(const char *path, mode_t mode, dev_t dev)
 int fs_mkdir(const char *path, mode_t mode)
 {
 	return nandfs_create(path, 2, mode, 0, 0);
+}
+
+int fs_truncate(const char *path, off_t size)
+{
+	int i, way;
+	unsigned int num, num2, newclusters, oldclusters;
+	unsigned short tempcluster, tempclus;
+	nandfs_file_node cur;
+
+	if(!write_enable)return 0;
+	syslog(0, "truncate: path %s size %x", path, size);
+	if(nandfs_open(&cur, path, 1, &nand_nodeindex)==-1)
+	{
+		syslog(0, "no ent: %s", path);
+		return -ENOENT;
+	}
+
+	oldclusters = (be32(cur.size)) / 0x4000;
+	if((be32(cur.size)) % 0x4000)oldclusters++;
+	if(size > be32(cur.size))
+	{
+		num = size - be32(cur.size);
+		way = 0;
+	}
+	else
+	{
+		num = be32(cur.size) - size;
+		way = 1;
+	}
+	if(num==0)return 0;
+
+	newclusters = size / 0x4000;
+	if(size % 0x4000)newclusters++;
+	if(oldclusters==newclusters)return 0;
+
+	if(way==0)
+	{
+		num = newclusters - oldclusters;
+		tempcluster = SFFS.cluster_table[be16(cur.first_cluster)];	
+		while(tempcluster!=0xfffb)
+		{
+			tempclus = be16(SFFS.cluster_table[tempcluster]);
+			//SFFS.cluster_table[tempcluster] = be16(0xfffe);
+			if(tempclus!=be16(0xfffb))tempcluster = tempclus;
+		}
+		while(num>0)
+		{
+			SFFS.cluster_table[tempcluster] = be16(nandfs_allocatecluster());
+			SFFS.cluster_table[tempcluster] = be16(SFFS.cluster_table[tempcluster]);
+			num--;
+		}
+	}
+	else
+	{
+		num = oldclusters - newclusters;
+		num2 = newclusters;
+		tempcluster = SFFS.cluster_table[be16(cur.first_cluster)];	
+		while(tempcluster!=0xfffb)
+		{
+			tempclus = be16(SFFS.cluster_table[tempcluster]);
+			if(num2==0)SFFS.cluster_table[tempcluster] = be16(0xfffe);
+			if(num2>0)num2--;
+			if(tempclus!=be16(0xfffb))tempcluster = tempclus;
+		}
+		while(num>0)
+		{
+			SFFS.cluster_table[tempcluster] = be16(nandfs_allocatecluster());
+			SFFS.cluster_table[tempcluster] = be16(SFFS.cluster_table[tempcluster]);
+			num--;
+		}
+	}
 }
 
 static int
@@ -1008,6 +1093,7 @@ static const struct fuse_operations fsops = {
    .rmdir  = fs_rmdir,
    .mknod  = fs_mknod,
    .mkdir  = fs_mkdir,
+   .truncate = fs_truncate,
    .open   = fs_open,
    .release   = fs_release,
    .read   = fs_read,
