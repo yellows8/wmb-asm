@@ -26,7 +26,7 @@ readdir
 open
 release
 read
-rename(renaming only, no moving)
+rename
 chown
 chmod
 unlink

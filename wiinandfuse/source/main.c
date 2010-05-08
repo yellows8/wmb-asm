@@ -511,7 +511,7 @@ int nandfs_seek(nandfs_fp *fp, unsigned int where, unsigned int whence)
 	return 0;
 }
 
-int nandfs_unlink(const char *path, int type)
+int nandfs_unlink(const char *path, int type, int clear)
 {
 	int i, endi, stop = 0;
 	nandfs_file_node cur, dir;
@@ -543,27 +543,36 @@ int nandfs_unlink(const char *path, int type)
 		stop = 0;
 		ind = be16(dir.first_child);
 		memcpy(&dir, &SFFS.files[(int)ind], sizeof(nandfs_file_node));
-		do
+		if(ind!=index)
 		{
-			if(be16(dir.sibling)==index)break;
-			if(dir.sibling!=0xffff)
+			do
 			{
-				ind = be16(dir.sibling);
-				memcpy(&dir, &SFFS.files[ind], sizeof(nandfs_file_node));
-			}
-			else
-			{
-				stop = 1;
-			}
-		} while(!stop);
+				if(be16(dir.sibling)==index)break;
+				if(dir.sibling!=0xffff)
+				{
+					ind = be16(dir.sibling);
+					memcpy(&dir, &SFFS.files[ind], sizeof(nandfs_file_node));
+				}
+				else
+				{
+					stop = 1;
+				}
+			} while(!stop);
+			SFFS.files[ind].sibling = cur.sibling;
+		}
+		else
+		{
+			SFFS.files[nand_nodeindex].first_child = cur.sibling;
+		}
 	}
 	else if(type==2)return -ENOTEMPTY;
 
-	SFFS.files[ind].sibling = cur.sibling;
-	if(type==1)
+	
+	syslog(0, "found it");
+	if(type==1 && clear==0)
 	{
-		tempcluster = SFFS.cluster_table[be16(cur.first_cluster)];	
-		while(tempcluster!=0xfffb)
+		tempcluster = be16(cur.first_cluster);	
+		while(tempcluster!=0xfffb && tempcluster!=0xffff)
 		{
 			tempclus = be16(SFFS.cluster_table[tempcluster]);
 			SFFS.cluster_table[tempcluster] = be16(0xfffe);
@@ -572,9 +581,13 @@ int nandfs_unlink(const char *path, int type)
 		
 	}
 
-	memset(&SFFS.files[index], 0, sizeof(nandfs_file_node));
+	syslog(0, "stuff");
+	if(clear==0)memset(&SFFS.files[index], 0, sizeof(nandfs_file_node));
+	if(clear>0)SFFS.files[index].sibling = 0xffff;
 
 	update_sffs();
+	if(clear>0)return index;
+	return 0;
 }
 
 int nandfs_findemptynode()
@@ -588,7 +601,7 @@ int nandfs_findemptynode()
 	return i;
 }
 
-int nandfs_create(const char *path, int type, mode_t newperms, uid_t uid, gid_t gid)
+int nandfs_create(const char *path, int type, mode_t newperms, uid_t uid, gid_t gid, int newnode)
 {
 	int i, endi, stop = 0;
 	int newind = 0;
@@ -603,6 +616,12 @@ int nandfs_create(const char *path, int type, mode_t newperms, uid_t uid, gid_t 
 	memset(parentpath, 0, 256);
 	strncpy(parentpath, path, i);
 
+	if(nandfs_open(&cur, path, type, &nand_nodeindex)>=0)
+	{
+		syslog(0, "exists: %s", path);
+		return -EEXIST;
+	}
+
 	if(nandfs_open(&dir, parentpath, 2, &nand_nodeindex)==-1)
 	{
 		syslog(0, "no ent: %s", parentpath);
@@ -610,24 +629,29 @@ int nandfs_create(const char *path, int type, mode_t newperms, uid_t uid, gid_t 
 	}
 	syslog(0, "parent dir %s", parentpath);
 
-	newind = nandfs_findemptynode();
-	memset(&SFFS.files[newind], 0, sizeof(nandfs_file_node));//It should already be all-zero, but make sure it's all zero.
-	memset(parentpath, 0, 256);
-	strncpy(parentpath, &path[i+1], 255);
-	strncpy(SFFS.files[newind].name, parentpath, 12);
-
-	SFFS.files[newind].attr = type;
-	if(newperms & S_IRUSR)SFFS.files[newind].attr |= 1<<6;
-	if(newperms & S_IWUSR)SFFS.files[newind].attr |= 2<<6;
-	if(newperms & S_IRGRP)SFFS.files[newind].attr |= 1<<4;
-	if(newperms & S_IWGRP)SFFS.files[newind].attr |= 2<<4;
-	if(newperms & S_IROTH)SFFS.files[newind].attr |= 1<<2;
-	if(newperms & S_IWOTH)SFFS.files[newind].attr |= 2<<2;
-
-	SFFS.files[newind].first_cluster = 0xffff;
-	SFFS.files[newind].sibling = 0xffff;
-	SFFS.files[newind].uid = be32(uid);
-	SFFS.files[newind].gid = be16(gid);
+	if(newnode==-1)newind = nandfs_findemptynode();
+	if(newnode>=0)newind = newnode;
+	
+	if(newnode==-1)
+	{
+		memset(&SFFS.files[newind], 0, sizeof(nandfs_file_node));//It should already be all-zero, but make sure it's all zero.
+		memset(parentpath, 0, 256);
+		strncpy(parentpath, &path[i+1], 255);
+		strncpy(SFFS.files[newind].name, parentpath, 12);
+	
+		SFFS.files[newind].attr = type;
+		if(newperms & S_IRUSR)SFFS.files[newind].attr |= 1<<6;
+		if(newperms & S_IWUSR)SFFS.files[newind].attr |= 2<<6;
+		if(newperms & S_IRGRP)SFFS.files[newind].attr |= 1<<4;
+		if(newperms & S_IWGRP)SFFS.files[newind].attr |= 2<<4;
+		if(newperms & S_IROTH)SFFS.files[newind].attr |= 1<<2;
+		if(newperms & S_IWOTH)SFFS.files[newind].attr |= 2<<2;
+	
+		SFFS.files[newind].first_cluster = 0xffff;
+		SFFS.files[newind].sibling = 0xffff;
+		SFFS.files[newind].uid = be32(uid);
+		SFFS.files[newind].gid = be16(gid);
+	}
 
 	if(dir.first_child!=0xffff)
 	{
@@ -831,7 +855,7 @@ fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 
 int fs_rename(const char *path, const char *newpath)
 {
-	int i;
+	int i, i2, ind;
 	nandfs_file_node cur;
 
 	if(!write_enable)return 0;
@@ -844,9 +868,22 @@ int fs_rename(const char *path, const char *newpath)
 	
 	for(i=strlen(newpath)-1; i>0 && newpath[i]!='/'; i--);
 	i++;
+	for(i2=strlen(path)-1; i>0 && path[i2]!='/'; i2--);
+	i2++;
+
 	strncpy(SFFS.files[nand_nodeindex].name, &newpath[i], 12);
-	
-	update_sffs();
+	if(i==i2 && strncmp(path, newpath, i)==0)
+	{
+		update_sffs();
+	}
+	else
+	{
+		ind = nandfs_unlink(path, 1, 1);
+		syslog(0, "Unlink retval %d", ind);
+		if(ind<0)return ind;
+		syslog(0, "renaming");
+		if((i = nandfs_create(newpath, 1, 0, 0, 0, ind))<0)return i;//nandfs_create calls update_sffs, so we don't need to call it again here.
+	}
 
 	return 0;
 }
@@ -906,23 +943,23 @@ int fs_chmod(const char *path, mode_t newperms)
 
 int fs_unlink(const char *path)
 {
-	return nandfs_unlink(path, 1);
+	return nandfs_unlink(path, 1, 0);
 }
 
 int fs_rmdir(const char *path)
 {
-	return nandfs_unlink(path, 2);
+	return nandfs_unlink(path, 2, 0);
 }
 
 int fs_mknod(const char *path, mode_t mode, dev_t dev)
 {
 	if(!(mode & S_IFREG))return -EINVAL;
-	return nandfs_create(path, 1, mode, 0, 0);
+	return nandfs_create(path, 1, mode, 0, 0, -1);
 }
 
 int fs_mkdir(const char *path, mode_t mode)
 {
-	return nandfs_create(path, 2, mode, 0, 0);
+	return nandfs_create(path, 2, mode, 0, 0, -1);
 }
 
 int fs_truncate(const char *path, off_t size)
@@ -957,11 +994,12 @@ int fs_truncate(const char *path, off_t size)
 	newclusters = size / 0x4000;
 	if(size % 0x4000)newclusters++;
 	if(oldclusters==newclusters)return 0;
+	if(be16(cur.first_cluster)==0xffff)return 0;
 
 	if(way==0)
 	{
 		num = newclusters - oldclusters;
-		tempcluster = SFFS.cluster_table[be16(cur.first_cluster)];	
+		tempcluster = be16(cur.first_cluster);	
 		while(tempcluster!=0xfffb)
 		{
 			tempclus = be16(SFFS.cluster_table[tempcluster]);
@@ -979,7 +1017,7 @@ int fs_truncate(const char *path, off_t size)
 	{
 		num = oldclusters - newclusters;
 		num2 = newclusters;
-		tempcluster = SFFS.cluster_table[be16(cur.first_cluster)];	
+		tempcluster = be16(cur.first_cluster);	
 		while(tempcluster!=0xfffb)
 		{
 			tempclus = be16(SFFS.cluster_table[tempcluster]);
