@@ -88,6 +88,8 @@ typedef struct _nandfs_fp {
 	signed short cur_cluster;
 	unsigned int size;
 	unsigned int offset;
+	unsigned int cluster_index;
+        unsigned int nodeindex;
 	nandfs_file_node *node;
 } nandfs_fp;
 
@@ -465,6 +467,8 @@ int nandfs_read(void *ptr, unsigned int size, unsigned int nmemb, nandfs_fp *fp)
 	unsigned int copy_offset, copy_len;
 	int retval;
 	int realtotal = (unsigned int)total;
+        unsigned char calc_hmac[20];
+	unsigned char spare[0x80];
 
 	if (fp->offset + total > fp->size)
 		total = fp->size - fp->offset;
@@ -474,8 +478,14 @@ int nandfs_read(void *ptr, unsigned int size, unsigned int nmemb, nandfs_fp *fp)
 
 	realtotal = (unsigned int)total;
 	while(total > 0) {
-		retval = nand_read_cluster_decrypted(fp->cur_cluster, buffer, NULL);
-		if(retval<0 && !ignore_ecc)return -EIO;		
+		retval = nand_read_cluster_decrypted(fp->cur_cluster, buffer, spare);
+		if(retval<0 && !ignore_ecc)return -EIO;
+		fs_hmac_data(buffer, be32(fp->node->uid), fp->node->name, fp->nodeindex, be32(fp->node->dummy), fp->cluster_index, calc_hmac);
+		if(hmac_abort && memcmp(calc_hmac, &spare[1], 20)!=0)
+		{
+			syslog(0, "Bad cluster HMAC.");
+			return -EIO;
+		}
 		copy_offset = fp->offset % (2048 * 8);
 		copy_len = (2048 * 8) - copy_offset;
 		if(copy_len > total)
@@ -486,7 +496,10 @@ int nandfs_read(void *ptr, unsigned int size, unsigned int nmemb, nandfs_fp *fp)
 		fp->offset += copy_len;
 
 		if ((copy_offset + copy_len) >= (2048 * 8))
+		{
 			fp->cur_cluster = be16(SFFS.cluster_table[fp->cur_cluster]);
+			fp->cluster_index++;
+		}
 	}
 
 	return realtotal;
@@ -501,11 +514,13 @@ int nandfs_seek(nandfs_fp *fp, unsigned int where, unsigned int whence)
 
 	if(fp->offset)clusters = fp->offset / 0x4000;
 	syslog(0, "seek: clusters %x where %x offset %x", clusters, where, fp->offset);
-	fp->cur_cluster = fp->first_cluster;	
+	fp->cur_cluster = fp->first_cluster;
+	fp->cluster_index = 0;
 	while(clusters>0)
 	{
 		fp->cur_cluster = be16(SFFS.cluster_table[fp->cur_cluster]);
 		clusters--;
+		fp->cluster_index++;
 	}
 
 	return 0;
@@ -1069,6 +1084,8 @@ fs_open(const char *path, struct fuse_file_info *fi)
 	fd_array[i].cur_cluster = fd_array[i].first_cluster;
 	fd_array[i].size = be32(fd_array[i].node->size);
 	fd_array[i].offset = 0;
+	fd_array[i].cluster_index = 0;
+	fd_array[i].nodeindex = nand_nodeindex;
 
 	fi->fh = (uint64_t)i;
 	return 0;
