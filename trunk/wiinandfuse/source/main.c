@@ -564,7 +564,7 @@ int nandfs_write(void *ptr, unsigned int size, unsigned int nmemb, nandfs_fp *fp
 		copy_len = (2048 * 8) - copy_offset;
 		if(copy_len > total)
 			copy_len = total;
-		memcpy(buffer + copy_offset, ptr + copy_offset, copy_len);
+		memcpy(buffer + copy_offset, ptr, copy_len);
 		ptr+= copy_len;
 		total -= copy_len;
 		fp->offset += copy_len;
@@ -1071,8 +1071,12 @@ int fs_truncate(const char *path, off_t size)
 
 	newclusters = size / 0x4000;
 	if(size % 0x4000)newclusters++;
-	if(oldclusters==newclusters)return 0;
-	if(be16(cur.first_cluster)==0xffff)return 0;
+	SFFS.files[nand_nodexindex].size = be32(size);	
+	if((oldclusters==newclusters && size!=0) || be16(cur.first_cluster)==0xffff)
+	{
+		update_sffs();
+		return 0;
+	}
 
 
 	if(way==0)
@@ -1111,6 +1115,7 @@ int fs_truncate(const char *path, off_t size)
 			num--;
 		}
 	}
+	update_sffs();
 	return 0;
 }
 
