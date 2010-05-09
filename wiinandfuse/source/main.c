@@ -84,8 +84,8 @@ typedef struct _nandfs_sffs {
 } __attribute__((packed)) nandfs_sffs;
 
 typedef struct _nandfs_fp {
-	signed short first_cluster;
-	signed short cur_cluster;
+	unsigned short first_cluster;
+	unsigned short cur_cluster;
 	unsigned int size;
 	unsigned int offset;
 	unsigned int cluster_index;
@@ -393,6 +393,31 @@ int DumpSFFS()
 	return 0;
 }
 
+int nandfs_findemptynode()
+{
+	int i;
+	for(i=0; i<6143; i++)
+	{
+		if(SFFS.files[i].attr==0)break;
+	}
+	if(i==6142)return -ENOSPC;
+	return i;
+}
+
+int nandfs_allocatecluster()
+{
+	int i;
+	unsigned short clus;
+	for(i=0; i<0x8000; i++)
+	{
+		clus = be16(SFFS.cluster_table[i]);
+		if(clus==0xfffe)break;
+	}
+	if(i==0x7fff)return -ENOSPC;
+	SFFS.cluster_table[i] = be16(0xfffb);
+	return i;
+}
+
 int nandfs_open(nandfs_file_node *fp, const char *path, int type, unsigned short *index)//This is based on the function from MINI ppcskel nandfs.c
 {
 	char *ptr, *ptr2;
@@ -476,8 +501,15 @@ int nandfs_read(void *ptr, unsigned int size, unsigned int nmemb, nandfs_fp *fp)
 	if (total == 0)
 		return 0;
 
+	if(fp->cur_cluster==0xffff)
+	{
+		syslog(0, "Erm, clus = 0xffff");
+		return -EIO;
+	}
+
 	realtotal = (unsigned int)total;
 	while(total > 0) {
+		syslog(0, "clus %x", fp->cur_cluster);
 		retval = nand_read_cluster_decrypted(fp->cur_cluster, buffer, spare);
 		if(retval<0 && !ignore_ecc)return -EIO;
 		fs_hmac_data(buffer, be32(fp->node->uid), fp->node->name, fp->nodeindex, be32(fp->node->dummy), fp->cluster_index, calc_hmac);
@@ -505,12 +537,87 @@ int nandfs_read(void *ptr, unsigned int size, unsigned int nmemb, nandfs_fp *fp)
 	return realtotal;
 }
 
+int nandfs_write(void *ptr, unsigned int size, unsigned int nmemb, nandfs_fp *fp)//Based on Bootmii MINI ppcskel nandfs.c
+{
+	unsigned int total = size*nmemb;
+	unsigned int copy_offset, copy_len;
+	int retval;
+	int realtotal = (unsigned int)total;
+        unsigned char calc_hmac[20];
+	unsigned char spare[0x80];
+	FILE *f = fopen("/home/andrew/write", "w");
+
+	//if (fp->offset + total > fp->size)
+	//	total = fp->size - fp->offset;
+
+	syslog(0, "total %d size %d nmemb %d", total, size, nmemb);
+	if (total == 0)return 0;
+
+	syslog(0, "hm... %x %x", fp->cur_cluster, fp->first_cluster);
+	if(fp->cur_cluster==fp->first_cluster)syslog(0, "same clusters");
+	if(fp->cur_cluster==0xffff)syslog(0, "it's ffff");
+	if(fp->cur_cluster==0xffffffff)syslog(0, "it's ffffffff");
+	if(fp->cur_cluster==fp->first_cluster && fp->cur_cluster==0xffff)
+	{
+		fp->first_cluster = nandfs_allocatecluster();
+		fp->cur_cluster = fp->first_cluster;
+		fp->node->first_cluster = be16(fp->first_cluster);
+		syslog(0, "allocated cluster %x", fp->first_cluster);
+	}
+
+	syslog(0, "bah");
+	realtotal = (unsigned int)total;
+	while(total > 0) {
+		retval = nand_read_cluster_decrypted(fp->cur_cluster, buffer, spare);
+		if(retval<0 && !ignore_ecc)return -EIO;
+		
+		syslog(0, "a clus %x", fp->cur_cluster);
+		copy_offset = fp->offset % (2048 * 8);
+		copy_len = (2048 * 8) - copy_offset;
+		if(copy_len > total)
+			copy_len = total;
+		memcpy(buffer + copy_offset, ptr + copy_offset, copy_len);
+		ptr+= copy_len;
+		total -= copy_len;
+		fp->offset += copy_len;
+
+		syslog(0, "b");
+		fs_hmac_data(buffer, be32(fp->node->uid), fp->node->name, fp->nodeindex, be32(fp->node->dummy), fp->cluster_index, calc_hmac);
+
+		syslog(0, "c");
+		if(f)fwrite(buffer, 1, 0x4000, f);
+
+		syslog(0, "d");
+		nand_write_cluster_encrypted(fp->cur_cluster, buffer, calc_hmac);
+
+		if ((copy_offset + copy_len) >= (2048 * 8))
+		{
+			if(be16(SFFS.cluster_table[fp->cur_cluster])==0xfffb)SFFS.cluster_table[fp->cur_cluster] = be16(nandfs_allocatecluster());
+			fp->cur_cluster = be16(SFFS.cluster_table[fp->cur_cluster]);
+			fp->cluster_index++;
+		}
+		syslog(0, "e");
+
+	}
+
+	if(f)fclose(f);
+	if(fp->offset>fp->size)
+	{
+		fp->size = fp->offset;
+		fp->node->size = be32(fp->size);
+	}
+	update_sffs();
+	syslog(0, "realtotal %d", realtotal);
+	return realtotal;
+}
+
 int nandfs_seek(nandfs_fp *fp, unsigned int where, unsigned int whence)
 {
 	int clusters = 0;
 	if(whence==SEEK_SET)fp->offset = where;
 	if(whence==SEEK_CUR)fp->offset += where;
 	if(whence==SEEK_END)fp->offset = fp->size;
+	if(fp->offset>fp->size)return -EINVAL;
 
 	if(fp->offset)clusters = fp->offset / 0x4000;
 	syslog(0, "seek: clusters %x where %x offset %x", clusters, where, fp->offset);
@@ -605,17 +712,6 @@ int nandfs_unlink(const char *path, int type, int clear)
 	return 0;
 }
 
-int nandfs_findemptynode()
-{
-	int i;
-	for(i=0; i<6143; i++)
-	{
-		if(SFFS.files[i].attr==0)break;
-	}
-	if(i==6142)return -ENOSPC;
-	return i;
-}
-
 int nandfs_create(const char *path, int type, mode_t newperms, uid_t uid, gid_t gid, int newnode)
 {
 	int i, endi, stop = 0;
@@ -646,6 +742,7 @@ int nandfs_create(const char *path, int type, mode_t newperms, uid_t uid, gid_t 
 
 	if(newnode==-1)newind = nandfs_findemptynode();
 	if(newnode>=0)newind = newnode;
+
 	
 	if(newnode==-1)
 	{
@@ -695,20 +792,6 @@ int nandfs_create(const char *path, int type, mode_t newperms, uid_t uid, gid_t 
 	
 
 	update_sffs();
-}
-
-int nandfs_allocatecluster()
-{
-	int i;
-	unsigned short clus;
-	for(i=0; i<0x8000; i++)
-	{
-		clus = be16(SFFS.cluster_table[i]);
-		if(clus==0xfffe)break;
-	}
-	if(i==0x7fff)return -ENOSPC;
-	SFFS.cluster_table[i] = be16(0xfffb);
-	return i;
 }
 
 void fs_destroy(void* usr)
@@ -1011,6 +1094,7 @@ int fs_truncate(const char *path, off_t size)
 	if(oldclusters==newclusters)return 0;
 	if(be16(cur.first_cluster)==0xffff)return 0;
 
+
 	if(way==0)
 	{
 		num = newclusters - oldclusters;
@@ -1047,6 +1131,7 @@ int fs_truncate(const char *path, off_t size)
 			num--;
 		}
 	}
+	return 0;
 }
 
 static int
@@ -1120,7 +1205,14 @@ static int
 fs_write(const char *path, const char *buf, size_t size, off_t offset,
          struct fuse_file_info *fi)
 {
-	return 0;
+	syslog(0, "write fd %d offset %x size %x", (int)fi->fh, (int)offset, (int)size);
+
+	if(!(used_fds & 1<<fi->fh))return -EBADF;
+	syslog(0, "fd valid");
+	nandfs_seek(&fd_array[(int)fi->fh], offset, SEEK_SET);
+	int num = nandfs_write(buf, size, 1, &fd_array[(int)fi->fh]);
+	syslog(0, "writebytes %x", num);
+	return num;
 }
 
 #undef be32
