@@ -1071,7 +1071,7 @@ int fs_truncate(const char *path, off_t size)
 
 	newclusters = size / 0x4000;
 	if(size % 0x4000)newclusters++;
-	SFFS.files[nand_nodexindex].size = be32(size);	
+	SFFS.files[nand_nodeindex].size = be32(size);	
 	if((oldclusters==newclusters && size!=0) || be16(cur.first_cluster)==0xffff)
 	{
 		update_sffs();
