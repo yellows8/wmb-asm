@@ -545,33 +545,21 @@ int nandfs_write(void *ptr, unsigned int size, unsigned int nmemb, nandfs_fp *fp
 	int realtotal = (unsigned int)total;
         unsigned char calc_hmac[20];
 	unsigned char spare[0x80];
-	FILE *f = fopen("/home/andrew/write", "w");
 
-	//if (fp->offset + total > fp->size)
-	//	total = fp->size - fp->offset;
-
-	syslog(0, "total %d size %d nmemb %d", total, size, nmemb);
 	if (total == 0)return 0;
 
-	syslog(0, "hm... %x %x", fp->cur_cluster, fp->first_cluster);
-	if(fp->cur_cluster==fp->first_cluster)syslog(0, "same clusters");
-	if(fp->cur_cluster==0xffff)syslog(0, "it's ffff");
-	if(fp->cur_cluster==0xffffffff)syslog(0, "it's ffffffff");
 	if(fp->cur_cluster==fp->first_cluster && fp->cur_cluster==0xffff)
 	{
 		fp->first_cluster = nandfs_allocatecluster();
 		fp->cur_cluster = fp->first_cluster;
 		fp->node->first_cluster = be16(fp->first_cluster);
-		syslog(0, "allocated cluster %x", fp->first_cluster);
 	}
 
-	syslog(0, "bah");
 	realtotal = (unsigned int)total;
 	while(total > 0) {
 		retval = nand_read_cluster_decrypted(fp->cur_cluster, buffer, spare);
 		if(retval<0 && !ignore_ecc)return -EIO;
 		
-		syslog(0, "a clus %x", fp->cur_cluster);
 		copy_offset = fp->offset % (2048 * 8);
 		copy_len = (2048 * 8) - copy_offset;
 		if(copy_len > total)
@@ -581,13 +569,8 @@ int nandfs_write(void *ptr, unsigned int size, unsigned int nmemb, nandfs_fp *fp
 		total -= copy_len;
 		fp->offset += copy_len;
 
-		syslog(0, "b");
 		fs_hmac_data(buffer, be32(fp->node->uid), fp->node->name, fp->nodeindex, be32(fp->node->dummy), fp->cluster_index, calc_hmac);
 
-		syslog(0, "c");
-		if(f)fwrite(buffer, 1, 0x4000, f);
-
-		syslog(0, "d");
 		nand_write_cluster_encrypted(fp->cur_cluster, buffer, calc_hmac);
 
 		if ((copy_offset + copy_len) >= (2048 * 8))
@@ -596,18 +579,15 @@ int nandfs_write(void *ptr, unsigned int size, unsigned int nmemb, nandfs_fp *fp
 			fp->cur_cluster = be16(SFFS.cluster_table[fp->cur_cluster]);
 			fp->cluster_index++;
 		}
-		syslog(0, "e");
 
 	}
 
-	if(f)fclose(f);
 	if(fp->offset>fp->size)
 	{
 		fp->size = fp->offset;
 		fp->node->size = be32(fp->size);
 	}
 	update_sffs();
-	syslog(0, "realtotal %d", realtotal);
 	return realtotal;
 }
 
