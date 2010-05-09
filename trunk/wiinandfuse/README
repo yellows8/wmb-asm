@@ -13,7 +13,7 @@ Options:
 -d: Dump SFFS info of all nodes to stdout.
 -h: Disable SFFS HMAC verification. Default is enabled.
 -v: Abort/EIO if HMAC verification of SFFS or file data fails. If SFFS verification fails, wiinandfuse aborts and NAND isn't mounted. If file data verification fails, read will return EIO.
--r<version>: Disable round-robin SFFS updating, default is on. When disabled, only the first metadata update has the version and supercluster increased. If version is specified, the supercluster with the specified version, has the version set to the version of the oldest supercluster minus one. Modifying the speciefied supercluster version isn't implemented yet.
+-r<version>: Disable round-robin SFFS updating, default is on. When disabled, only the first metadata update has the version and supercluster increased. If version is specified, the supercluster with the specified version, has the version set to the version of the oldest supercluster minus one.
 -e: Ignore ECC errors, default is disabled. When disabled, when pages have invalid ECC reads return EIO.
 
 Features:

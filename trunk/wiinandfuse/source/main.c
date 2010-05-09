@@ -237,6 +237,7 @@ int sffs_init(int ver)//Somewhat based on Bootmii MINI ppcskel nandfs.c SFFS ini
 {
 	int i;
 	int si = -1;
+	unsigned int lowver = 0xfffffff7, lowsuperclus = 0, lowclus = 0;
 	unsigned char buf[0x800];
 	nandfs_sffs *bufptr = (nandfs_sffs*)buf;
 	unsigned char *sffsptr = (unsigned char*)&SFFS;
@@ -274,6 +275,12 @@ int sffs_init(int ver)//Somewhat based on Bootmii MINI ppcskel nandfs.c SFFS ini
 				sffs_version = be32(bufptr->version);
 				supercluster = si;
 			}
+			else if(lowver > be32(bufptr->version))
+			{
+				lowver = be32(bufptr->version);
+				lowsuperclus = si;
+				lowclus = i;
+			}
 		}
 	}
 
@@ -303,43 +310,19 @@ int sffs_init(int ver)//Somewhat based on Bootmii MINI ppcskel nandfs.c SFFS ini
 		else
 		{
 			printf("SFFS HMAC calc failed.\n");
-			FILE *f = fopen("debug", "wb");
-			fwrite(supercluster_hmac, 1, 0x80, f);
-			fwrite(calc_hmac, 1, 20, f);
-			fclose(f);
 			if(hmac_abort)return -1;
 		}
 	}
 
 	if(round_robin>=0)
 	{
+		printf("Changed SFFS cluster %x supercluster %x version %x to version %x\n", lowclus, lowsuperclus, be32(SFFS.version), lowver - 1);
+		SFFS.version = be32(lowver - 1);
 		round_robin = -2;
 		round_robin_didupdate = 1;
 		update_sffs();
 		return -1;
 	}
-
-	FILE *f = fopen("metadata", "w");
-	fwrite(&SFFS, 1, 0x40000, f);
-	fclose(f);
-
-	/*
-	nandfs_file_node testnode;
-		nandfs_open(&testnode, "/shared2/sys/SYSCONF", 1, NULL);		
-		unsigned char *buf_ = (unsigned char*)malloc(0x4000);
-		memset(buf_, 0, 0x4000);
-		nand_read_cluster_decrypted(be16(testnode.first_cluster), buf_, supercluster_hmac);
-		//nandfs_read(buf_, 1, be32(testnode.size), &testnode);
-		FILE *f = fopen("SYSCONF", "w");
-	fwrite(buf_, 1, 0x4000, f);
-	fclose(f);
-		fs_hmac_data(buf_, be32(testnode.uid), testnode.name, nand_nodeindex, be32(testnode.dummy), 0, calc_hmac);
-
-	f = fopen("debug2", "wb");
-	fwrite(supercluster_hmac, 1, 0x80, f);
-	fwrite(calc_hmac, 1, 20, f);
-	fclose(f);
-	*/
 
 	return 0;
 }
@@ -366,8 +349,12 @@ int update_sffs()
 	}
 	if(supercluster>15)supercluster = 0;
 	sffs_cluster = 0x7f00 + (supercluster * 0x10);
-	sffs_version++;
-	SFFS.version = be32(sffs_version);
+	
+	if(round_robin>=0)
+	{	
+		sffs_version++;
+		SFFS.version = be32(sffs_version);
+	}
 
 	fs_hmac_meta(&SFFS, sffs_cluster, calc_hmac);
 	for(i=0; i<16; i++)
