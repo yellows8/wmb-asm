@@ -1,4 +1,4 @@
-wiinandfuse v1.0 by yellowstar6
+wiinandfuse v1.1 by yellowstar6
 Mount Wii NAND images and SFFS dumps with FUSE. wiinandfuse supports Bootmii dumps, raw NAND dumps with ECC and without ECC. SVN checkout command: svn co http://wmb-asm.googlecode.com/svn/trunk/wiinandfuse/
 wiinandfuse uses the MIT license.
 wiinandfuse output when run without params:
@@ -10,14 +10,13 @@ Options:
 -k: Directory name of keys to use for raw NAND images. Default for keyname is "default". Path: $HOME/.wii/<keyname>
 -p: Use NAND permissions. UID and GUI of objects will be set to the NAND UID/GID, as well as the permissions. This option only enables setting the UID/GID and permissions in stat, the open and readdir functions don't check permissions.
 -g<SFFS version number>: Use the SFFS super cluster that has the specified version number. If no number is specified, the version numbers are listed.
--d: Dump SFFS info of all nodes to stdout.
 -h: Disable SFFS HMAC verification. Default is enabled.
 -v: Abort/EIO if HMAC verification of SFFS or file data fails. If SFFS verification fails, wiinandfuse aborts and NAND isn't mounted. If file data verification fails, read will return EIO.
 -r<version>: Disable round-robin SFFS updating, default is on. When disabled, only the first metadata update has the version and supercluster increased. If version is specified, the supercluster with the specified version, has the version set to the version of the oldest supercluster minus one.
 -e: Ignore ECC errors, default is disabled. When disabled, when pages have invalid ECC reads return EIO.
 
 Features:
-Metadata and files are read and write. HMAC verification of SFFS is supported. Writing is disabled if HMAC verification is disabled with the -h option. ECC correction is done for dumps with ECC. ECC correction seems to be currently broken for raw dumps however.(Some files are corrupted with raw dumps.) Only a raw YaWND dump was used to test mounting raw dumps, which had this corruption. Usage of the UID/GID, and permissions from NAND is supported with the -p option. This doesn't restrict file access. chown and chmod won't do anything when the -p option isn't used. Listing and usage of certain SFFS supercluster versions is supported with the -g option. Dumping of nodes' raw filename is supported with the -d option.
+Metadata and files are read and write. HMAC verification of SFFS is supported. Writing is disabled if HMAC verification is disabled with the -h option. ECC correction is done for dumps with ECC. ECC correction seems to be currently broken for raw dumps however.(Some files are corrupted with raw dumps.) Only a raw YaWND dump was used to test mounting raw dumps, which had this corruption. Usage of the UID/GID, and permissions from NAND is supported with the -p option. This doesn't restrict file access. chown and chmod won't do anything when the -p option isn't used. Listing and usage of certain SFFS supercluster versions is supported with the -g option.
 
 Supported FUSE fs functions:
 statfs(statvfs)
@@ -34,6 +33,13 @@ rmdir
 mknod
 mkdir
 truncate
+
+Changelog:
+v1.1:
+Added support for writing metadata and files, and more options.
+
+v1.0:
+Initial release.
 
 Credits:
 Bootmii MINI and ppcskel for nandfs structures and functions from nandfs.c
