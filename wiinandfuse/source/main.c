@@ -366,20 +366,6 @@ int update_sffs()
 	return 0;
 }
 
-int DumpSFFS()
-{
-	int i;
-	char str[16];
-	for(i=0; i<6143; i++)
-	{
-		memset(str, 0, 16);
-		strncpy(str, SFFS.files[i].name, 12);
-		printf("%s\n", str);
-	}
-
-	return 0;
-}
-
 int nandfs_findemptynode()
 {
 	int i;
@@ -1228,9 +1214,8 @@ int main(int argc, char **argv)
 	int argi;
 	FILE *fkey;
 	int ver = -2;
-	int dump = 0;
 
-	printf("wiinandfuse v1.0 by yellowstar6\n");
+	printf("wiinandfuse v1.1 by yellowstar6\n");
 	memset(keyname, 0, 256);
 	strncpy(keyname, "default", 255);
 	if(argc<3)
@@ -1243,7 +1228,6 @@ int main(int argc, char **argv)
 		printf("-k: Directory name of keys to use for raw NAND images. Default for keyname is \"default\". Path: $HOME/.wii/<keyname>\n");
 		printf("-p: Use NAND permissions. UID and GUI of objects will be set to the NAND UID/GID, as well as the permissions. This option only enables setting the UID/GID and permissions in stat, the open and readdir functions don't check permissions.\n");
 		printf("-g<SFFS version number>: Use the SFFS super cluster that has the specified version number. If no number is specified, the version numbers are listed.\n");
-		printf("-d: Dump SFFS info of all nodes to stdout.\n");
 		printf("-h: Disable SFFS HMAC verification. Default is enabled.\n");
 		printf("-v: Abort/EIO if HMAC verification of SFFS or file data fails. If SFFS verification fails, wiinandfuse aborts and NAND isn't mounted. If file data verification fails, read will return EIO.\n");
 		printf("-r<version>: Disable round-robin SFFS updating, default is on. When disabled, only the first metadata update has the version and supercluster increased. If version is specified, the supercluster with the specified version, has the version set to the version of the oldest supercluster minus one.\n");
@@ -1270,7 +1254,6 @@ int main(int argc, char **argv)
 				ver=-1;
 			}
 		}
-		if(strcmp(argv[argi], "-d")==0)dump = 1;
 		if(strcmp(argv[argi], "-h")==0)
 		{
 			check_sffs_hmac = 0;
@@ -1387,14 +1370,6 @@ int main(int argc, char **argv)
 
 	if(sffs_init(ver)<0)
 	{
-		close(nandfd);
-		closelog();
-		return 0;
-	}
-
-	if(dump)
-	{
-		DumpSFFS();
 		close(nandfd);
 		closelog();
 		return 0;
