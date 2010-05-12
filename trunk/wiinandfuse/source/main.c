@@ -233,7 +233,7 @@ void nand_write_cluster_encrypted(int cluster_number, unsigned char *cluster, un
 	nand_write_cluster(cluster_number, nand_cryptbuf, ecc);
 }
 
-int sffs_init(int ver)//Somewhat based on Bootmii MINI ppcskel nandfs.c SFFS init code.
+int sffs_init(int suclus)//Somewhat based on Bootmii MINI ppcskel nandfs.c SFFS init code.
 {
 	int i;
 	int si = -1;
@@ -247,14 +247,14 @@ int sffs_init(int ver)//Somewhat based on Bootmii MINI ppcskel nandfs.c SFFS ini
 	if(!SFFS_only)i = 0x7f00;
 	if(SFFS_only)i = 0;
 
-	if(round_robin>=0)ver = round_robin;
+	if(round_robin>=0)suclus = round_robin;
 
 	for(; i<0x7fff; i+=0x10)
 	{
 		si++;
 		nand_read_sector(i*8, 1, buf, NULL);
 		if(memcmp(bufptr->magic, "SFFS", 4)!=0)continue;
-		if(ver==-2)
+		if(suclus==-2)
 		{
 			if(sffs_cluster==0 || sffs_version < be32(bufptr->version))
 			{
@@ -263,19 +263,19 @@ int sffs_init(int ver)//Somewhat based on Bootmii MINI ppcskel nandfs.c SFFS ini
 				supercluster = si;
 			}
 		}
-		else if(ver==-1)
+		else if(suclus==-1)
 		{
 			printf("SFFS supercluster %x cluster %x version %x\n", si, i, be32(bufptr->version));
 		}
 		else
 		{
-			if(be32(bufptr->version) == (unsigned int)ver)
+			if(si == suclus)
 			{
 				sffs_cluster = i;
 				sffs_version = be32(bufptr->version);
 				supercluster = si;
 			}
-			else if(lowver > be32(bufptr->version))
+			if(lowver > be32(bufptr->version))
 			{
 				lowver = be32(bufptr->version);
 				lowsuperclus = si;
@@ -284,19 +284,20 @@ int sffs_init(int ver)//Somewhat based on Bootmii MINI ppcskel nandfs.c SFFS ini
 		}
 	}
 
-	if(sffs_cluster==0 && ver!=-1)
+	if(sffs_cluster==0 && suclus!=-1)
 	{
-		if(ver<0)printf("No SFFS supercluster found. Your NAND SFFS is seriously broken.\n");
-		if(ver>=0)printf("Failed to find SFFS supercluster with version %x.\n", ver);
+		if(suclus<0)printf("No SFFS supercluster found. Your NAND SFFS is seriously broken.\n");
+		if(suclus>=0)printf("Failed to find SFFS supercluster with index %x.\n", suclus);
 		return -1;
 	}
-	else if(ver==-1)return -1;
+	else if(suclus==-1)return -1;
 
 	memset(&SFFS, 0, 0x40000);
 	for(i=0; i<16; i++)
 	{
 		nand_read_cluster(sffs_cluster + i, sffsptr, supercluster_hmac);
 		sffsptr+= 0x4000;
+
 	}
 
 	if(check_sffs_hmac)
@@ -316,7 +317,7 @@ int sffs_init(int ver)//Somewhat based on Bootmii MINI ppcskel nandfs.c SFFS ini
 
 	if(round_robin>=0)
 	{
-		printf("Changed SFFS cluster %x supercluster %x version %x to version %x\n", lowclus, lowsuperclus, be32(SFFS.version), lowver - 1);
+		printf("Changed SFFS cluster %x supercluster %x version %x to version %x\n", sffs_cluster, supercluster, be32(SFFS.version), lowver - 1);
 		SFFS.version = be32(lowver - 1);
 		round_robin = -2;
 		round_robin_didupdate = 1;
@@ -1227,10 +1228,10 @@ int main(int argc, char **argv)
 		printf("-s: Dump contains only the 4MB SFFS. Reading/writing files will do nothing, the data reading buffers will be cleared.\n");
 		printf("-k: Directory name of keys to use for raw NAND images. Default for keyname is \"default\". Path: $HOME/.wii/<keyname>\n");
 		printf("-p: Use NAND permissions. UID and GUI of objects will be set to the NAND UID/GID, as well as the permissions. This option only enables setting the UID/GID and permissions in stat, the open and readdir functions don't check permissions.\n");
-		printf("-g<SFFS version number>: Use the SFFS super cluster that has the specified version number. If no number is specified, the version numbers are listed.\n");
+		printf("-g<supercluster>: Use the specified SFFS supercluster index. If no number is specified, the superclusters are listed.\n");
 		printf("-h: Disable SFFS HMAC verification. Default is enabled.\n");
 		printf("-v: Abort/EIO if HMAC verification of SFFS or file data fails. If SFFS verification fails, wiinandfuse aborts and NAND isn't mounted. If file data verification fails, read will return EIO.\n");
-		printf("-r<version>: Disable round-robin SFFS updating, default is on. When disabled, only the first metadata update has the version and supercluster increased. If version is specified, the supercluster with the specified version, has the version set to the version of the oldest supercluster minus one.\n");
+		printf("-r<supercluster>: Disable round-robin SFFS updating, default is on. When disabled, only the first metadata update has the version and supercluster increased. If supercluster is specified, the specified supercluster index  has the version set to the version of the oldest supercluster minus one.\n");
 		printf("-e: Ignore ECC errors, default is disabled. When disabled, when pages have invalid ECC reads return EIO.\n");
 		return 0;
 	}
