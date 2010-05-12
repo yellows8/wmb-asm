@@ -9,10 +9,10 @@ Options:
 -s: Dump contains only the 4MB SFFS. Reading files will do nothing, the data reading buffers will be cleared.
 -k: Directory name of keys to use for raw NAND images. Default for keyname is "default". Path: $HOME/.wii/<keyname>
 -p: Use NAND permissions. UID and GUI of objects will be set to the NAND UID/GID, as well as the permissions. This option only enables setting the UID/GID and permissions in stat, the open and readdir functions don't check permissions.
--g<SFFS version number>: Use the SFFS super cluster that has the specified version number. If no number is specified, the version numbers are listed.
+-g<supercluster>: Use the specified SFFS supercluster index. If no number is specified, the superclusters are listed.
 -h: Disable SFFS HMAC verification. Default is enabled.
 -v: Abort/EIO if HMAC verification of SFFS or file data fails. If SFFS verification fails, wiinandfuse aborts and NAND isn't mounted. If file data verification fails, read will return EIO.
--r<version>: Disable round-robin SFFS updating, default is on. When disabled, only the first metadata update has the version and supercluster increased. If version is specified, the supercluster with the specified version, has the version set to the version of the oldest supercluster minus one.
+-r<supercluster>: Disable round-robin SFFS updating, default is on. When disabled, only the first metadata update has the version and supercluster increased. If supercluster is specified, the specified supercluster index  has the version set to the version of the oldest supercluster minus one.
 -e: Ignore ECC errors, default is disabled. When disabled, when pages have invalid ECC reads return EIO.
 
 Features:
