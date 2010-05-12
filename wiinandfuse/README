@@ -16,7 +16,7 @@ Options:
 -e: Ignore ECC errors, default is disabled. When disabled, when pages have invalid ECC reads return EIO.
 
 Features:
-Metadata and files are read and write. HMAC verification of SFFS is supported. Writing is disabled if HMAC verification is disabled with the -h option. ECC correction is disabled since it's broken. Thus raw dumps from flash programmers, etc, will have corruption. Reading pages that are corrupted and need ECC correction will fail when the -e option is used, but only for files since the SFFS init code doesn't check if there was ECC errors. Usage of the UID/GID, and permissions from NAND is supported with the -p option. This doesn't restrict file access. chown and chmod won't do anything when the -p option isn't used. Listing and usage of certain SFFS supercluster versions is supported with the -g option.
+Metadata and files are read and write. HMAC verification of SFFS is supported. Writing is disabled if HMAC verification is disabled with the -h option. ECC correction is disabled since it's broken. Thus raw dumps from flash programmers, etc, will have corruption. Reading pages that are corrupted and need ECC correction will fail when the -e option isn't used, but only for files since the SFFS init code doesn't check if there was ECC errors. Usage of the UID/GID, and permissions from NAND is supported with the -p option. This doesn't restrict file access. chown and chmod won't do anything when the -p option isn't used. Listing and usage of certain SFFS supercluster versions is supported with the -g option.
 
 Supported FUSE fs functions:
 statfs(statvfs)
