@@ -1,0 +1,59 @@
+#ifndef _H_VFF
+#define _H_VFF
+
+#include <gctypes.h>
+
+#ifdef __cplusplus
+   extern "C" {
+#endif
+
+#define VFF_MAGIC 0x56464620
+
+//The directory entries are little-endian, but the VFF header and FATs are big-endian.
+typedef struct _vff_header
+{
+	u32 magic;//"VFF " 0x56464620
+	u16 byteorder;//0xfeff
+	u16 unk6;//0x100
+	u32 filesize;//Size of whole VFF.
+	u16 header_size;//Size of whole header.
+	u8 reserved[0x12];
+} __attribute__((packed)) vff_header;
+
+typedef struct _fat_dirent
+{
+	char name[11];
+	u8 attr;
+	u8 reserved;
+	u8 createtime_seconds;
+	u16 createtime;
+	u16 createdate;
+	u16 accessdate;
+	u16 clusterhigh;
+	u16 modified_date;
+	u16 modified_time;
+	u16 clusterlow;
+	u32 filesize;
+} __attribute__((packed)) fat_dirent;
+
+typedef struct _fat_filectx
+{
+	fat_dirent *ent;
+	u32 filesize;
+	u32 cluster;
+	u32 offset;
+} fat_filectx;
+
+s32 VFF_CreateVFF(char *path, u32 filesize);//Creates VFF at path with ISFS. Returns zero on success, ISFS error otherwise. Due to an issue with the FAT size calculation algo, filesizes over 1MB must be aligned to a MB.
+s32 VFF_Mount(char *path);//Opens a VFF, only one VFF can be open at a time.
+s32 VFF_Unmount();
+fat_filectx *VFF_Open(char *path);//Opens a file in the mounted VFF, no leading root directory slash. Only MS-DOS 8.3 filenames are supported for file/directory names with this implementation.
+void VFF_Close(fat_filectx *ctx);
+s32 VFF_Read(fat_filectx *ctx, u8 *buffer, u32 length);//Reads data from a file in the mounted VFF.
+
+#ifdef __cplusplus
+   }
+#endif
+
+#endif
+
