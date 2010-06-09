@@ -91,7 +91,6 @@ s32 VFF_CreateVFF(char *path, u32 filesize)
 	}
 	fd = retval;
 
-	printf("writing\n");
 	retval = ISFS_Write(fd, header, sizeof(vff_header));
 	free(header);
 	if(retval<0)
@@ -101,7 +100,6 @@ s32 VFF_CreateVFF(char *path, u32 filesize)
 		return retval;
 	}
 	
-	printf("header written %x\n", fatsz);
 	free(header);
 	memset(fat, 0, fatsz);
 	fat[0] = 0xf0ff;
@@ -116,7 +114,6 @@ s32 VFF_CreateVFF(char *path, u32 filesize)
 		return retval;
 	}
 	
-	printf("seeked to fat\n");
 	retval = ISFS_Write(fd, fat, fatsz);
 	if(retval<0)
 	{
@@ -133,7 +130,6 @@ s32 VFF_CreateVFF(char *path, u32 filesize)
 	}
 	free(fat);
 	
-	printf("wrote fat\n");
 	buf = memalign(32, 0x1000);
 	memset(buf, 0, 0x1000);
 	memcpy(buf, MBLFN, 0x20);
@@ -147,7 +143,6 @@ s32 VFF_CreateVFF(char *path, u32 filesize)
 		ISFS_Close(fd);
 		free(buf);
 	}
-	printf("wrote root\n");
 
 	memset(buf, 0, 0x200);
 	strncpy((char*)&buf[0x0 + 0], ".", 11);
@@ -163,7 +158,6 @@ s32 VFF_CreateVFF(char *path, u32 filesize)
 		free(buf);
 	}
 
-	printf("wrote mb\n");
 	memset(buf, 0, 0x20);
 	i = 0x20 + (fatsz*2) + 0x1000 + 0x200;
 	printf("filling %x filesz %x\n", i, filesize);
@@ -180,7 +174,6 @@ s32 VFF_CreateVFF(char *path, u32 filesize)
 		i+=0x20;
 	}
 
-	printf("wrote pad\n");
 	free(buf);
 	retval = ISFS_Close(fd);
 	if(retval<0)

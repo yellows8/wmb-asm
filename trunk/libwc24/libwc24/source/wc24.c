@@ -14,10 +14,8 @@ nwc24dl_header *NWC24DL_Header;
 s32 WC24_Init(int id)
 {
 	if(wc24_did_init)return LIBWC24_EINIT;
-	printf("init\n");
 	s32 retval = ISFS_Initialize();
 	if(retval<0)return retval;
-	printf("open\n");
 	
 	if(id)
 	{
@@ -28,16 +26,12 @@ s32 WC24_Init(int id)
 	retval = WC24_OpenNWC4DLBin();
 	if(retval<0)return retval;
 	
-	printf("alloc\n");
 	NWC24DL_Header = (nwc24dl_header*)memalign(32, sizeof(nwc24dl_header));
-	printf("seek\n");
 	retval = ISFS_Seek(nwc24dlbin_fd, 0, SEEK_SET);
 	if(retval<0)return retval;
-	printf("read\n");
 	retval = ISFS_Read(nwc24dlbin_fd, NWC24DL_Header, sizeof(nwc24dl_header));
 	if(retval<0)return retval;
-	
-	printf("close\n");
+
 	wc24_did_init = 1;
 	return WC24_CloseNWC4DLBin();
 }
@@ -228,7 +222,6 @@ s32 WC24_FindRecord(u32 id, nwc24dl_record *rec)
 	u32 i;
 	for(i=0; i<NWC24DL_Header->max_entries; i++)
 	{
-		printf("i=%x\n", i);
 		retval = WC24_ReadRecord(i, rec);
 		if(retval<0)break;
 		if(rec->ID==id)
@@ -239,7 +232,6 @@ s32 WC24_FindRecord(u32 id, nwc24dl_record *rec)
 		}
 	}
 	if(!found && retval==0)retval = LIBWC24_ENOENT;
-	printf("retval %d\n", retval);	
 	
 	return retval;
 }
@@ -252,7 +244,6 @@ s32 WC24_FindEntry(u32 id, char *url, nwc24dl_entry *ent)
 	u32 i;
 	for(i=0; i<NWC24DL_Header->max_entries; i++)
 	{
-		printf("ei %x\n", i);
 		retval = WC24_ReadEntry(i, ent);
 		if(retval<0)break;
 		if(ent->ID==id)
@@ -275,7 +266,6 @@ s32 WC24_FindEntry(u32 id, char *url, nwc24dl_entry *ent)
 		}
 	}
 	if(!found && retval==0)retval = LIBWC24_ENOENT;
-	printf("eret %x %d\n", retval, retval);
 	
 	return retval;
 }
@@ -289,7 +279,6 @@ s32 WC24_FindEmptyEntry(nwc24dl_entry *ent)
 {
 	nwc24dl_record rec;
 	s32 retval = WC24_FindEmptyRecord(&rec);
-	printf("WC24_FindEmptyEntry found empty rec: %d\n", retval);
 	if(retval<0)return retval;
 	s32 rval = WC24_ReadEntry((u32)retval, ent);
 	if(rval<0)return rval;
@@ -303,11 +292,9 @@ s32 WC24_CreateRecord(nwc24dl_record *rec, nwc24dl_entry *ent, u32 id, u64 title
 	retval = WC24_FindEntry(id, url, ent);
 	if(retval<0)
 	{
-		printf("create entry retval %d\n", (u32)retval);
 		if(retval==LIBWC24_ENOENT)
 		{
 			retval = WC24_FindEmptyEntry(ent);
-			printf("find empty retval %d\n", retval);
 		}
 		else
 		{
@@ -318,7 +305,6 @@ s32 WC24_CreateRecord(nwc24dl_record *rec, nwc24dl_entry *ent, u32 id, u64 title
 	{
 		memset(ent, 0, sizeof(nwc24dl_entry));
 	}
-	printf("Using index %x\n", (u32)retval);
 	index = (u32)retval;
 	rec->ID = id;
 	rec->next_dl = 0;
@@ -379,7 +365,6 @@ s32 WC24_CreateWC24DlVFF(u32 filesize)
 		return retval;
 	}
 	strcat(filename, "/wc24dl.vff");
-	printf("%s\n", filename);
 	retval = VFF_CreateVFF(filename, filesize);
 	free(filename);
 	return retval;
@@ -402,7 +387,6 @@ s32 WC24_MountWC24DlVFF()
 		return retval;
 	}
 	strcat(filename, "/wc24dl.vff");
-	printf("%s\n", filename);
 	retval = VFF_Mount(filename);
 	free(filename);
 	return retval;
