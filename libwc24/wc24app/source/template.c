@@ -4,7 +4,6 @@
 #include <gccore.h>
 #include <wiiuse/wpad.h>
 #include <string.h>
-//#include <debug.h>
 #include <wc24.h>
 #include <fat.h>
 
@@ -37,13 +36,6 @@ void DoStuff(char *url)
 		return;
 	}*/
 	*titleid = 0x000100014a4f4449LL;
-	/*retval = ES_SetUID(*titleid);
-	if(retval<0)
-	{
-		free(titleid);
-		printf("ES_SetUID returned %d\n", retval);
-		return;
-	}*/
 	
 	printf("Identify as HBC?(A = yes, B = no)\n");
 	which = -1;
@@ -183,7 +175,7 @@ void DoStuff(char *url)
 			return;
 		}
 		
-		usb_sendbuffer_safe(1, &ent, sizeof(nwc24dl_entry));
+		if(usb_isgeckoalive(1))usb_sendbuffer_safe(1, &ent, sizeof(nwc24dl_entry));
 	}
 
 	printf("Install WC24 msg board e-mail dl record+entry?(A = yes, B = no)\n");
@@ -209,7 +201,7 @@ void DoStuff(char *url)
 			return;
 		}
 		
-		usb_sendbuffer_safe(1, &ent, sizeof(nwc24dl_entry));
+		if(usb_isgeckoalive(1))usb_sendbuffer_safe(1, &ent, sizeof(nwc24dl_entry));
 	}
 
 	printf("Download entries immediately?(A = yes, B = no)\n");
