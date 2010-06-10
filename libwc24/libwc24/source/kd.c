@@ -96,7 +96,7 @@ s32 KD_CorrectRTC(u64 diff)
 
 // -- /dev/net/kd/request --
 
-s32 KD_Download(u32 flags, u16 index, u32 subTaskBitmap)
+s32 KD_Download(s32 flags, u16 index, u32 subTaskBitmap)
 {
 	s32 retval;
 	u32 inbuf[8];
