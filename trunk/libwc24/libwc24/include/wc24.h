@@ -102,7 +102,7 @@ typedef struct _nwc24dl_entry
 	u32 subTaskBitmask;//Bitmask subTask ID enable. Only subTasks with IDs/numbers with matching set bits are used.
 	u16 unk2cSubTask;
 	u16 unk2eSubTask;//0x5a0 sometimes for entries with subTasks? Might be related to dl time?
-	u32 dl_timestamp;//Last dl timestamp. Zero when download failed, with error_code less than zero.
+	u32 dl_timestamp;//Last dl timestamp. Zero when download failed, with error_code less than zero, except for error  WC24_EHTTP304. This timestamp is the last dl timestamp for when the download succeeded without any error, with HTTP 200 OK.
 	u32 subTaskParams[32];//Timestamps of last dl time for each subTask?
 	char url[0xec];
 	char filename[0x40];//Filename inside wc24dl.vff, without a leading root directory slash. This path can probably can be a path with sub-directories.

@@ -41,7 +41,7 @@ void DoStuff(char *url)
 	char mailurl[256];
 	memset(mailurl, 0, 256);
 	strncpy(mailurl, url, 255);
-	strncat(mailurl, "mail", 255);
+	strncat(mailurl, "boot", 255);
 
 	if(titleid==NULL)
 	{
@@ -49,13 +49,13 @@ void DoStuff(char *url)
 		return;
 	}
 	printf("Getting titleid...\n");
-	/*retval = ES_GetTitleID(titleid);
+	retval = ES_GetTitleID(titleid);
 	if(retval<0)
 	{
-		free(titleid);
+		//free(titleid);
 		printf("ES_GetTitleID returned %d\n", retval);
-		return;
-	}*/
+		//return;
+	}
 	*titleid = 0x000100014a4f4449LL;
 	
 	printf("Identify as HBC?(A = yes, B = no)\n");
@@ -444,7 +444,9 @@ void IOSReload_SelectMenu()
 	{
 		printf("Reloading IOS%d...\n", (int)ios[iosi]);
 		WPAD_Shutdown();
+		__ES_Close();
 		IOS_ReloadIOS((u32)ios[iosi]);
+		retval = __ES_Init();
 		WPAD_Init();
 	}
 	free(titles);
@@ -489,6 +491,7 @@ int main(int argc, char **argv) {
 	//DEBUG_Init(GDBSTUB_DEVICE_USB, 1);
 	if(usb_isgeckoalive(1))CON_EnableGecko(1, 1);
 
+	fatInitDefault();
 	IOSReload_SelectMenu();
 
 	printf("\nUse a Internet server URL(Button A) or a LAN server URL?(Button B)\n");
@@ -506,7 +509,6 @@ int main(int argc, char **argv) {
 		VIDEO_WaitVSync();
 	}
 
-	fatInitDefault();
 	DoStuff(url);
 
 	WPAD_ScanPads();
