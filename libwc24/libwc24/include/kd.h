@@ -30,11 +30,11 @@ DEALINGS IN THE SOFTWARE.
 
 #define KD_DOWNLOADFLAGS_MANUAL BIT(1)//Specify a entry to download, must be set when used from Broadway.
 #define KD_DOWNLOADFLAGS_SUBTASKS BIT(2)//Set this to download subTasks.
-#define KD_DOWNLOADFLAGS_UTCSYNC -1//Sync UTC time with time server. This will set all bits, so KD_DOWNLOADFLAGS_MANUAL and KD_DOWNLOADFLAGS_SUBTASKS bits will be set.
+#define KD_DOWNLOADFLAGS_UTCSYNC BIT(31)//Sync UTC time with time server. KD syncs time when KD_Download flags is negative.
 
 //These errors can be returned by KD_Download.
 #define KD_ESIGFAIL -45//RSA signature verification failed. Or KD_CreateRSA failed.
-#define KD_EHTTP -32//HTTP error?
+#define KD_EHTTP -32//HTTP error or time server error?
 #define KD_ECACHE -15//"Detected AKAMAI's cache refreshing."
 #define KD_EINVAL -3//Invalid input.
 #define KD_ESHUTDOWN -48//Only happens when STM_Wakeup needs to be called by KD: "Shutdown required. Quit processing."
