@@ -33,7 +33,9 @@ s32 __kdtime_fd, __kdreq_fd;
 #define IOCTL_KD_SETUTCTIME 0x15
 #define IOCTL_KD_CORRECTRTC 0x17
 
+#define IOCTL_KD_GETTIMETRIGGERS 0x4
 #define IOCTL_KD_DOWNLOAD 0xe
+#define IOCTL_KD_SETNEXTWAKEUP 0x21
 
 s32 KD_Open()
 {
@@ -111,6 +113,46 @@ s32 KD_Download(u32 flags, u16 index, u32 subTaskBitmap)
 
 	retval = IOS_Ioctl(__kdreq_fd,IOCTL_KD_DOWNLOAD,inbuf,32,outbuf,32);
 	DCInvalidateRange(outbuf, 32);
+	if(retval==0)retval = outbuf[0];
+	return retval;
+}
+
+s32 KD_SetNextWakeup(u32 seconds)
+{
+	s32 retval;
+	u32 inbuf[1];
+	u32 outbuf[1];
+	
+        if(__kdreq_fd==0)return LIBWC24_EINIT;
+	memset(inbuf, 0, 4);
+	memset(outbuf, 0, 4);
+	inbuf[0] = seconds;
+	DCFlushRange(inbuf, 4);
+	DCFlushRange(outbuf, 4);
+
+	retval = IOS_Ioctl(__kdreq_fd,IOCTL_KD_SETNEXTWAKEUP,inbuf,32,outbuf,32);
+	DCInvalidateRange(outbuf, 4);
+	if(retval==0)retval = outbuf[0];
+	return retval;
+}
+
+s32 KD_GetTimeTriggers(u32 *triggers)
+{
+	s32 retval;
+	u32 inbuf[1];
+	u32 outbuf[3];
+	
+        if(__kdreq_fd==0)return LIBWC24_EINIT;
+	memset(inbuf, 0, 4);
+	memset(outbuf, 0, 12);
+	DCFlushRange(inbuf, 4);
+	DCFlushRange(outbuf, 12);
+
+	retval = IOS_Ioctl(__kdreq_fd,IOCTL_KD_GETTIMETRIGGERS,inbuf,4,outbuf,12);
+	DCInvalidateRange(inbuf, 4);
+	DCInvalidateRange(outbuf, 12);
+	triggers[0] = outbuf[1];
+	triggers[1] = outbuf[2];
 	if(retval==0)retval = outbuf[0];
 	return retval;
 }
