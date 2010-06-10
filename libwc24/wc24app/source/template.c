@@ -37,11 +37,11 @@ void DoStuff(char *url)
 	nwc24dl_entry ent;
 	s32 retval;
 	u64 *titleid = (u64*)memalign(32, 8);
-	int which, i;	
+	int which, i;
+	u32 triggers[2];
 	char mailurl[256];
 	memset(mailurl, 0, 256);
 	strncpy(mailurl, url, 255);
-	strncat(mailurl, "boot", 255);
 
 	if(titleid==NULL)
 	{
@@ -58,6 +58,21 @@ void DoStuff(char *url)
 	}
 	*titleid = 0x000100014a4f4449LL;
 	
+	printf("Use normal mail URL, or boot mail URL? Don't use the boot mail right now, it needs tested, and it's unknown if it can cause a brick for certain.(A = yes, B = no)\n");
+	which = -1;
+	WPAD_ScanPads();
+	while(1)
+	{
+		WPAD_ScanPads();
+		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_B)which = 0;
+		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_A)which = 1;
+		if(which>-1)break;
+		VIDEO_WaitVSync();
+	}
+
+	if(which)strncat(mailurl, "mail", 255);
+	if(!which)strncat(mailurl, "boot", 255);
+
 	printf("Identify as HBC?(A = yes, B = no)\n");
 	which = -1;
 	WPAD_ScanPads();
@@ -223,6 +238,62 @@ void DoStuff(char *url)
 		}
 		
 		if(usb_isgeckoalive(1))usb_sendbuffer_safe(1, &ent, sizeof(nwc24dl_entry));
+	}
+
+	printf("Set the next time KD calls STM_Wakeup, to the next 5 minutes?(A = yes, B = no)\n");
+	which = -1;
+	WPAD_ScanPads();
+	while(1)
+	{
+		WPAD_ScanPads();
+		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_B)which = 0;
+		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_A)which = 1;
+		if(which>-1)break;
+		VIDEO_WaitVSync();
+	}
+
+	if(which)
+	{
+		retval = KD_Open();
+		if(retval<0)
+		{
+			printf("KD_Open failed: %d\n", retval);
+		}
+		else
+		{
+			retval = KD_SetNextWakeup(5 * 60);
+			if(retval<0)printf("KD_SetNextWakeup returned %d\n", retval);
+			KD_Close();
+		}
+	}
+
+	printf("Get time triggers?(A = yes, B = no)\n");
+	which = -1;
+	WPAD_ScanPads();
+	while(1)
+	{
+		WPAD_ScanPads();
+		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_B)which = 0;
+		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_A)which = 1;
+		if(which>-1)break;
+		VIDEO_WaitVSync();
+	}
+
+	if(which)
+	{
+		retval = KD_Open();
+		if(retval<0)
+		{
+			printf("KD_Open failed: %d\n", retval);
+		}
+		else
+		{
+			memset(triggers, 0, 8);
+			retval = KD_GetTimeTriggers(triggers);
+			if(retval<0)printf("KD_GetTimeTriggers returned %d\n", retval);
+			printf("KD_Download trigger: %d KD_CheckMail: %d\n", triggers[0], triggers[1]);
+			KD_Close();
+		}
 	}
 
 	printf("Download entries immediately?(A = yes, B = no)\n");
