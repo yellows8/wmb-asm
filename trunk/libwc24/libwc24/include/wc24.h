@@ -35,7 +35,7 @@ DEALINGS IN THE SOFTWARE.
 #define BIT(n) 1<<n
 #endif
 
-#define WC24_TYPE_UNK 1//Msg board related somehow?
+#define WC24_TYPE_UNK 1//E-Mail or msg board related somehow?
 #define WC24_TYPE_MSGBOARD 2//E-Mail downloaded to msg board.(Plus MIME data.)
 #define WC24_TYPE_TITLEDATA 3//Content is is downloaded to title's data dir.
 #define WC24_TYPE_EMPTY 0xff
