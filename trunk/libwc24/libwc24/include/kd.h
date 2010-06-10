@@ -30,6 +30,7 @@ DEALINGS IN THE SOFTWARE.
 
 #define KD_DOWNLOADFLAGS_MANUAL BIT(1)//Specify a entry to download, must be set when used from Broadway.
 #define KD_DOWNLOADFLAGS_SUBTASKS BIT(2)//Set this to download subTasks.
+#define KD_DOWNLOADFLAGS_UTCSYNC -1//Sync UTC time with time server. This will set all bits, so KD_DOWNLOADFLAGS_MANUAL and KD_DOWNLOADFLAGS_SUBTASKS bits will be set.
 
 //These errors can be returned by KD_Download.
 #define KD_ESIGFAIL -45//RSA signature verification failed. Or KD_CreateRSA failed.
@@ -52,7 +53,7 @@ s32 KD_GetUTCTime(kd_timebuf *time);//If KD_Open wasn't called when any of these
 s32 KD_SetUTCTime(kd_timebuf *time);
 s32 KD_CorrectRTC(u64 diff);
 
-s32 KD_Download(u32 flags, u16 index, u32 subTaskBitmap);//flags is the KD_DOWNLOADFLAG defines, index is nwc24dl_entry index, subTaskBitmap is a bitmap of subTasks to download starting at bit zero for subTask zero when flags KD_DOWNLOADFLAGS_SUBTASKS is set.
+s32 KD_Download(s32 flags, u16 index, u32 subTaskBitmap);//flags is the KD_DOWNLOADFLAG defines, index is nwc24dl_entry index, subTaskBitmap is a bitmap of subTasks to download starting at bit zero for subTask zero when flags KD_DOWNLOADFLAGS_SUBTASKS is set.
 s32 KD_SetNextWakeup(u32 seconds);//Sets the next time STM_Wakeup is called by KD relative to the current UTC time.
 s32 KD_GetTimeTriggers(u32 *triggers);//Input should be a buffer 8 bytes long. Gets the minutes of the hour for when KD_Download and KD_CheckMail is automatically triggered.
 
