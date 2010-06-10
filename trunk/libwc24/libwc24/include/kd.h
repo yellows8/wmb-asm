@@ -46,7 +46,7 @@ typedef struct _skd_timebuf
 	u64 time;//UTC time in seconds.
 } kd_timebuf;
 
-s32 KD_Open();
+s32 KD_Open();//KD_Open and KD_Close are called by WC24_Init and WC24_Shutdown.
 s32 KD_Close();
 
 s32 KD_GetUTCTime(kd_timebuf *time);//If KD_Open wasn't called when any of these KD ioctl functions are called, LIBWC24_EINIT will be returned.
