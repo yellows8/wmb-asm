@@ -35,7 +35,7 @@ DEALINGS IN THE SOFTWARE.
 #define BIT(n) 1<<n
 #endif
 
-#define WC24_TYPE_UNK 1
+#define WC24_TYPE_UNK 1//Msg board related somehow?
 #define WC24_TYPE_MSGBOARD 2//E-Mail downloaded to msg board.(Plus MIME data.)
 #define WC24_TYPE_TITLEDATA 3//Content is is downloaded to title's data dir.
 #define WC24_TYPE_EMPTY 0xff
@@ -50,15 +50,16 @@ DEALINGS IN THE SOFTWARE.
 #define WC24_RECORD_FLAGS_DEFAULT 0xc0//Unknown, varies, this is from HATE.
 
 #define LIBWC24_EINIT -0x2001//From WC24_Init, this means WC24 was already initalized, from WC24_Shutdown, this means WC24 was already shutdown, or wasn't initalized. From other functions, this means WC24 wasn't initalized.
-#define LIBWC24_ENOENT -0x2002//From WC24 find functions, meaning no entry found.
+#define LIBWC24_ENOENT -0x2002//From WC24 find functions, meaning no entry/record found.
 
 //The below errors are from nwc24dl_entry error_code written to by KD.
 //This error code list is also available at: http://wiibrew.org/wiki/WiiConnect24#WC24_Errors
 
 #define WC24_EINVALVFF -107243//Invalid wc24dl.vff.
+#define WC24_ESIGFAIL -107245//RSA signature verification failed. Or KD_CreateRSA failed.
 #define WC24_EHTTP304 -107305//HTTP 304.
 #define WC24_EHTTP404 -117404//HTTP 404. Errors in the -117xxx range seem to be HTTP errors, where xxx is the HTTP error/status code.
-#define WC24_ENOAP -51030//Access point not in range. Errors with 5-digits are usually general Wifi/Internet errors, which can be looked up with Nintendo's tool: http://www.nintendo.com/consumer/systems/wii/en_na/errors/index.jsp
+#define WC24_ENOAP -51030//Access point not in range. With Nintendo's errors, there's several errors meaning "no ap in range". Errors with 5-digits are usually general Wifi/Internet errors, which can be looked up with Nintendo's tool: http://www.nintendo.com/consumer/systems/wii/en_na/errors/index.jsp
 
 typedef struct _nwc24dl_header
 {

@@ -59,6 +59,13 @@ s32 WC24_Init(int id)
 	if(retval<0)return retval;
 	retval = ISFS_Read(nwc24dlbin_fd, NWC24DL_Header, sizeof(nwc24dl_header));
 	if(retval<0)return retval;
+	retval = KD_Open();
+	if(retval<0)
+	{
+		printf("KD_Open failed %d\n", retval);
+		WC24_CloseNWC4DLBin();
+		return retval;
+	}
 
 	wc24_did_init = 1;
 	return WC24_CloseNWC4DLBin();
@@ -70,6 +77,13 @@ s32 WC24_Shutdown()
 	if(!wc24_did_init)return LIBWC24_EINIT;
 	wc24_did_init = 0;
 	free(NWC24DL_Header);
+	retval = KD_Close();
+	if(retval<0)
+	{
+		printf("KD_Close failed: %d\n", retval);
+		if(nwc24dlbin_fd)WC24_CloseNWC4DLBin();
+		return retval;
+	}
 	if(nwc24dlbin_fd)retval = WC24_CloseNWC4DLBin();
 	return retval;
 }

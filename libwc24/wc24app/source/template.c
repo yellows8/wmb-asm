@@ -254,17 +254,8 @@ void DoStuff(char *url)
 
 	if(which)
 	{
-		retval = KD_Open();
-		if(retval<0)
-		{
-			printf("KD_Open failed: %d\n", retval);
-		}
-		else
-		{
-			retval = KD_SetNextWakeup(5 * 60);
-			if(retval<0)printf("KD_SetNextWakeup returned %d\n", retval);
-			KD_Close();
-		}
+		retval = KD_SetNextWakeup(5 * 60);
+		if(retval<0)printf("KD_SetNextWakeup returned %d\n", retval);
 	}
 
 	printf("Get time triggers?(A = yes, B = no)\n");
@@ -281,19 +272,10 @@ void DoStuff(char *url)
 
 	if(which)
 	{
-		retval = KD_Open();
-		if(retval<0)
-		{
-			printf("KD_Open failed: %d\n", retval);
-		}
-		else
-		{
-			memset(triggers, 0, 8);
-			retval = KD_GetTimeTriggers(triggers);
-			if(retval<0)printf("KD_GetTimeTriggers returned %d\n", retval);
-			printf("KD_Download trigger: %d KD_CheckMail: %d\n", triggers[0], triggers[1]);
-			KD_Close();
-		}
+		memset(triggers, 0, 8);
+		retval = KD_GetTimeTriggers(triggers);
+		if(retval<0)printf("KD_GetTimeTriggers returned %d\n", retval);
+		printf("KD_Download trigger: %d KD_CheckMail: %d\n", triggers[0], triggers[1]);
 	}
 
 	printf("Download entries immediately?(A = yes, B = no)\n");
@@ -310,41 +292,32 @@ void DoStuff(char *url)
 
 	if(which)
 	{
-		retval = KD_Open();
+		retval = WC24_FindEntry(0x4a4f4449, url, &ent);
 		if(retval<0)
 		{
-			printf("KD_Open failed: %d\n", retval);
+			printf("Failed to find WC24 title data entry.\n");
 		}
 		else
 		{
-			retval = WC24_FindEntry(0x4a4f4449, url, &ent);
-			if(retval<0)
-			{
-				printf("Failed to find WC24 title data entry.\n");
-			}
-			else
-			{
-				printf("Downloading title data...\n");
-				retval = KD_Download(BIT(1), (u16)retval, 0x0);
-				printf("KD_Download returned %d\n", retval);
-			}
+			printf("Downloading title data...\n");
+			retval = KD_Download(KD_DOWNLOADFLAGS_MANUAL, (u16)retval, 0x0);
+			printf("KD_Download returned %d\n", retval);
+		}
 
-			retval = WC24_FindEntry(0x4a4f4449, mailurl, &ent);
-			if(retval<0)
-			{
-				printf("Failed to find WC24 mail entry.\n");
-			}
-			else
-			{
-				printf("Downloading mail...\n");
-				retval = KD_Download(BIT(1), (u16)retval, 0x0);
-				printf("KD_Download returned %d\n", retval);
-			}
-			KD_Close();
+		retval = WC24_FindEntry(0x4a4f4449, mailurl, &ent);
+		if(retval<0)
+		{
+			printf("Failed to find WC24 mail entry.\n");
+		}
+		else
+		{
+			printf("Downloading mail...\n");
+			retval = KD_Download(KD_DOWNLOADFLAGS_MANUAL, (u16)retval, 0x0);
+			printf("KD_Download returned %d\n", retval);
 		}
 	}
 
-	printf("Check WC24 entry for WC24 error, and dump timestamps?(A = yes, B = no)\n");
+	printf("Check WC24 entries for WC24 error, and dump timestamps?(A = yes, B = no)\n");
 	which = -1;
 	WPAD_ScanPads();
 	while(1)
@@ -372,7 +345,14 @@ void DoStuff(char *url)
 			dltime = WC24_TimestampToSeconds(ent.dl_timestamp);
 			time = localtime(&dltime);
 			printf("error_code %d total_errors %d ", ent.error_code, ent.total_errors);
-			printf("dl_timestamp %s ", asctime(time));
+			if(ent.dl_timestamp!=0)
+			{
+				printf("dl_timestamp %s ", asctime(time));
+			}
+			else
+			{
+				if(ent.error_code!=0 || ent.error_code!=WC24_EHTTP304)printf("This entry was never downloaded since dl_timestamp is zero.\n");
+			}
 			if(ent.error_code==0 || ent.error_code==WC24_EHTTP304)
 			{
 				printf("Reading VFF since download was successful.\n");
