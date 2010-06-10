@@ -54,6 +54,7 @@ DEALINGS IN THE SOFTWARE.
 
 //The below errors are from nwc24dl_entry error_code written to by KD.
 //This error code list is also available at: http://wiibrew.org/wiki/WiiConnect24#WC24_Errors
+//Errors in the -1072xx range might be errors from KD_Download, where xx is the retval of KD_Download.
 
 #define WC24_EINVALVFF -107243//Invalid wc24dl.vff.
 #define WC24_ESIGFAIL -107245//RSA signature verification failed. Or KD_CreateRSA failed.
