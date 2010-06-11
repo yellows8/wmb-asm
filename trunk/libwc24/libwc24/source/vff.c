@@ -28,8 +28,8 @@ DEALINGS IN THE SOFTWARE.
 #include "vff.h"
 #include "wc24.h"
 
-//The proper way to implement VFF code is to port and modify a FAT16 implementation, but that's not possible to do that until the VFF FATs are reverse engineered, and when the FATSize algo is reverse engineered 100%.
-//The directory entries are little-endian, but the VFF header and FATs are big-endian.
+//The proper way to implement VFF code is to port and modify a FAT implementation.
+//The directory entries and FATs are little-endian, but the VFF header is big-endian.
 
 s32 vff_fd = 0;
 vff_header *vff_hdr;
@@ -181,7 +181,6 @@ s32 VFF_CreateVFF(char *path, u32 filesize)
 
 	memset(buf, 0, 0x20);
 	i = 0x20 + (fatsz*2) + 0x1000 + 0x200;
-	printf("filling %x filesz %x\n", i, filesize);
 	while(i<filesize)
 	{
 		retval = ISFS_Write(fd, buf, 0x20);
