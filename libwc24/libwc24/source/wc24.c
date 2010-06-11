@@ -31,6 +31,7 @@ DEALINGS IN THE SOFTWARE.
 u32 wc24_did_init = 0;
 s32 nwc24dlbin_fd = 0;
 nwc24dl_header *NWC24DL_Header;
+u64 wc24_titleid = 0x000100014a4f4449LL;
 
 s32 WC24_Init(int id)
 {
@@ -68,6 +69,13 @@ s32 WC24_Init(int id)
 	}
 
 	wc24_did_init = 1;
+	retval = ES_GetTitleID(&wc24_titleid);
+	if(retval<0)
+	{
+		printf("ES_GetTitleID returned %d\n", retval);
+		//return retval;
+	}
+
 	return WC24_CloseNWC4DLBin();
 }
 
@@ -111,7 +119,6 @@ s32 WC24_ReadRecord(u32 index, nwc24dl_record *rec)
 		printf("WC24_ReadRecord buf alloc fail.\n");
 		return 0;
 	}
-	printf("alloced mem\n");
 	if(nwc24dlbin_fd)open = 0;
 	if(open)
 	{
@@ -269,9 +276,7 @@ s32 WC24_FindRecord(u32 id, nwc24dl_record *rec)
 	u32 i;
 	for(i=0; i<NWC24DL_Header->max_entries; i++)
 	{
-		printf("find rec %x\n", i);
 		retval = WC24_ReadRecord(i, rec);
-		printf("retval %d\n", retval);
 		if(retval<0)break;
 		if(rec->ID==id)
 		{
@@ -328,23 +333,19 @@ s32 WC24_FindEmptyEntry(nwc24dl_entry *ent)
 {
 	nwc24dl_record rec;
 	s32 retval = WC24_FindEmptyRecord(&rec);
-	printf("ei %x\n", retval);
 	if(retval<0)return retval;
 	s32 rval = WC24_ReadEntry((u32)retval, ent);
-	printf("i %x\n", rval);
 	if(rval<0)return rval;
 	return retval;
 }
 
 s32 WC24_CreateRecord(nwc24dl_record *rec, nwc24dl_entry *ent, u32 id, u64 titleid, u16 group_id, u8 type, u8 record_flags, u32 flags, u16 dl_freq_perday, u16 dl_freq_days, char *url, char *filename)
 {
-	s32 retval = 0;
+	s32 retval = -1;
 	u32 index;
-	printf("finding entry\n");
-	retval = WC24_FindEntry(id, url, ent);
+	if(id==0 && titleid==0)retval = WC24_FindEntry(id, url, ent);
 	if(retval<0)
 	{
-		printf("finding empty entry\n");
 		if(retval==LIBWC24_ENOENT)
 		{
 			retval = WC24_FindEmptyEntry(ent);
@@ -358,7 +359,8 @@ s32 WC24_CreateRecord(nwc24dl_record *rec, nwc24dl_entry *ent, u32 id, u64 title
 	{
 		memset(ent, 0, sizeof(nwc24dl_entry));
 	}
-	printf("found entry\n");
+	if(id==0)id = (u32)wc24_titleid;
+	if(titleid==0)titleid = wc24_titleid;
 	index = (u32)retval;
 	rec->ID = id;
 	rec->next_dl = 0;
@@ -404,15 +406,10 @@ s32 WC24_DeleteRecord(u32 index)
 
 s32 WC24_CreateWC24DlVFF(u32 filesize)
 {
-	u64 titleid = 0;
 	s32 retval;
 	char *filename = (char*)memalign(32, 256);
 	memset(filename, 0, 256);
-	//retval = ES_GetTitleID(&titleid);
-	//if(retval<0)return retval;
-	printf("ES_GetDataDir...\n");
-	titleid = 0x000100014a4f4449LL;
-	retval = ES_GetDataDir(titleid, filename);
+	retval = ES_GetDataDir(wc24_titleid, filename);
 	if(retval<0)
 	{
 		free(filename);
@@ -426,15 +423,10 @@ s32 WC24_CreateWC24DlVFF(u32 filesize)
 
 s32 WC24_MountWC24DlVFF()
 {
-	u64 titleid = 0;
 	s32 retval;
 	char *filename = (char*)memalign(32, 256);
 	memset(filename, 0, 256);
-	//retval = ES_GetTitleID(&titleid);
-	//if(retval<0)return retval;
-	printf("ES_GetDataDir...\n");
-	titleid = 0x000100014a4f4449LL;
-	retval = ES_GetDataDir(titleid, filename);
+	retval = ES_GetDataDir(wc24_titleid, filename);
 	if(retval<0)
 	{
 		free(filename);
@@ -454,5 +446,15 @@ time_t WC24_TimestampToSeconds(u32 timestamp)
 u32 WC24_SecondsToTimestamp(time_t timestamp)
 {
 	return timestamp / 60;
+}
+
+void WC24_SetTitleID(u64 titleid)
+{
+	wc24_titleid = titleid;
+}
+
+u64 WC24_GetTitleID()
+{
+	return wc24_titleid;
 }
 

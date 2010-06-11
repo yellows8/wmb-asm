@@ -125,12 +125,14 @@ s32 WC24_FindRecord(u32 id, nwc24dl_record *rec);//When find functions are succe
 s32 WC24_FindEntry(u32 id, char *url, nwc24dl_entry *ent);
 s32 WC24_FindEmptyRecord(nwc24dl_record *rec);
 s32 WC24_FindEmptyEntry(nwc24dl_entry *ent);
-s32 WC24_CreateRecord(nwc24dl_record *rec, nwc24dl_entry *ent, u32 id, u64 titleid, u16 group_id, u8 type, u8 record_flags, u32 flags, u16 dl_freq_perday, u16 dl_freq_days, char *url, char *filename);//Uses an old entry and record with same ID and URL if it exists, otherwise an empty record/entry is used. Returns index. The dl_freq parameters are in minutes, see: http://wiibrew.org/wiki//shared2/wc24/nwc24dl.bin
+s32 WC24_CreateRecord(nwc24dl_record *rec, nwc24dl_entry *ent, u32 id, u64 titleid, u16 group_id, u8 type, u8 record_flags, u32 flags, u16 dl_freq_perday, u16 dl_freq_days, char *url, char *filename);//Uses an old entry and record with same ID and URL if it exists, otherwise an empty record/entry is used. Returns index. The dl_freq parameters are in minutes, see: http://wiibrew.org/wiki//shared2/wc24/nwc24dl.bin When id or titleid is zero, the current titleid is used for those fields.
 s32 WC24_DeleteRecord(u32 index);//Deletes a record and entry.
 s32 WC24_CreateWC24DlVFF(u32 filesize);//Due to an issue with the FAT size calculation algo, filesizes over 1MB must be aligned to a MB.
 s32 WC24_MountWC24DlVFF();
 time_t WC24_TimestampToSeconds(u32 timestamp);
 u32 WC24_SecondsToTimestamp(time_t timestamp);
+void WC24_SetTitleID(u64 titleid);//Sets the titleid to use for WC24_CreateWC24DlVFF and WC24_MountWC24DlVFF. WC24_Init uses ES_GetTitleID for the titleid.
+u64 WC24_GetTitleID();//Get the titleid used for WC24_CreateWC24DlVFF and WC24_MountWC24DlVFF.
 
 #ifdef __cplusplus
    }
