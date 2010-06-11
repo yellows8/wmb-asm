@@ -58,7 +58,7 @@ void DoStuff(char *url)
 	}
 	*titleid = 0x000100014a4f4449LL;
 	
-	printf("Use normal mail URL, or boot mail URL? Don't use the boot mail right now, it needs tested, and it's unknown if it can cause a brick for certain.(A = yes, B = no)\n");
+	printf("Use normal mail URL, or boot mail URL? Don't use the boot mail right now, it needs tested, and it's unknown if it can cause a brick for certain.(A = normal mail, B = boot mail)\n");
 	which = -1;
 	WPAD_ScanPads();
 	while(1)
@@ -240,21 +240,22 @@ void DoStuff(char *url)
 		if(usb_isgeckoalive(1))usb_sendbuffer_safe(1, &ent, sizeof(nwc24dl_entry));
 	}
 
-	printf("Set the next time KD calls STM_Wakeup, to the next 5 minutes?(A = yes, B = no)\n");
+	printf("Set the next time KD calls STM_Wakeup, to the next 5 or 30 minutes?(A = 5 minutes, 1 = 30 minutes, B = no)\n");
 	which = -1;
 	WPAD_ScanPads();
 	while(1)
 	{
 		WPAD_ScanPads();
 		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_B)which = 0;
-		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_A)which = 1;
+		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_A)which = 5;
+		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_1)which = 30;
 		if(which>-1)break;
 		VIDEO_WaitVSync();
 	}
 
 	if(which)
 	{
-		retval = KD_SetNextWakeup(5 * 60);
+		retval = KD_SetNextWakeup(which * 60);
 		if(retval<0)printf("KD_SetNextWakeup returned %d\n", retval);
 	}
 
