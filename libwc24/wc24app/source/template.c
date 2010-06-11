@@ -203,7 +203,7 @@ void DoStuff(char *url)
 	if(which)
 	{
 		printf("creating record\n");
-		retval = WC24_CreateRecord(&rec, &ent, (u32)*titleid, *titleid, 0x4842, WC24_TYPE_TITLEDATA, WC24_RECORD_FLAGS_DEFAULT, 0, 0xf, 0x5a0, url, "wc24test");//Set the dl_freq fields to download hourly and daily.0x3c
+		retval = WC24_CreateRecord(&rec, &ent, (u32)*titleid, *titleid, 0x4842, WC24_TYPE_TITLEDATA, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_RSA_VERIFY_DISABLE, 0xf, 0x5a0, url, "wc24test");//Set the dl_freq fields to download hourly and daily.0x3c
 		if(retval<0)
 		{
 			free(titleid);
@@ -353,7 +353,7 @@ void DoStuff(char *url)
 			{
 				if(ent.error_code!=0 || ent.error_code!=WC24_EHTTP304)printf("This entry was never downloaded since dl_timestamp is zero.\n");
 			}
-			if(ent.error_code==0 || ent.error_code==WC24_EHTTP304)
+			if((ent.error_code==0 || ent.error_code==WC24_EHTTP304) && ent.dl_timestamp!=0)
 			{
 				printf("Reading VFF since download was successful.\n");
 				printf("Mounting...\n");
