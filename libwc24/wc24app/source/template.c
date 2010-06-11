@@ -31,33 +31,21 @@ DEALINGS IN THE SOFTWARE.
 static void *xfb = NULL;
 static GXRModeObj *rmode = NULL;
 
+void IOSReload_SelectMenu();
+
 void DoStuff(char *url)
 {
 	nwc24dl_record rec;
 	nwc24dl_entry ent;
 	s32 retval;
-	u64 *titleid = (u64*)memalign(32, 8);
 	int which, i;
 	u32 triggers[2];
 	char mailurl[256];
+	char titleidlow[5];
+	u64 titleid;
 	memset(mailurl, 0, 256);
 	strncpy(mailurl, url, 255);
 
-	if(titleid==NULL)
-	{
-		printf("Failed to alloc mem.\n");
-		return;
-	}
-	printf("Getting titleid...\n");
-	retval = ES_GetTitleID(titleid);
-	if(retval<0)
-	{
-		//free(titleid);
-		printf("ES_GetTitleID returned %d\n", retval);
-		//return;
-	}
-	*titleid = 0x000100014a4f4449LL;
-	
 	printf("Use normal mail URL, or boot mail URL? Don't use the boot mail right now, it needs tested, and it's unknown if it can cause a brick for certain.(A = normal mail, B = boot mail)\n");
 	which = -1;
 	WPAD_ScanPads();
@@ -85,15 +73,22 @@ void DoStuff(char *url)
 		VIDEO_WaitVSync();
 	}
 
+	IOSReload_SelectMenu();
+
 	printf("Initalizing WC24...\n");
 	retval = WC24_Init(which);
 	if(retval<0)
 	{
-		free(titleid);
 		printf("WC24_Init returned %d\n", retval);
 		return;
 	}
-	
+	titleid = WC24_GetTitleID();
+	titleidlow[0] = (char)(titleid >> 24);
+	titleidlow[1] = (char)(titleid >> 16);
+	titleidlow[2] = (char)(titleid >> 8);
+	titleidlow[3] = (char)(titleid);
+	titleidlow[4] = 0;
+
 	printf("Create wc24dl.vff?(A = yes, B = no)\n");
 	which = -1;
 	WPAD_ScanPads();
@@ -112,13 +107,12 @@ void DoStuff(char *url)
 		retval = WC24_CreateWC24DlVFF(128 * 1024);
 		if(retval<0)
 		{
-			free(titleid);
 			printf("WC24_CreateWC24DlVFF returned %d\n", retval);
 			return;
 		}
 	}
 
-	printf("Overwrite JODI WC24 entries+records on NAND with the nwc24dlbak.bin entries from SD?(A = yes, B = no)\n");
+	printf("Overwrite WC24 entries+records on NAND for the current title(%s) with the nwc24dlbak.bin entries from SD?(A = yes, B = no)\n", titleidlow);
 	which = -1;
 	WPAD_ScanPads();
 	while(1)
@@ -133,7 +127,7 @@ void DoStuff(char *url)
 	if(which)
 	{
 		FILE *f = fopen("/nwc24dlbak.bin", "rb");
-		retval = WC24_FindEntry(0x4a4f4449, url, &ent);
+		retval = WC24_FindEntry((u32)titleid, url, &ent);
 		if(retval<0)
 		{
 			printf("Failed to find WC24 title data entry.\n");
@@ -149,7 +143,7 @@ void DoStuff(char *url)
 			WC24_WriteRecord((u32)retval, &rec);
 		}
 
-		retval = WC24_FindEntry(0x4a4f4449, mailurl, &ent);
+		retval = WC24_FindEntry((u32)titleid, mailurl, &ent);
 		if(retval<0)
 		{
 			printf("Failed to find WC24 mail entry.\n");
@@ -167,7 +161,7 @@ void DoStuff(char *url)
 		fclose(f);
 	}
 
-	printf("Delete JODI WC24 records+entries?(A = yes, B = no)\n");
+	printf("Delete WC24 records+entries for the current title(%s)?(A = yes, B = no)\n", titleidlow);
 	which = -1;
 	WPAD_ScanPads();
 	while(1)
@@ -181,7 +175,7 @@ void DoStuff(char *url)
 
 	if(which)
 	{
-		while((retval=WC24_FindRecord(0x4a4f4449, &rec))!=LIBWC24_ENOENT)//Delete all HBC records+entries.
+		while((retval=WC24_FindRecord((u32)titleid, &rec))!=LIBWC24_ENOENT)//Delete all HBC records+entries.
 		{
 			printf("deleting %x %d\n", retval, retval);
 			WC24_DeleteRecord((u32)retval);
@@ -203,10 +197,9 @@ void DoStuff(char *url)
 	if(which)
 	{
 		printf("creating record\n");
-		retval = WC24_CreateRecord(&rec, &ent, (u32)*titleid, *titleid, 0x4842, WC24_TYPE_TITLEDATA, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_RSA_VERIFY_DISABLE, 0xf, 0x5a0, url, "wc24test");//Set the dl_freq fields to download hourly and daily.0x3c
+		retval = WC24_CreateRecord(&rec, &ent, 0, 0, 0x4842, WC24_TYPE_TITLEDATA, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_RSA_VERIFY_DISABLE, 0xf, 0x5a0, url, "wc24test");//Set the dl_freq fields to download hourly and daily.0x3c
 		if(retval<0)
 		{
-			free(titleid);
 			printf("WC24_CreateRecord returned %d\n", retval);
 			return;
 		}
@@ -229,10 +222,9 @@ void DoStuff(char *url)
 	if(which)
 	{
 		printf("creating record\n");
-		retval = WC24_CreateRecord(&rec, &ent, (u32)*titleid, *titleid, 0x4842, WC24_TYPE_MSGBOARD, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_RSA_VERIFY_DISABLE, 0xf, 0x5a0, mailurl, NULL);//Set the dl_freq fields to download hourly and daily.0x3c
+		retval = WC24_CreateRecord(&rec, &ent, 0, 0, 0x4842, WC24_TYPE_MSGBOARD, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_RSA_VERIFY_DISABLE, 0xf, 0x5a0, mailurl, NULL);//Set the dl_freq fields to download hourly and daily.0x3c
 		if(retval<0)
 		{
-			free(titleid);
 			printf("WC24_CreateRecord returned %d\n", retval);
 			return;
 		}
@@ -408,7 +400,6 @@ void DoStuff(char *url)
 		}
 	}
 
-	free(titleid);
 	printf("Shutting down WC24...\n");
 	retval = WC24_Shutdown();
 	if(retval<0)
@@ -544,7 +535,6 @@ int main(int argc, char **argv) {
 	if(usb_isgeckoalive(1))CON_EnableGecko(1, 1);
 
 	fatInitDefault();
-	IOSReload_SelectMenu();
 
 	printf("\nUse a Internet server URL(Button A) or a LAN server URL?(Button B)\n");
 	WPAD_ScanPads();	
