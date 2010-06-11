@@ -19,7 +19,7 @@ Download content immediately.
 Get and set the KD UTC time.
 
 Known bugs:
-The libwc24 v1.0 source tarball(not the pre-compiled library and dol) has a ISFS heap smashing bug. Only 0x10 bytes for the size of a record is allocated for reading and writing records, but ISFS always reads/writes at least 0x20 bytes. This was fixed in SVN by changing the buffer allocate size to 0x20 bytes.
+The libwc24 v1.0 source tarball(not the pre-compiled library and dol) has a ISFS heap buffer overflow bug. Only 0x10 bytes for the size of a record is allocated for reading and writing records, but ISFS always reads/writes at least 0x20 bytes. This was fixed in SVN by changing the buffer allocate size to 0x20 bytes.
 
 Credits:
 Raven's id.c from fs_browser for identifying as HBC
