@@ -273,8 +273,9 @@ s32 WC24_FindRecord(u32 id, nwc24dl_record *rec)
 	s32 retval = 0;
 	u32 found = 0;
 	if(!wc24_did_init)return LIBWC24_EINIT;
-	u32 i;
-	for(i=0; i<NWC24DL_Header->max_entries; i++)
+	u32 i = 0;
+	if(id==0)i = NWC24DL_Header->reserved_mailnum;
+	for(; i<NWC24DL_Header->max_entries; i++)
 	{
 		retval = WC24_ReadRecord(i, rec);
 		if(retval<0)break;
@@ -295,8 +296,9 @@ s32 WC24_FindEntry(u32 id, char *url, nwc24dl_entry *ent)
 	s32 retval = 0;
 	u32 found = 0;
 	if(!wc24_did_init)return LIBWC24_EINIT;
-	u32 i;
-	for(i=0; i<NWC24DL_Header->max_entries; i++)
+	u32 i = 0;
+	if(id==0)i = NWC24DL_Header->reserved_mailnum;
+	for(; i<NWC24DL_Header->max_entries; i++)
 	{
 		retval = WC24_ReadEntry(i, ent);
 		if(retval<0)break;
