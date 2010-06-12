@@ -44,7 +44,7 @@ DEALINGS IN THE SOFTWARE.
 #define WC24_FLAGS_RSA_VERIFY_DISABLE BIT(2)//Skip RSA signature verification.
 #define WC24_FLAGS_AES_WC24PUBKMOD BIT(3)//Use AES key from wc24pubk.mod in title's data dir instead of default key.
 #define WC24_FLAGS_IDLEONLY BIT(4)//Only download this entry in idle mode.
-#define WC24_FLAGS_MAIL_DLFREQHDR_RANGESKIP BIT(31)//For mail entries, when the X-Wii-Download-Interval header in mail is used when nwc24dl_header.reserved_mailnum <= ent.index, skip the range check on the header value frequency. If this block fails, the header parser function returns -4: if(input_freq - 180 <= 9900).
+#define WC24_FLAGS_MAIL_DLFREQHDR_RANGESKIP BIT(30)//For mail entries, when the X-Wii-Download-Interval header in mail is used when nwc24dl_header.reserved_mailnum <= ent.index, skip the range check on the header value frequency. If this block fails, the header parser function returns -4: if(input_freq - 180 <= 9900).
 
 #define WC24_SUBTASK_FLAGS_ENABLE BIT(0)//Use subTasks
 
