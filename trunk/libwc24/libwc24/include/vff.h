@@ -68,6 +68,7 @@ typedef struct _fat_filectx
 s32 VFF_CreateVFF(char *path, u32 filesize);//Creates VFF at path with ISFS. Returns zero on success, ISFS error otherwise. Due to an issue with the FAT size calculation algo, filesizes over 1MB must be aligned to a MB.
 s32 VFF_Mount(char *path);//Opens a VFF, only one VFF can be open at a time.
 s32 VFF_Unmount();
+u32 VFF_GetFATSize(u32 filesize);
 fat_filectx *VFF_Open(char *path);//Opens a file in the mounted VFF, no leading root directory slash. Only MS-DOS 8.3 filenames are supported for file/directory names with this implementation.
 void VFF_Close(fat_filectx *ctx);
 s32 VFF_Read(fat_filectx *ctx, u8 *buffer, u32 length);//Reads data from a file in the mounted VFF.

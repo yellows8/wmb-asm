@@ -27,6 +27,12 @@ DEALINGS IN THE SOFTWARE.
 
 #include "vff.h"
 #include "wc24.h"
+#include "ffconf.h"
+
+//These two defines are from bushing's FAT size code: http://wiibrew.org/wiki/VFF
+#define ALIGN_FORWARD(x,align) \
+        ((typeof(x))((((u32)(x)) + (align) - 1) & (~((align)-1))))
+#define CLUSTER_SIZE 0x200
 
 //The proper way to implement VFF code is to port and modify a FAT implementation.
 //The directory entries and FATs are little-endian, but the VFF header is big-endian.
@@ -40,40 +46,27 @@ u32 vff_datastart;
 
 u8 MBLFN[0x20] = {0x41, 0x6D, 0x00, 0x62, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x0F, 0x00, 0x94, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF};
 
+u32 vff_fatsizes[_DRIVES];
+
 s32 VFF_ReadCluster(u32 cluster, void* buffer);
 
 u32 le32toh(u32 x);
 u16 le16toh(u16 x);
 
-u32 VFF_GetVFF_FATSize(u32 filesize)
+u32 VFF_GetFATSize(u32 filesize)
 {
-	if(filesize < 0x100000)
-	{//This block is executed for filesizes less than 1MB.
-		u32 base = (filesize / 0x200) - 8;
-		u32 fatsz = base;
-		if(base % 0x200)//Should always be executed.
-		{
-		     if(base<0x200)
-		     {
-		          fatsz = 0x200;
-		     }
-		     else
-		     {
-		          fatsz++;
-		     }
-		}
-		return fatsz;
-	}
-	else
-	{
-		return filesize >> 8;//VFF files larger than 1MB must be aligned to a MB, since this algo doesn't work right with filesizes not aligned.
-	}
+    u32 num_clusters = filesize / CLUSTER_SIZE;//this code is written by bushing: http://wiibrew.org/wiki/VFF
+    u32 fat_bits = 32;
+    if (num_clusters < 0xFFF5) fat_bits = 16;
+    if (num_clusters < 0xFF5)  fat_bits = 12;
+ 
+    return ALIGN_FORWARD(num_clusters * fat_bits / 8, CLUSTER_SIZE);
 }
 
 s32 VFF_CreateVFF(char *path, u32 filesize)
 {
 	s32 retval, fd;
-	u32 fatsz = VFF_GetVFF_FATSize(filesize);
+	u32 fatsz = VFF_GetFATSize(filesize);
 	if(path==NULL)return 0;
 	vff_header *header = (vff_header*)memalign(32, sizeof(vff_header));	
 	s16 *fat = (s16*)memalign(32, fatsz);
@@ -220,9 +213,10 @@ s32 VFF_Mount(char *path)
 	}
 	memset(vff_hdr, 0, sizeof(vff_header));
 	ISFS_Read(vff_fd, vff_hdr, sizeof(vff_header));
-	vff_fatsize = VFF_GetVFF_FATSize(vff_hdr->filesize);
+	vff_fatsize = VFF_GetFATSize(vff_hdr->filesize);
 	vff_datastart = vff_hdr->header_size + (vff_fatsize*2) + 0x1000;
-	
+	vff_fatsizes[0] = vff_fatsize;
+
 	vff_fat = (s16*)memalign(32, vff_fatsize);
 	if(vff_fat==NULL)
 	{

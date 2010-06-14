@@ -24,6 +24,7 @@ DEALINGS IN THE SOFTWARE.
 #include <gccore.h>
 #include <string.h>
 #include <malloc.h>
+#include <isfs/isfs.h>
 
 #include "wc24.h"
 #include "id.h"
@@ -72,8 +73,14 @@ s32 WC24_Init(int id)
 	retval = ES_GetTitleID(&wc24_titleid);
 	if(retval<0)
 	{
+		u32 temp = 0;
 		printf("ES_GetTitleID returned %d\n", retval);
 		//return retval;
+	}
+
+	if(!ISFS_Mount())
+	{
+		printf("ISFS_Mount failed.\n");
 	}
 
 	return WC24_CloseNWC4DLBin();
