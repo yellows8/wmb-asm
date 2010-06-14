@@ -326,7 +326,7 @@ void DoStuff(char *url)
 	{
 		struct tm *time;
 		time_t dltime;
-		fat_filectx *fdl;
+		FIL *fdl;
 		char *dlbuf;
 		retval = WC24_FindEntry(0x4a4f4449, url, &ent);
 		if(retval<0)
@@ -364,13 +364,13 @@ void DoStuff(char *url)
 					}
 					else
 					{
-						printf("Filesize: %x cluster %x\n", fdl->filesize, fdl->cluster);
-						dlbuf = (char*)malloc(fdl->filesize);
+						printf("Filesize: %x\n", (u32)fdl->fsize);
+						dlbuf = (char*)malloc((u32)fdl->fsize);
 						if(dlbuf)
 						{
-							VFF_Read(fdl, (u8*)dlbuf, fdl->filesize);
+							VFF_Read(fdl, (u8*)dlbuf, (u32)fdl->fsize);
 							printf("Content:\n");
-							for(i=0; i<fdl->filesize; i++)printf("%c", dlbuf[i]);
+							for(i=0; i<(u32)fdl->fsize; i++)printf("%c", dlbuf[i]);
 							free(dlbuf);
 							printf("\n");
 						}

@@ -51,6 +51,10 @@ u32 vff_datastart;
 
 u8 MBLFN[0x20] = {0x41, 0x6D, 0x00, 0x62, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x0F, 0x00, 0x94, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF};
 
+FATFS vff_filesystems[_DRIVES];
+extern FILE *disk_vff_handles[_DRIVES];
+int vff_totalmountedfs = 0;
+
 s32 VFF_ReadCluster(u32 cluster, void* buffer);
 
 #ifdef HW_RVL
@@ -213,7 +217,23 @@ s32 VFF_CreateVFF(char *path, u32 filesize)
 
 s32 VFF_Mount(char *path)
 {
+	char isfspath[256];
 	s32 retval;
+	
+	memset(isfspath, 0, 256);
+	#ifdef HW_RVL
+	strncpy(isfspath, "isfs:", 255);
+	#endif
+	strncpy(isfspath, path, 255);
+
+	disk_vff_handles[vff_totalmountedfs] = fopen(isfspath, "r+");
+	if(disk_vff_handles[vff_totalmountedfs]==NULL)return -1;
+	retval = (s32)f_mount((BYTE)vff_totalmountedfs, &vff_filesystems[vff_totalmountedfs]);
+	if(retval!=0)return retval;
+	vff_totalmountedfs++;
+	return 0;
+	
+	/*s32 retval;
 	if(vff_fd!=0 || path==NULL)return 0;
 	retval = ISFS_Open(path, ISFS_OPEN_RW);
 	if(retval<0)return retval;
@@ -255,21 +275,35 @@ s32 VFF_Mount(char *path)
 		return -1;
 	}
 	ISFS_Read(vff_fd, vff_rootdir, 0x1000);
-	return 0;
+	return 0;*/
 }
 
 s32 VFF_Unmount()
 {
-	if(vff_fd==0)return 0;
+	vff_totalmountedfs--;
+	fclose(disk_vff_handles[vff_totalmountedfs]);
+	return 0;
+	/*if(vff_fd==0)return 0;
 	if(vff_hdr)free(vff_hdr);
 	if(vff_fat)free(vff_fat);
 	if(vff_rootdir)free(vff_rootdir);
-	return ISFS_Close(vff_fd);
+	return ISFS_Close(vff_fd);*/
 }
 
-fat_filectx *VFF_Open(char *path)
+FIL *VFF_Open(char *path)
 {
-	int isroot = 1;
+	s32 retval;
+	FIL *f = (FIL*)malloc(sizeof(FIL));
+	memset(f, 0, sizeof(FIL));
+	retval = (s32)f_open(f, (const TCHAR*)path, FA_READ | FA_WRITE);
+	if(retval!=0)
+	{
+		printf("f_open returned %d\n", retval);
+		free(f);
+		return NULL;
+	}
+	return f;
+	/*int isroot = 1;
 	int curlen = 0;
 	int pathi = 0;
 	int i = 0, clus = 0;
@@ -346,19 +380,22 @@ fat_filectx *VFF_Open(char *path)
 	}
 	if(!isroot)free(ent);
 
-	return ctx;
+	return ctx;*/
 }
 
-void VFF_Close(fat_filectx *ctx)
+void VFF_Close(FIL *ctx)
 {
 	if(ctx==NULL)return;
-	free(ctx->ent);
+	//free(ctx->ent);
+	//free(ctx);
+	f_close(ctx);
 	free(ctx);
 }
 
-s32 VFF_Read(fat_filectx *ctx, u8 *buffer, u32 length)
+s32 VFF_Read(FIL *ctx, u8 *buffer, u32 length)
 {
-	u8 *buf = (u8*)memalign(32, 0x200);
+	UINT readbytes = 0;
+	/*u8 *buf = (u8*)memalign(32, 0x200);
 	int len = length;
 	int i = 0;
 	s32 retval = 0;
@@ -374,7 +411,9 @@ s32 VFF_Read(fat_filectx *ctx, u8 *buffer, u32 length)
 		if(retval<0)break;
 	}
 	free(buf);
-	return retval;
+	return retval;*/
+	f_read(ctx, buffer, length, &readbytes);
+	return readbytes;
 }
 
 s32 VFF_ReadCluster(u32 cluster, void* buffer)
@@ -392,6 +431,16 @@ u32 le32toh(u32 x)
 u16 le16toh(u16 x)
 {
 	return ((x & 0xff00) >> 8) | ((x & 0x00ff) << 8);
+}
+
+u32 htole32(u32 x)
+{
+	return ((x & 0x000000ff) << 24) | ((x & 0x0000ff00) << 8) | ((x & 0x00ff0000) >> 8) | ((x & 0xff000000) >> 24);
+}
+
+u16 htole16(u16 x)
+{
+	return ((x & 0x00ff) << 8) | ((x & 0xff00) >> 8);
 }
 #endif
 

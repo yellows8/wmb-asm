@@ -106,6 +106,9 @@ install:
 	@cp include/wc24.h $(DEVKITPRO)/libogc/include/wc24
 	@cp include/kd.h $(DEVKITPRO)/libogc/include/wc24
 	@cp include/vff.h $(DEVKITPRO)/libogc/include/wc24
+	@cp include/ff.h $(DEVKITPRO)/libogc/include/wc24
+	@cp include/ffconf.h $(DEVKITPRO)/libogc/include/wc24
+	@cp include/integer.h $(DEVKITPRO)/libogc/include/wc24
 
 #---------------------------------------------------------------------------------
 clean:
