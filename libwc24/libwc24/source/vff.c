@@ -21,9 +21,14 @@ DEALINGS IN THE SOFTWARE.
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <gccore.h>
 #include <string.h>
 #include <malloc.h>
+
+#ifdef HW_RVL
+#include <gccore.h>
+#else
+#include <endian.h>
+#endif
 
 #include "vff.h"
 #include "wc24.h"
@@ -46,21 +51,31 @@ u32 vff_datastart;
 
 u8 MBLFN[0x20] = {0x41, 0x6D, 0x00, 0x62, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x0F, 0x00, 0x94, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF};
 
-u32 vff_fatsizes[_DRIVES];
-
 s32 VFF_ReadCluster(u32 cluster, void* buffer);
 
+#ifdef HW_RVL
 u32 le32toh(u32 x);
 u16 le16toh(u16 x);
+#endif
 
 u32 VFF_GetFATSize(u32 filesize)
 {
-    u32 num_clusters = filesize / CLUSTER_SIZE;//this code is written by bushing: http://wiibrew.org/wiki/VFF
+    u32 num_clusters = filesize / CLUSTER_SIZE;//This code is written by bushing: http://wiibrew.org/wiki/VFF
     u32 fat_bits = 32;
     if (num_clusters < 0xFFF5) fat_bits = 16;
     if (num_clusters < 0xFF5)  fat_bits = 12;
  
     return ALIGN_FORWARD(num_clusters * fat_bits / 8, CLUSTER_SIZE);
+}
+
+u32 VFF_GetFATType(u32 filesize)//This is based on the above function VFF_GetFATSize by bushing.
+{
+    u32 num_clusters = filesize / CLUSTER_SIZE;
+    u32 fat_bits = 32;
+    if (num_clusters < 0xFFF5) fat_bits = 16;
+    if (num_clusters < 0xFF5)  fat_bits = 12;
+ 
+    return fat_bits;
 }
 
 s32 VFF_CreateVFF(char *path, u32 filesize)
@@ -215,7 +230,6 @@ s32 VFF_Mount(char *path)
 	ISFS_Read(vff_fd, vff_hdr, sizeof(vff_header));
 	vff_fatsize = VFF_GetFATSize(vff_hdr->filesize);
 	vff_datastart = vff_hdr->header_size + (vff_fatsize*2) + 0x1000;
-	vff_fatsizes[0] = vff_fatsize;
 
 	vff_fat = (s16*)memalign(32, vff_fatsize);
 	if(vff_fat==NULL)
@@ -369,6 +383,7 @@ s32 VFF_ReadCluster(u32 cluster, void* buffer)
 	return ISFS_Read(vff_fd, buffer, 0x200);
 }
 
+#ifdef HW_RVL
 u32 le32toh(u32 x)
 {
 	return ((x & 0xff000000) >> 24) | ((x & 0x00ff0000) >> 8) | ((x & 0x0000ff00) << 8) | ((x & 0x000000ff) << 24);
@@ -378,4 +393,5 @@ u16 le16toh(u16 x)
 {
 	return ((x & 0xff00) >> 8) | ((x & 0x00ff) << 8);
 }
+#endif
 

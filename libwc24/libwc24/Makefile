@@ -98,16 +98,14 @@ export OUTPUT	:=	$(CURDIR)/$(TARGET)
 $(BUILD):
 	@[ -d $@ ] || mkdir -p $@
 	@make --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
-	@cp $(OUTPUT).a $(DEVKITPRO)/libogc/lib/wii
-	@cp include/wc24.h $(DEVKITPRO)/libogc/include
-	@cp include/kd.h $(DEVKITPRO)/libogc/include
-	@cp include/vff.h $(DEVKITPRO)/libogc/include
+	@make --no-print-directory -f $(CURDIR)/Makefile install
 
 install:
 	@cp $(OUTPUT).a $(DEVKITPRO)/libogc/lib/wii
-	@cp include/wc24.h $(DEVKITPRO)/libogc/include
-	@cp include/kd.h $(DEVKITPRO)/libogc/include
-	@cp include/vff.h $(DEVKITPRO)/libogc/include
+	@mkdir -p $(DEVKITPRO)/libogc/include/wc24
+	@cp include/wc24.h $(DEVKITPRO)/libogc/include/wc24
+	@cp include/kd.h $(DEVKITPRO)/libogc/include/wc24
+	@cp include/vff.h $(DEVKITPRO)/libogc/include/wc24
 
 #---------------------------------------------------------------------------------
 clean:

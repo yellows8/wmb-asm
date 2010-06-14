@@ -69,6 +69,7 @@ s32 VFF_CreateVFF(char *path, u32 filesize);//Creates VFF at path with ISFS. Ret
 s32 VFF_Mount(char *path);//Opens a VFF, only one VFF can be open at a time.
 s32 VFF_Unmount();
 u32 VFF_GetFATSize(u32 filesize);
+u32 VFF_GetFATType(u32 filesize);
 fat_filectx *VFF_Open(char *path);//Opens a file in the mounted VFF, no leading root directory slash. Only MS-DOS 8.3 filenames are supported for file/directory names with this implementation.
 void VFF_Close(fat_filectx *ctx);
 s32 VFF_Read(fat_filectx *ctx, u8 *buffer, u32 length);//Reads data from a file in the mounted VFF.
