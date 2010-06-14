@@ -23,6 +23,7 @@ DEALINGS IN THE SOFTWARE.
 #define _H_VFF
 
 #include <gctypes.h>
+#include "ff.h"
 
 #ifdef __cplusplus
    extern "C" {
@@ -70,9 +71,9 @@ s32 VFF_Mount(char *path);//Opens a VFF, only one VFF can be open at a time.
 s32 VFF_Unmount();
 u32 VFF_GetFATSize(u32 filesize);
 u32 VFF_GetFATType(u32 filesize);
-fat_filectx *VFF_Open(char *path);//Opens a file in the mounted VFF, no leading root directory slash. Only MS-DOS 8.3 filenames are supported for file/directory names with this implementation.
-void VFF_Close(fat_filectx *ctx);
-s32 VFF_Read(fat_filectx *ctx, u8 *buffer, u32 length);//Reads data from a file in the mounted VFF.
+FIL *VFF_Open(char *path);//Opens a file in the mounted VFF, no leading root directory slash. Only MS-DOS 8.3 filenames are supported for file/directory names with this implementation.
+void VFF_Close(FIL *ctx);
+s32 VFF_Read(FIL *ctx, u8 *buffer, u32 length);//Reads data from a file in the mounted VFF.
 
 #ifdef __cplusplus
    }
