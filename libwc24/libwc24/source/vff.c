@@ -39,9 +39,6 @@ DEALINGS IN THE SOFTWARE.
         ((typeof(x))((((u32)(x)) + (align) - 1) & (~((align)-1))))
 #define CLUSTER_SIZE 0x200
 
-//The proper way to implement VFF code is to port and modify a FAT implementation.
-//The directory entries and FATs are little-endian, but the VFF header is big-endian.
-
 s32 vff_fd = 0;
 vff_header *vff_hdr;
 s16 *vff_fat;
@@ -52,7 +49,8 @@ u32 vff_datastart;
 u8 MBLFN[0x20] = {0x41, 0x6D, 0x00, 0x62, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x0F, 0x00, 0x94, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF};
 
 FATFS vff_filesystems[_DRIVES];
-extern FILE *disk_vff_handles[_DRIVES];
+//extern FILE *disk_vff_handles[_DRIVES];
+extern s32 disk_vff_handles[_DRIVES];
 int vff_totalmountedfs = 0;
 
 s32 VFF_ReadCluster(u32 cluster, void* buffer);
@@ -221,13 +219,16 @@ s32 VFF_Mount(char *path)
 	s32 retval;
 	
 	memset(isfspath, 0, 256);
-	#ifdef HW_RVL
+	/*#ifdef HW_RVL
 	strncpy(isfspath, "isfs:", 255);
-	#endif
-	strncpy(isfspath, path, 255);
+	#endif*/
+	strncat(isfspath, path, 255);
 
-	disk_vff_handles[vff_totalmountedfs] = fopen(isfspath, "r+");
-	if(disk_vff_handles[vff_totalmountedfs]==NULL)return -1;
+	printf("Mounting %s\n", isfspath);
+	//disk_vff_handles[vff_totalmountedfs] = fopen(isfspath, "r+");
+	disk_vff_handles[vff_totalmountedfs] = ISFS_Open(isfspath, ISFS_OPEN_RW);
+	//if(disk_vff_handles[vff_totalmountedfs]==NULL)return -1;
+	if(disk_vff_handles[vff_totalmountedfs]<0)return disk_vff_handles[vff_totalmountedfs];
 	retval = (s32)f_mount((BYTE)vff_totalmountedfs, &vff_filesystems[vff_totalmountedfs]);
 	if(retval!=0)return retval;
 	vff_totalmountedfs++;
@@ -281,7 +282,8 @@ s32 VFF_Mount(char *path)
 s32 VFF_Unmount()
 {
 	vff_totalmountedfs--;
-	fclose(disk_vff_handles[vff_totalmountedfs]);
+	//fclose(disk_vff_handles[vff_totalmountedfs]);
+	ISFS_Close(disk_vff_handles[vff_totalmountedfs]);
 	return 0;
 	/*if(vff_fd==0)return 0;
 	if(vff_hdr)free(vff_hdr);
@@ -414,6 +416,30 @@ s32 VFF_Read(FIL *ctx, u8 *buffer, u32 length)
 	return retval;*/
 	f_read(ctx, buffer, length, &readbytes);
 	return readbytes;
+}
+
+s32 VFF_Write(FIL *ctx, u8 *buffer, u32 length)
+{
+	UINT writtenbytes = 0;
+	/*u8 *buf = (u8*)memalign(32, 0x200);
+	int len = length;
+	int i = 0;
+	s32 retval = 0;
+	if(len>0x200)len = 0x200;
+	while(length>0)
+	{
+		retval = VFF_ReadCluster(ctx->cluster + i, buf);
+		length-=len;
+		memcpy(buffer, buf, len);
+		buffer+=len;
+		i++;
+		if(length<0x200)len = length;
+		if(retval<0)break;
+	}
+	free(buf);
+	return retval;*/
+	f_write(ctx, buffer, length, &writtenbytes);
+	return writtenbytes;
 }
 
 s32 VFF_ReadCluster(u32 cluster, void* buffer)

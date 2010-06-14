@@ -2,7 +2,6 @@ libwc24 v1.1 by yellowstar6
 This library allows Wii homebrew to use WiiConnect24. You need certain IOS to use libwc24 when accessing HBC data dir for creating and reading wc24dl.vff which contains the downloaded title data WC24 content. With IOS prior to the 3.4 update, you only need to identify as HBC, and wc24app has a option to identify as HBC. With IOS updated since the 3.4 update, you need a IOS with NAND permissions patches, since patched ES_Identify doesn't work for the second time it's called. These IOS requirements are needed because HBC reloads IOS when loading homebrew, which resets the current identification. In this directory tree is libwc24 and wc24app. The former is the actual library, and the latter is the WC24 test app. Each time libwc24 is compiled successfully, the header files and libwc24.a will be copied to $DEVKITPRO/libogc/include/wc24 and $DEVKITPRO/libogc/lib libwc24 can be also be installed by running this in the libwc24 directory: make install Optionally you can install libwc24 by copying the headers and library to the above libogc directories.
 For more WC24 info, see the Wiibrew pages: http://wiibrew.org/wiki/WiiConnect24 http://wiibrew.org/wiki//shared2/wc24/nwc24dl.bin http://wiibrew.org/wiki/WC24_Content
 The source is included with the download tarball, and is also available on SVN at: http://code.google.com/p/wmb-asm/source/checkout
-To compile libwc24, wc24app, and software using libwc24 you need libisfs from ftpii SVN.
 
 These are the Internet server URLs that wc24app can install: http://members.iglide.net/ticeandsons/yellowstar/wc24test http://members.iglide.net/ticeandsons/yellowstar/wc24testmail
 The former is the title data URL, the latter is the message board mail URL.
@@ -28,6 +27,8 @@ Fixed ISFS heap bug in source, see known bugs.
 Added support for KD_SetNextWakeup and KD_GetTimeTriggers.
 Added support for KD_Download flag sync UTC time.
 KD_Open and KD_Close are now called by WC24_Init and WC24_Shutdown.
+VFF files can be read and written with libff, but only MS-DOS 8.3 can be used still since LFN needs a Unicode library.
+Fixed typo for the WC24_EHTTP304 define value. In libwc24 v1.0 this caused wc24app to skip VFF reading since wc24app/libwc24 didn't recognize the error from ent.error_code.
 
 v1.0:
 Initial release.
@@ -36,5 +37,4 @@ Credits:
 Raven's id.c from fs_browser for identifying as HBC
 Bushing for VFF FAT size code: http://wiibrew.org/wiki/VFF
 Elm Chan FatFs
-ftpii libisfs from SVN
 

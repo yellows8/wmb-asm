@@ -21,14 +21,24 @@ DEALINGS IN THE SOFTWARE.
 
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
+#include <gccore.h>
+#include <malloc.h>
 #include "diskio.h"
 #include "ffconf.h"
 #include "vff.h"
 
+/*#ifndef HW_RVL
 FILE *disk_vff_handles[_DRIVES];
+#else*/
+s32 disk_vff_handles[_DRIVES];
+//#endif
 unsigned int vff_filesizes[_DRIVES];
 unsigned int vff_fatsizes[_DRIVES];
 unsigned int vff_fat_types[_DRIVES];
+extern int vff_totalmountedfs;
+
+u8 diskio_buffer[0x200] __attribute__((aligned(32)));
 
 unsigned int htole16(unsigned int x);
 unsigned short htole32(unsigned short x);
@@ -55,23 +65,40 @@ int GetFileLength(FILE *f)
 
 DSTATUS disk_initialize(BYTE drv)
 {
-	if(disk_vff_handles[(int)drv]==NULL)return STA_NOINIT;
-	vff_filesizes[(int)drv] = (unsigned int)GetFileLength(disk_vff_handles[(int)drv]);
+	s32 retval;
+	fstats *stats = (fstats*)memalign(32, sizeof(fstats));
+	printf("disk_init\n");
+	if((int)drv >= vff_totalmountedfs)return STA_NOINIT;	
+	retval = ISFS_GetFileStats(disk_vff_handles[(int)drv], stats);
+	if(retval<0)
+	{
+		printf("getfilestats returned %d\n", retval);
+	}
+	vff_filesizes[(int)drv] = stats->file_length;
+	free(stats);
+	//vff_filesizes[(int)drv] = (unsigned int)GetFileLength(disk_vff_handles[(int)drv]);
 	vff_fatsizes[(int)drv] = VFF_GetFATSize(vff_filesizes[(int)drv]);
 	vff_fat_types[(int)drv] = VFF_GetFATType(vff_filesizes[(int)drv]);
+	printf("disk_init ok: filesize %x fatsize %x fat_type %d\n", vff_filesizes[(int)drv], vff_fatsizes[(int)drv], vff_fat_types[(int)drv]);
 
 	return 0;
 }
 
 DSTATUS disk_status (BYTE drv)
 {
-	if(disk_vff_handles[(int)drv]!=NULL)return 0;
+	if((int)drv < vff_totalmountedfs)
+	{
+		printf("disk status ok\n");
+		return 0;
+	}
+	printf("disk status not ok\n");
 	return STA_NODISK;
 }
 
 DRESULT disk_read(BYTE drv,BYTE *buff, DWORD sector, BYTE count)
 {
 	int retval = 0;
+	printf("disk read sector %x num %x\n", (unsigned int)sector, (unsigned int)count);
 	if(sector==0)return diskio_generatefatsector(drv, sector, buff);
 	if(sector==1 && vff_fat_types[(int)drv]==32)return diskio_generatefatsector(drv, sector, buff);
 	sector--;
@@ -81,11 +108,29 @@ DRESULT disk_read(BYTE drv,BYTE *buff, DWORD sector, BYTE count)
 		return 0;
 	}
 	if(sector>=31 && vff_fat_types[(int)drv]==32)sector-=31;
+	sector-=2;
 
-	retval = fseek(disk_vff_handles[(int)drv], 0x20 + sector*0x200, SEEK_SET);
-	if(retval<0)return RES_PARERR;
-	retval = fread(buff, 0x200, count, disk_vff_handles[(int)drv]);
-	if(retval!=count*0x200)return RES_PARERR;
+	//retval = fseek(disk_vff_handles[(int)drv], 0x20 + (sector*0x200), SEEK_SET);
+	retval = ISFS_Seek(disk_vff_handles[(int)drv], 0x20 + (sector*0x200), SEEK_SET);	
+	if(retval<0)
+	{
+		printf("seek fail\n");
+		return RES_PARERR;
+	}
+
+	//retval = fread(buff, 0x200, count, disk_vff_handles[(int)drv]);
+	while(count>0)
+	{
+		retval = ISFS_Read(disk_vff_handles[(int)drv], diskio_buffer, 0x200);
+		if(retval!=0x200)
+		{
+			printf("read only %x bytes, wanted %x bytes\n", retval, 0x200);
+			return RES_PARERR;
+		}		
+		memcpy(buff, diskio_buffer, 0x200);
+		buff+=0x200;
+		count--;
+	}
 	return 0;
 }
 
@@ -93,6 +138,7 @@ DRESULT disk_read(BYTE drv,BYTE *buff, DWORD sector, BYTE count)
 DRESULT disk_write(BYTE drv, const BYTE *buff, DWORD sector, BYTE count)
 {
 	int retval = 0;
+	printf("disk write sector %x num %x\n", (unsigned int)sector, (unsigned int)count);
 	if(sector==0)return 0;
 	if(sector==1 && vff_fat_types[(int)drv]==32)return 0;
 	sector--;
@@ -101,17 +147,36 @@ DRESULT disk_write(BYTE drv, const BYTE *buff, DWORD sector, BYTE count)
 		return 0;
 	}
 	if(sector>=31 && vff_fat_types[(int)drv]==32)sector-=31;
+	sector-=2;
 
-	retval = fseek(disk_vff_handles[(int)drv], 0x20 + sector*0x200, SEEK_SET);
-	if(retval<0)return RES_PARERR;
-	retval = fwrite(buff, 0x200, count, disk_vff_handles[(int)drv]);
-	if(retval!=count*0x200)return RES_PARERR;
+	//retval = fseek(disk_vff_handles[(int)drv], 0x20 + (sector*0x200), SEEK_SET);
+	retval = ISFS_Seek(disk_vff_handles[(int)drv], 0x20 + (sector*0x200), SEEK_SET);	
+	if(retval<0)
+	{
+		printf("seek fail\n");
+		return RES_PARERR;
+	}
+
+	//retval = fwrite(buff, 0x200, count, disk_vff_handles[(int)drv]);
+	while(count>0)
+	{
+		memcpy(diskio_buffer, buff, 0x200);
+		retval = ISFS_Write(disk_vff_handles[(int)drv], diskio_buffer, 0x200);
+		if(retval!=count)
+		{
+			printf("read only %x bytes, wanted %x bytes\n", retval, 0x200);
+			return RES_PARERR;
+		}		
+		buff+=0x200;
+		count--;
+	}
 	return 0;
 }
 #endif
 
 DRESULT disk_ioctl(BYTE drv, BYTE ctrl, void *buff)
 {
+	printf("disk ioctl %x\n", (unsigned int)ctrl);
 	return RES_PARERR;
 }
 
@@ -147,7 +212,9 @@ DRESULT diskio_generatebootsector(BYTE drv, BYTE *buff)
 	{
 		diskio_storele16(&buff[0x20], vff_filesizes[(int)drv] / 0x200);
 	}
-	diskio_storele16(&buff[0x16], (vff_fatsizes[(int)drv] / 0x200)+1);
+	diskio_storele16(&buff[0x16], (vff_fatsizes[(int)drv] / 0x200)+1);//Number of sectors per FAT.
+	snprintf((char*)&buff[0x36], 8, "FAT%d   ", vff_fat_types[(int)drv]);
+	if(vff_fat_types[(int)drv]==32)snprintf((char*)&buff[0x52], 8, "FAT32   ");
 	return 0;
 }
 
@@ -167,4 +234,19 @@ void diskio_storele32(BYTE *buff, unsigned int x)
 	x = htole32(x);
 	memcpy(buff, &x, 4);
 }
+
+DWORD get_fattime(void)
+{
+	DWORD fattime = 0;
+	time_t timeval = time(NULL);
+	struct tm *curtime = gmtime(&timeval);
+	fattime = curtime->tm_sec / 2;
+	fattime |= curtime->tm_min << 5;
+	fattime |= curtime->tm_hour << 11;
+	fattime |= curtime->tm_mday << 16;
+	fattime |= (curtime->tm_mon + 1) << 21;
+	fattime |= (curtime->tm_year - 80) << 25;
+	return fattime;
+}
+
 
