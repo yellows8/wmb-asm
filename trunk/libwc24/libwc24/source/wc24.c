@@ -73,7 +73,6 @@ s32 WC24_Init(int id)
 	retval = ES_GetTitleID(&wc24_titleid);
 	if(retval<0)
 	{
-		u32 temp = 0;
 		printf("ES_GetTitleID returned %d\n", retval);
 		//return retval;
 	}

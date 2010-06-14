@@ -25,7 +25,7 @@ DEALINGS IN THE SOFTWARE.
 #include <gccore.h>
 #include <wiiuse/wpad.h>
 #include <string.h>
-#include <wc24.h>
+#include <wc24/wc24.h>
 #include <fat.h>
 
 static void *xfb = NULL;
