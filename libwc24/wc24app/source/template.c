@@ -46,7 +46,7 @@ void DoStuff(char *url)
 	memset(mailurl, 0, 256);
 	strncpy(mailurl, url, 255);
 
-	printf("Use normal mail URL, or boot mail URL? Don't use the boot mail right now, it needs tested, and it's unknown if it can cause a brick for certain.(A = normal mail, B = boot mail)\n");
+	printf("Use normal mail URL, or boot mail URL? Don't use the boot mail right now, it's being tested and there has been no success with it yet.(A = normal mail, B = boot mail)\n");
 	which = -1;
 	WPAD_ScanPads();
 	while(1)
@@ -487,10 +487,9 @@ void IOSReload_SelectMenu()
 	{
 		printf("Reloading IOS%d...\n", (int)ios[iosi]);
 		WPAD_Shutdown();
-		__ES_Close();
-		IOS_ReloadIOS((u32)ios[iosi]);
-		retval = __ES_Init();
+		retval = IOS_ReloadIOS((u32)ios[iosi]);
 		WPAD_Init();
+		if(retval<0)printf("IOS_ReloadIOS returned %d\n", retval);
 	}
 	free(titles);
 	free(ios);
