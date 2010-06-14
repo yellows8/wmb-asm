@@ -8,7 +8,7 @@ The former is the title data URL, the latter is the message board mail URL.
 Refrence the Wiibrew WC24_Content page for info on the required WC24 header when content length is less than 0x140 bytes. Also see the above URLs installed by wc24app for template WC24 content. The title data file is supposed to only contain the payload text when written to wc24dl.vff, however the whole file is written there. The cause of this is currently unknown, but the all-zero 0x140 bytes-long header isn't needed when the actual content length is larger than 0x140 bytes.
 
 Features and limitations:
-VFF files can be read. However the FATs can't be processed, thus files' clusters must be sequential. Since the FATs can't be processed, VFF files can't be written, only read. Paths for when opening files in a VFF can have sub-directories.
+VFF files can read and written, but filenames must be MS-DOS 8.3.
 The download frequency is specified in minutes, see: http://wiibrew.org/wiki//shared2/wc24/nwc24dl.bin
 RSA signature verification for content can be disabled.
 Content can optionally be downloaded only in idle/"standby" mode with a flag bit.
