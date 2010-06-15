@@ -361,31 +361,6 @@ void DoStuff(char *url)
 					if(fdl==NULL)
 					{
 						printf("Failed to open wc24test in VFF.\n");
-						DIR dir;
-						FILINFO info;
-						TCHAR lfname[32];
-						memset(lfname, 0, 32*sizeof(TCHAR));
-						memset(&info, 0, sizeof(FILINFO));
-						info.lfsize = 32;
-						info.lfname = lfname;
-						lfname[0] = '/';
-						retval = f_opendir(&dir, lfname);
-						if(retval!=0)
-						{
-							printf("opendir failed %d\n", retval);
-						}
-						else
-						{
-							memset(lfname, 0, 32*sizeof(TCHAR));
-							while((retval = f_readdir(&dir, &info))==0 && info.fname[0]!=0)
-							{
-								printf("Found dir ent: short name ");
-								for(retval=0; retval<13; retval++)printf("%x ", info.fname[retval]);
-								printf(" long name ");
-								for(retval=0; retval<32; retval++)printf("%x ", lfname[retval]);
-							}
-							printf("f_readdir returned %d\n", retval);
-						}
 					}
 					else
 					{
@@ -405,6 +380,57 @@ void DoStuff(char *url)
 						}
 						printf("Closing file...\n");
 						VFF_Close(fdl);
+					}
+
+					printf("List the VFF root directory entries?(A = yes, B = no)\n");
+					which = -1;
+					WPAD_ScanPads();
+					while(1)
+					{
+						WPAD_ScanPads();
+						if(WPAD_ButtonsDown(0) & WPAD_BUTTON_B)which = 0;
+						if(WPAD_ButtonsDown(0) & WPAD_BUTTON_A)which = 1;
+						if(which>-1)break;
+						VIDEO_WaitVSync();
+					}
+
+					if(which)
+					{
+						DIR dir;
+						FILINFO info;
+						TCHAR lfname[32];
+						memset(lfname, 0, 32*sizeof(TCHAR));
+						memset(&info, 0, sizeof(FILINFO));
+						info.lfsize = 32;
+						info.lfname = lfname;
+						lfname[0] = '/';
+						retval = f_opendir(&dir, lfname);
+						if(retval!=0)
+						{
+							printf("opendir failed %d\n", retval);
+						}
+						else
+						{
+							memset(lfname, 0, 32*sizeof(TCHAR));
+							while((retval = f_readdir(&dir, &info))==0 && info.fname[0]!=0)
+							{
+								printf("Found dir ent: short name\n");
+								for(retval=0; retval<13; retval++)
+								{
+									if(info.fname[retval]==0)break;
+									printf("%c", (char)info.fname[retval]);
+								}
+								printf("\nlong name\n");
+								for(retval=0; retval<32; retval++)
+								{
+									if(lfname[retval]==0)break;
+									printf("%c", (char)lfname[retval]);
+								}
+								printf("\n");
+								memset(lfname, 0, 32*sizeof(TCHAR));
+							}
+							printf("f_readdir returned %d\n", retval);
+						}
 					}
 
 					printf("Unmounting VFF...\n");
