@@ -58,20 +58,12 @@ typedef struct _fat_dirent
 	u32 filesize;
 } __attribute__((packed)) fat_dirent;
 
-typedef struct _fat_filectx
-{
-	fat_dirent *ent;
-	u32 filesize;
-	u32 cluster;
-	u32 offset;
-} fat_filectx;
-
-s32 VFF_CreateVFF(char *path, u32 filesize);//Creates VFF at path with ISFS. Returns zero on success, ISFS error otherwise. Due to an issue with the FAT size calculation algo, filesizes over 1MB must be aligned to a MB.
+s32 VFF_CreateVFF(char *path, u32 filesize);//Creates VFF at path with ISFS. Returns zero on success, ISFS error otherwise.
 s32 VFF_Mount(char *path);//Opens a VFF, only one VFF can be open at a time.
 s32 VFF_Unmount();
 u32 VFF_GetFATSize(u32 filesize);
 u32 VFF_GetFATType(u32 filesize);
-FIL *VFF_Open(char *path);//Opens a file in the mounted VFF, no leading root directory slash. Only MS-DOS 8.3 filenames are supported for file/directory names currently. VFF_Open, VFF_Close, and VFF_Read are just wrappers for the libff functions.
+FIL *VFF_Open(char *path);//Opens a file in the mounted VFF, the leading root directory slash is optional. VFF_Open, VFF_Close, and VFF_Read are just wrappers for the libff functions.
 void VFF_Close(FIL *ctx);
 s32 VFF_Read(FIL *ctx, u8 *buffer, u32 length);//Reads data from a file in the mounted VFF.
 s32 VFF_Write(FIL *ctx, u8 *buffer, u32 length);

@@ -357,10 +357,35 @@ void DoStuff(char *url)
 				else
 				{
 					printf("Opening wc24test file in VFF...\n");
-					fdl = VFF_Open("WC24TEST");
+					fdl = VFF_Open("wc24test");
 					if(fdl==NULL)
 					{
 						printf("Failed to open wc24test in VFF.\n");
+						DIR dir;
+						FILINFO info;
+						TCHAR lfname[32];
+						memset(lfname, 0, 32*sizeof(TCHAR));
+						memset(&info, 0, sizeof(FILINFO));
+						info.lfsize = 32;
+						info.lfname = lfname;
+						lfname[0] = '/';
+						retval = f_opendir(&dir, lfname);
+						if(retval!=0)
+						{
+							printf("opendir failed %d\n", retval);
+						}
+						else
+						{
+							memset(lfname, 0, 32*sizeof(TCHAR));
+							while((retval = f_readdir(&dir, &info))==0 && info.fname[0]!=0)
+							{
+								printf("Found dir ent: short name ");
+								for(retval=0; retval<13; retval++)printf("%x ", info.fname[retval]);
+								printf(" long name ");
+								for(retval=0; retval<32; retval++)printf("%x ", lfname[retval]);
+							}
+							printf("f_readdir returned %d\n", retval);
+						}
 					}
 					else
 					{

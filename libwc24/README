@@ -8,7 +8,7 @@ The former is the title data URL, the latter is the message board mail URL.
 Refrence the Wiibrew WC24_Content page for info on the required WC24 header when content length is less than 0x140 bytes. Also see the above URLs installed by wc24app for template WC24 content. The title data file is supposed to only contain the payload text when written to wc24dl.vff, however the whole file is written there. The cause of this is currently unknown, but the all-zero 0x140 bytes-long header isn't needed when the actual content length is larger than 0x140 bytes.
 
 Features and limitations:
-VFF files can read and written, but filenames must be MS-DOS 8.3.
+VFF files can be read and written, with LFN support.(Long filenames)
 The download frequency is specified in minutes, see: http://wiibrew.org/wiki//shared2/wc24/nwc24dl.bin
 RSA signature verification for content can be disabled.
 Content can optionally be downloaded only in idle/"standby" mode with a flag bit.
@@ -19,16 +19,19 @@ Download content immediately.
 Get and set the KD UTC time.
 
 Known bugs:
-The libwc24 v1.0 source tarball(not the pre-compiled library and dol) has a ISFS heap buffer overflow bug. Only 0x10 bytes for the size of a record is allocated for reading and writing records, but ISFS always reads/writes at least 0x20 bytes. This was fixed in SVN by changing the buffer allocate size to 0x20 bytes.
+There is no known bugs in libwc24, if you find any report them at: http://code.google.com/p/wmb-asm/issues/list
+
+1) With wc24app when you reload IOS when your system has IOS updated since the 3.4 update, ES_GetTitleID fails after the reload. This seems to be a libogc bug, ES_GetTitleID works fine when IOS isn't reloaded. libwc24 uses the HBC JODI titleid as default when ES_GetTitleID fails, so this error isn't a problem unless you reload from another title.
 
 Changelog:
 v1.1:
-Fixed ISFS heap bug in source, see known bugs.
+The libwc24 v1.0 source tarball(not the pre-compiled library and dol) had a ISFS heap buffer overflow bug. Only 0x10 bytes for the size of a record is allocated for reading and writing records, but ISFS always reads/writes at least 0x20 bytes. This was fixed in libwc24 v1.1.
 Added support for KD_SetNextWakeup and KD_GetTimeTriggers.
 Added support for KD_Download flag sync UTC time.
 KD_Open and KD_Close are now called by WC24_Init and WC24_Shutdown.
 VFF files can be read and written with libff, but only MS-DOS 8.3 can be used still since LFN needs a Unicode library.
 Fixed typo for the WC24_EHTTP304 define value. In libwc24 v1.0 this caused wc24app to skip VFF reading since wc24app/libwc24 didn't recognize the error from ent.error_code.
+VFF files are now read and written with libff, with long filenames support.
 
 v1.0:
 Initial release.
