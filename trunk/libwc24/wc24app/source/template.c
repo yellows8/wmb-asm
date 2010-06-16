@@ -27,6 +27,7 @@ DEALINGS IN THE SOFTWARE.
 #include <string.h>
 #include <wc24/wc24.h>
 #include <fat.h>
+#include <sys/stat.h>
 
 static void *xfb = NULL;
 static GXRModeObj *rmode = NULL;
@@ -327,7 +328,7 @@ void DoStuff(char *url)
 		struct tm *time;
 		time_t dltime;
 		FIL *fdl;
-		char *dlbuf;
+		char *dlbuf = NULL;
 		retval = WC24_FindEntry(0x4a4f4449, url, &ent);
 		if(retval<0)
 		{
@@ -356,30 +357,37 @@ void DoStuff(char *url)
 				}
 				else
 				{
+					FILE *fdlfile = NULL;
+					struct stat filestats;
 					printf("Opening wc24test file in VFF...\n");
-					fdl = VFF_Open("wc24test");
-					if(fdl==NULL)
+					//fdl = VFF_Open("wc24test");
+					fdlfile = fopen("vff:/wc24test", "r");
+					if(fdlfile==NULL)
 					{
 						printf("Failed to open wc24test in VFF.\n");
 					}
 					else
 					{
-						printf("Filesize: %x\n", (u32)fdl->fsize);
-						dlbuf = (char*)malloc((u32)fdl->fsize);
+						stat("vff:/wc24test", &filestats);
+						printf("Filesize: %x\n", (u32)filestats.st_size);
+						if(filestats.st_size)dlbuf = (char*)malloc((u32)filestats.st_size);
 						if(dlbuf)
 						{
-							VFF_Read(fdl, (u8*)dlbuf, (u32)fdl->fsize);
+							memset(dlbuf, 0, filestats.st_size);
+							//VFF_Read(fdl, (u8*)dlbuf, (u32)filestats->st_size);
+							retval = fread(dlbuf, 1, filestats.st_size, fdlfile);
 							printf("Content:\n");
-							for(i=0; i<(u32)fdl->fsize; i++)printf("%c", dlbuf[i]);
+							for(i=0; i<(u32)filestats.st_size; i++)printf("%c", dlbuf[i]);
 							free(dlbuf);
 							printf("\n");
 						}
 						else
 						{
-							printf("Failed to allocate buffer for content.\n");
+							printf("Failed to allocate buffer for content, or filesize is zero.\n");
 						}
 						printf("Closing file...\n");
-						VFF_Close(fdl);
+						//VFF_Close(fdl);
+						fclose(fdlfile);
 					}
 
 					printf("List the VFF root directory entries?(A = yes, B = no)\n");

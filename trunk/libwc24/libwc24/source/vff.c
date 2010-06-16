@@ -23,6 +23,8 @@ DEALINGS IN THE SOFTWARE.
 #include <stdlib.h>
 #include <string.h>
 #include <malloc.h>
+#include <errno.h>
+#include <fcntl.h>
 
 #ifdef HW_RVL
 #include <sys/iosupport.h>
@@ -40,6 +42,8 @@ DEALINGS IN THE SOFTWARE.
         ((typeof(x))((((u32)(x)) + (align) - 1) & (~((align)-1))))
 #define CLUSTER_SIZE 0x200
 
+#define VFF_MAXFDS 32
+
 s32 vff_fd = 0;
 vff_header *vff_hdr;
 s16 *vff_fat;
@@ -54,33 +58,57 @@ FATFS vff_filesystems[_DRIVES];
 extern s32 disk_vff_handles[_DRIVES];
 int vff_totalmountedfs = 0;
 
-/*const devoptab_t dotab_vff = {
+FIL *vffoptab_fds[VFF_MAXFDS];
+char vffoptab_fd_paths[VFF_MAXFDS][256];
+int vffoptab_total_fds = 0;
+
+int _VFF_open_r (struct _reent *r, void *fileStruct, const char *path, int flags, int mode);
+int _VFF_close_r (struct _reent *r, int fd);
+ssize_t _VFF_read_r (struct _reent *r, int fd, char *ptr, size_t len);
+ssize_t _VFF_write_r (struct _reent *r, int fd, const char *ptr, size_t len);
+off_t _VFF_seek_r (struct _reent *r, int fd, off_t pos, int dir);
+int _VFF_fstat_r (struct _reent *r, int fd, struct stat *st);
+int _VFF_ftruncate_r (struct _reent *r, int fd, off_t len);
+int _VFF_fsync_r (struct _reent *r, int fd);
+int _VFF_stat_r (struct _reent *r, const char *path, struct stat *st);
+int _VFF_link_r (struct _reent *r, const char *existing, const char *newLink);
+int _VFF_unlink_r (struct _reent *r, const char *path);
+int _VFF_chdir_r (struct _reent *r, const char *path);
+int _VFF_rename_r (struct _reent *r, const char *oldName, const char *newName);
+int _VFF_mkdir_r (struct _reent *r, const char *path, int mode);
+int _VFF_statvfs_r (struct _reent *r, const char *path, struct statvfs *buf);
+DIR_ITER* _VFF_diropen_r(struct _reent *r, DIR_ITER *dirState, const char *path);
+int _VFF_dirreset_r (struct _reent *r, DIR_ITER *dirState);
+int _VFF_dirnext_r (struct _reent *r, DIR_ITER *dirState, char *filename, struct stat *filestat);
+int _VFF_dirclose_r (struct _reent *r, DIR_ITER *dirState);
+
+const devoptab_t dotab_vff = {
 	"vff",
-	sizeof (FILE_STRUCT),
-	_FAT_open_r,
-	_FAT_close_r,
-	_FAT_write_r,
-	_FAT_read_r,
-	_FAT_seek_r,
-	_FAT_fstat_r,
-	_FAT_stat_r,
-	_FAT_link_r,
-	_FAT_unlink_r,
-	_FAT_chdir_r,
-	_FAT_rename_r,
-	_FAT_mkdir_r,
-	sizeof (DIR_STATE_STRUCT),
-	_FAT_diropen_r,
-	_FAT_dirreset_r,
-	_FAT_dirnext_r,
-	_FAT_dirclose_r,
-	_FAT_statvfs_r,
-	_FAT_ftruncate_r,
-	_FAT_fsync_r,
+	sizeof(FIL),
+	&_VFF_open_r,
+	&_VFF_close_r,
+	&_VFF_write_r,
+	&_VFF_read_r,
+	&_VFF_seek_r,
+	&_VFF_fstat_r,
+	&_VFF_stat_r,
+	&_VFF_link_r,
+	&_VFF_unlink_r,
+	&_VFF_chdir_r,
+	&_VFF_rename_r,
+	&_VFF_mkdir_r,
+	sizeof(DIR),
+	&_VFF_diropen_r,
+	&_VFF_dirreset_r,
+	&_VFF_dirnext_r,
+	&_VFF_dirclose_r,
+	&_VFF_statvfs_r,
+	&_VFF_ftruncate_r,
+	&_VFF_fsync_r,
 	NULL,
 	NULL,
 	NULL
-};*/
+};
 
 s32 VFF_ReadCluster(u32 cluster, void* buffer);
 
@@ -263,6 +291,11 @@ s32 VFF_Mount(char *path)
 	retval = (s32)f_mount((BYTE)vff_totalmountedfs, &vff_filesystems[vff_totalmountedfs]);
 	if(retval!=0)return retval;
 	vff_totalmountedfs++;
+	if(vff_totalmountedfs==1)
+	{
+		memset(vffoptab_fds, 0, VFF_MAXFDS*4);
+		AddDevice(&dotab_vff);
+	}
 	return 0;
 }
 
@@ -271,6 +304,7 @@ s32 VFF_Unmount()
 	vff_totalmountedfs--;
 	//fclose(disk_vff_handles[vff_totalmountedfs]);
 	ISFS_Close(disk_vff_handles[vff_totalmountedfs]);
+	if(vff_totalmountedfs==0)RemoveDevice("vff");
 	return 0;
 }
 
@@ -313,10 +347,311 @@ s32 VFF_Write(FIL *ctx, u8 *buffer, u32 length)
 	return writtenbytes;
 }
 
-s32 VFF_ReadCluster(u32 cluster, void* buffer)
+int VFF_ConvertFFError(FRESULT error)
 {
-	ISFS_Seek(vff_fd, vff_datastart + ((cluster - 2) * 0x200), SEEK_SET);
-	return ISFS_Read(vff_fd, buffer, 0x200);
+	switch(error)
+	{
+		case FR_OK:
+			return 0;
+		break;
+
+		case FR_DISK_ERR:
+		case FR_INT_ERR:
+		case FR_NOT_READY:
+		case FR_INVALID_DRIVE:
+		case FR_NOT_ENABLED:
+		case FR_NO_FILESYSTEM:
+		case FR_MKFS_ABORTED:
+			return ENXIO;
+		break;
+
+		case FR_NO_FILE:
+		case FR_NO_PATH:
+		case FR_INVALID_NAME:
+		case FR_INVALID_OBJECT:
+			return ENOENT;
+		break;
+
+		case FR_DENIED:
+		case FR_LOCKED:
+			return EACCES;
+		break;
+
+		case FR_EXIST:
+			return EEXIST;
+		break;
+
+		case FR_WRITE_PROTECTED:
+			return EROFS;
+		break;
+
+		case FR_TIMEOUT:
+			return EWOULDBLOCK;
+		break;
+
+		case FR_NOT_ENOUGH_CORE:
+			return ENOMEM;
+		break;
+
+		case FR_TOO_MANY_OPEN_FILES:
+			return EMFILE;
+		break;
+	}
+	return 0;
+}
+
+int _VFF_open_r (struct _reent *r, void *fileStruct, const char *path, int flags, int mode)
+{
+	int i, fdi, found = 0;
+	BYTE _flags = 0;
+	FIL *f = (FIL*)fileStruct;
+	TCHAR lfnpath[128];
+	memset(f, 0, sizeof(FIL));
+	memset(lfnpath, 0, 256);
+	if(strchr(path, ':'))path = strchr(path, ':')+1;
+	if(strlen(path)>255)
+	{
+		r->_errno = ENAMETOOLONG;
+		return -1;
+	}
+
+	for(fdi=0; fdi<VFF_MAXFDS; fdi++)
+	{
+		if((int)vffoptab_fds[fdi]==(int)NULL)
+		{
+			found = 1;
+			break;
+		}
+	}
+	if(!found)
+	{
+		r->_errno = EMFILE;
+		return -1;
+	}
+
+	if((flags & 3) == O_RDONLY)_flags |= FA_READ;
+	if((flags & 3) == O_WRONLY)_flags |= FA_WRITE;
+	if((flags & 3) == O_RDWR)_flags |= FA_READ | FA_WRITE;
+	if(flags & O_CREAT)_flags |= FA_CREATE_NEW;
+	if(flags & O_EXCL)_flags |= FA_CREATE_ALWAYS;
+	for(i=0; i<strlen(path); i++)lfnpath[i] = path[i];
+	r->_errno = VFF_ConvertFFError(f_open(f, lfnpath, _flags));
+	if(r->_errno!=0)return -1;
+	vffoptab_fds[fdi] = f;
+	memset(vffoptab_fd_paths[fdi], 0, 256);
+	strncpy(vffoptab_fd_paths[fdi], path, 255);
+	vffoptab_total_fds++;
+	return 0;
+}
+
+int _VFF_close_r (struct _reent *r, int fd)
+{
+	FIL *f;
+	int fdi,  found = 0;
+	f = (FIL*)fd;
+	for(fdi=0; fdi<VFF_MAXFDS; fdi++)
+	{
+		if((int)vffoptab_fds[fdi]==fd)
+		{
+			found = 1;
+			break;
+		}
+	}
+	if(!found)
+	{
+		r->_errno = EMFILE;
+		return -1;
+	}
+
+	r->_errno = VFF_ConvertFFError(f_close(f));
+	if(r->_errno!=0)return -1;
+	vffoptab_fds[fdi] = NULL;
+	return 0;
+}
+
+ssize_t _VFF_read_r (struct _reent *r, int fd, char *ptr, size_t len)
+{
+	FIL *f;
+	UINT bytes = 0;
+	f = (FIL*)fd;
+	r->_errno = VFF_ConvertFFError(f_read(f, ptr, len, &bytes));
+	if(r->_errno!=0)return -1;
+	return bytes;
+}
+
+ssize_t _VFF_write_r (struct _reent *r, int fd, const char *ptr, size_t len)
+{
+	FIL *f;
+	UINT bytes = 0;
+	f = (FIL*)fd;
+	r->_errno = VFF_ConvertFFError(f_write(f, ptr, len, &bytes));
+	if(r->_errno!=0)return -1;
+	return bytes;
+}
+
+off_t _VFF_seek_r (struct _reent *r, int fd, off_t pos, int dir)
+{
+	FIL *f;
+	int _pos = pos;
+	f = (FIL*)fd;
+	if(dir==SEEK_CUR)pos+= (int)f->fptr;
+	if(dir==SEEK_END)pos+= (int)f->fsize;
+	r->_errno = VFF_ConvertFFError(f_lseek(f, _pos));
+	if(r->_errno!=0)return -1;
+	return 0;
+}
+
+int _VFF_fstat_r (struct _reent *r, int fd, struct stat *st)
+{
+	int i, fdi, found = 0;
+	FILINFO info;
+	TCHAR lfnpath[128];
+	memset(lfnpath, 0, 256);
+	for(fdi=0; fdi<VFF_MAXFDS; fdi++)
+	{
+		if((int)vffoptab_fds[fdi]==fd)
+		{
+			found = 1;
+			break;
+		}
+	}
+	if(!found)
+	{
+		r->_errno = EMFILE;
+		return -1;
+	}
+
+	for(i=0; i<strlen(vffoptab_fd_paths[fdi]); i++)lfnpath[i] = vffoptab_fd_paths[fdi][i];
+	r->_errno = VFF_ConvertFFError(f_stat(lfnpath, &info));
+	st->st_size = info.fsize;
+	if(r->_errno!=0)return -1;
+	return 0;
+}
+
+int _VFF_ftruncate_r (struct _reent *r, int fd, off_t len)
+{
+	FIL *f;
+	unsigned int temp, num;
+	f = (FIL*)fd;
+	r->_errno = VFF_ConvertFFError(f_truncate(f));
+	if(r->_errno!=0)return -1;
+
+	temp = 0;
+	num = 0;
+	while(len>0)
+	{
+		r->_errno = VFF_ConvertFFError(f_write(f, &temp, 1, &num));
+		len--;
+		if(r->_errno!=0)return -1;
+	}
+
+	return 0;
+}
+
+int _VFF_fsync_r (struct _reent *r, int fd)
+{
+	FIL *f;
+	f = (FIL*)fd;
+	r->_errno = VFF_ConvertFFError(f_sync(f));
+	if(r->_errno!=0)return -1;
+	return 0;
+}
+
+int _VFF_stat_r (struct _reent *r, const char *path, struct stat *st)
+{
+	int i;
+	FILINFO info;
+	TCHAR lfnpath[128];
+	memset(lfnpath, 0, 256);
+	if(strchr(path, ':'))path = strchr(path, ':')+1;
+
+	for(i=0; i<strlen(path); i++)lfnpath[i] = path[i];
+	r->_errno = VFF_ConvertFFError(f_stat(lfnpath, &info));
+	st->st_size = info.fsize;
+	if(r->_errno!=0)return -1;
+	return 0;
+}
+
+int _VFF_link_r (struct _reent *r, const char *existing, const char *newLink)
+{
+	r->_errno = ENOTSUP;
+	return -1;
+}
+
+int _VFF_unlink_r (struct _reent *r, const char *path)
+{
+	int i;
+	TCHAR lfnpath[128];
+	memset(lfnpath, 0, 256);
+	if(strchr(path, ':'))path = strchr(path, ':')+1;
+	if(strlen(path)>255)
+	{
+		r->_errno = ENAMETOOLONG;
+		return -1;
+	}
+	for(i=0; i<strlen(path); i++)lfnpath[i] = path[i];
+	r->_errno = VFF_ConvertFFError(f_unlink(lfnpath));
+	if(r->_errno!=0)return -1;
+	return 0;
+}
+
+int _VFF_chdir_r (struct _reent *r, const char *path)
+{
+	int i;
+	TCHAR lfnpath[128];
+	memset(lfnpath, 0, 256);
+	if(strchr(path, ':'))path = strchr(path, ':')+1;
+	if(strlen(path)>255)
+	{
+		r->_errno = ENAMETOOLONG;
+		return -1;
+	}
+	for(i=0; i<strlen(path); i++)lfnpath[i] = path[i];
+	r->_errno = VFF_ConvertFFError(f_chdir(lfnpath));
+	if(r->_errno!=0)return -1;
+	return 0;
+}
+
+int _VFF_rename_r (struct _reent *r, const char *oldName, const char *newName)
+{
+	r->_errno = ENOTSUP;
+	return -1;
+}
+
+int _VFF_mkdir_r (struct _reent *r, const char *path, int mode)
+{
+	r->_errno = ENOTSUP;
+	return -1;
+}
+
+int _VFF_statvfs_r (struct _reent *r, const char *path, struct statvfs *buf)//Not supported by libff.
+{
+	r->_errno = ENOTSUP;
+	return -1;
+}
+
+DIR_ITER* _VFF_diropen_r(struct _reent *r, DIR_ITER *dirState, const char *path)
+{
+	r->_errno = ENOTSUP;
+	return NULL;
+}
+
+int _VFF_dirreset_r (struct _reent *r, DIR_ITER *dirState)
+{
+	r->_errno = ENOTSUP;
+	return -1;
+}
+
+int _VFF_dirnext_r (struct _reent *r, DIR_ITER *dirState, char *filename, struct stat *filestat)
+{
+	r->_errno = ENOTSUP;
+	return -1;
+}
+
+int _VFF_dirclose_r (struct _reent *r, DIR_ITER *dirState)
+{
+	r->_errno = ENOTSUP;
+	return -1;
 }
 
 #ifdef HW_RVL
