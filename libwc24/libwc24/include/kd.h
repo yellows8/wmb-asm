@@ -22,7 +22,7 @@ DEALINGS IN THE SOFTWARE.
 #ifndef _H_KD
 #define _H_KD
 
-#include <gctypes.h>
+#include "types.h"
 
 #ifdef __cplusplus
    extern "C" {

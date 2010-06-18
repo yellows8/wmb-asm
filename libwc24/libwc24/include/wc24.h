@@ -22,7 +22,7 @@ DEALINGS IN THE SOFTWARE.
 #ifndef _H_WC24
 #define _H_WC24
 
-#include <gctypes.h>
+#include "types.h"
 
 #include "kd.h"
 #include "vff.h"
