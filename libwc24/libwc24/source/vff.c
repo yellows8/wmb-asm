@@ -400,6 +400,18 @@ int VFF_ConvertFFError(FRESULT error)
 	return 0;
 }
 
+time_t VFF_GetFFLastMod(WORD fdate, WORD ftime)
+{
+	struct tm date;
+	date.tm_sec = (ftime & 0x1f) * 2;
+	date.tm_min = (ftime >> 5) & 0x3f;
+	date.tm_hour = (ftime >> 11) & 0x3f;
+	date.tm_mday = (ftime & 0x1f);
+	date.tm_mon = ((ftime >> 5) & 0xf) - 1;
+	date.tm_year = ((ftime >> 9) & 0x3f) + 80;
+	return mktime(&date);
+}
+
 int _VFF_open_r (struct _reent *r, void *fileStruct, const char *path, int flags, int mode)
 {
 	int i, fdi, found = 0;
@@ -523,7 +535,14 @@ int _VFF_fstat_r (struct _reent *r, int fd, struct stat *st)
 
 	for(i=0; i<strlen(vffoptab_fd_paths[fdi]); i++)lfnpath[i] = vffoptab_fd_paths[fdi][i];
 	r->_errno = VFF_ConvertFFError(f_stat(lfnpath, &info));
-	st->st_size = info.fsize;
+	if(!(info.fattrib & 0x10))st->st_size = info.fsize;
+	st->st_blksize = 0x200;
+	st->st_blocks = st->st_size / 0x200;
+	if(st->st_size % 0x200)st->st_blocks++;
+	st->st_atime = VFF_GetFFLastMod(info.ftime, info.fdate);
+	st->st_mtime = st->st_atime;
+	st->st_ctime = st->st_atime;
+
 	if(r->_errno!=0)return -1;
 	return 0;
 }
@@ -567,7 +586,14 @@ int _VFF_stat_r (struct _reent *r, const char *path, struct stat *st)
 
 	for(i=0; i<strlen(path); i++)lfnpath[i] = path[i];
 	r->_errno = VFF_ConvertFFError(f_stat(lfnpath, &info));
-	st->st_size = info.fsize;
+	if(!(info.fattrib & 0x10))st->st_size = info.fsize;
+	st->st_blksize = 0x200;
+	st->st_blocks = st->st_size / 0x200;
+	if(st->st_size % 0x200)st->st_blocks++;
+	st->st_atime = VFF_GetFFLastMod(info.ftime, info.fdate);
+	st->st_mtime = st->st_atime;
+	st->st_ctime = st->st_atime;
+
 	if(r->_errno!=0)return -1;
 	return 0;
 }
