@@ -22,8 +22,13 @@ DEALINGS IN THE SOFTWARE.
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
-#include <gccore.h>
 #include <malloc.h>
+#ifdef HW_RVL
+#include <gccore.h>
+#else
+#include <endian.h>
+#endif
+#include <sys/stat.h>
 #include "diskio.h"
 #include "ffconf.h"
 #include "vff.h"
@@ -31,8 +36,9 @@ DEALINGS IN THE SOFTWARE.
 /*#ifndef HW_RVL
 FILE *disk_vff_handles[_DRIVES];
 #else*/
-s32 disk_vff_handles[_DRIVES];
+void* disk_vff_handles[_DRIVES];
 //#endif
+unsigned int vff_types[_DRIVES];
 unsigned int vff_filesizes[_DRIVES];
 unsigned int vff_fatsizes[_DRIVES];
 unsigned int vff_fat_types[_DRIVES];
@@ -40,8 +46,10 @@ extern int vff_totalmountedfs;
 
 u8 diskio_buffer[0x200] __attribute__((aligned(32)));
 
+#ifdef HW_RVL
 unsigned int htole16(unsigned int x);
 unsigned short htole32(unsigned short x);
+#endif
 
 DRESULT diskio_generatefatsector(BYTE drv, DWORD sector, BYTE *buff);//Generate boot sector etc.
 DRESULT diskio_generatebootsector(BYTE drv, BYTE *buff);
@@ -65,17 +73,30 @@ int GetFileLength(FILE *f)
 
 DSTATUS disk_initialize(BYTE drv)
 {
-	s32 retval;
+	s32 retval = 0;
+	#ifdef HW_RVL
 	fstats *stats = (fstats*)memalign(32, sizeof(fstats));
+	#endif	
+	struct stat filestats;
 	printf("disk_init\n");
-	if((int)drv >= vff_totalmountedfs)return STA_NOINIT;	
-	retval = ISFS_GetFileStats(disk_vff_handles[(int)drv], stats);
+	if((int)drv >= vff_totalmountedfs)return STA_NOINIT;
+	#ifdef HW_RVL
+	if(vff_types[(int)drv]==0)retval = ISFS_GetFileStats((s32)disk_vff_handles[(int)drv], stats);
+	#endif
+	if(vff_types[(int)drv]==1)
+	{
+		retval = fstat(fileno((FILE*)disk_vff_handles[(int)drv]), &filestats);
+	}
 	if(retval<0)
 	{
 		printf("getfilestats returned %d\n", retval);
+		return STA_NOINIT;
 	}
-	vff_filesizes[(int)drv] = stats->file_length;
+	#ifdef HW_RVL
+	if(vff_types[(int)drv]==0)vff_filesizes[(int)drv] = stats->file_length;
 	free(stats);
+	#endif
+	if(vff_types[(int)drv]==1)vff_filesizes[(int)drv] = filestats.st_size;
 	//vff_filesizes[(int)drv] = (unsigned int)GetFileLength(disk_vff_handles[(int)drv]);
 	vff_fatsizes[(int)drv] = VFF_GetFATSize(vff_filesizes[(int)drv]);
 	vff_fat_types[(int)drv] = VFF_GetFATType(vff_filesizes[(int)drv]);
@@ -88,10 +109,10 @@ DSTATUS disk_status (BYTE drv)
 {
 	if((int)drv < vff_totalmountedfs)
 	{
-		printf("disk status ok\n");
+		//printf("disk status ok\n");
 		return 0;
 	}
-	printf("disk status not ok\n");
+	//printf("disk status not ok\n");
 	return STA_NODISK;
 }
 

@@ -28,6 +28,7 @@ DEALINGS IN THE SOFTWARE.
 #include <wc24/wc24.h>
 #include <fat.h>
 #include <sys/stat.h>
+#include <dirent.h>
 
 static void *xfb = NULL;
 static GXRModeObj *rmode = NULL;
@@ -327,7 +328,7 @@ void DoStuff(char *url)
 	{
 		struct tm *time;
 		time_t dltime;
-		FIL *fdl;
+		//FIL *fdl;
 		char *dlbuf = NULL;
 		retval = WC24_FindEntry(0x4a4f4449, url, &ent);
 		if(retval<0)
@@ -404,7 +405,7 @@ void DoStuff(char *url)
 
 					if(which)
 					{
-						DIR dir;
+						/*DIR dir;
 						FILINFO info;
 						TCHAR lfname[32];
 						memset(lfname, 0, 32*sizeof(TCHAR));
@@ -412,15 +413,17 @@ void DoStuff(char *url)
 						info.lfsize = 32;
 						info.lfname = lfname;
 						lfname[0] = '/';
-						retval = f_opendir(&dir, lfname);
-						if(retval!=0)
+						retval = f_opendir(&dir, lfname);*/
+						DIR *dir = opendir("vff:/");
+						struct dirent *dent;
+						if(dir==NULL)
 						{
-							printf("opendir failed %d\n", retval);
+							printf("opendir failed.\n");
 						}
 						else
 						{
-							memset(lfname, 0, 32*sizeof(TCHAR));
-							while((retval = f_readdir(&dir, &info))==0 && info.fname[0]!=0)
+							//memset(lfname, 0, 32*sizeof(TCHAR));
+							/*while((retval = f_readdir(&dir, &info))==0 && info.fname[0]!=0)
 							{
 								printf("Found dir ent: short name\n");
 								for(retval=0; retval<13; retval++)
@@ -437,7 +440,12 @@ void DoStuff(char *url)
 								printf("\n");
 								memset(lfname, 0, 32*sizeof(TCHAR));
 							}
-							printf("f_readdir returned %d\n", retval);
+							printf("f_readdir returned %d\n", retval);*/
+							while((dent = readdir(dir)))
+							{
+								printf("Found dir ent: %s\n", dent->d_name);
+							}
+							closedir(dir);
 						}
 					}
 

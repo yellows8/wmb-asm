@@ -36,6 +36,7 @@ DEALINGS IN THE SOFTWARE.
 #include "vff.h"
 #include "wc24.h"
 #include "ffconf.h"
+#include "ff.h"
 
 //These two defines are from bushing's FAT size code: http://wiibrew.org/wiki/VFF
 #define ALIGN_FORWARD(x,align) \
@@ -71,7 +72,6 @@ int _VFF_fstat_r (struct _reent *r, int fd, struct stat *st);
 int _VFF_ftruncate_r (struct _reent *r, int fd, off_t len);
 int _VFF_fsync_r (struct _reent *r, int fd);
 int _VFF_stat_r (struct _reent *r, const char *path, struct stat *st);
-int _VFF_link_r (struct _reent *r, const char *existing, const char *newLink);
 int _VFF_unlink_r (struct _reent *r, const char *path);
 int _VFF_chdir_r (struct _reent *r, const char *path);
 int _VFF_rename_r (struct _reent *r, const char *oldName, const char *newName);
@@ -92,7 +92,7 @@ const devoptab_t dotab_vff = {
 	&_VFF_seek_r,
 	&_VFF_fstat_r,
 	&_VFF_stat_r,
-	&_VFF_link_r,
+	NULL,
 	&_VFF_unlink_r,
 	&_VFF_chdir_r,
 	&_VFF_rename_r,
@@ -412,6 +412,17 @@ time_t VFF_GetFFLastMod(WORD fdate, WORD ftime)
 	return mktime(&date);
 }
 
+void VFF_ConvertFFInfoToStat(FILINFO *info, struct stat *st)
+{
+	if(!(info->fattrib & 0x10))st->st_size = info->fsize;
+	st->st_blksize = 0x200;
+	st->st_blocks = st->st_size / 0x200;
+	if(st->st_size % 0x200)st->st_blocks++;
+	st->st_atime = VFF_GetFFLastMod(info->ftime, info->fdate);
+	st->st_mtime = st->st_atime;
+	st->st_ctime = st->st_atime;
+}
+
 int _VFF_open_r (struct _reent *r, void *fileStruct, const char *path, int flags, int mode)
 {
 	int i, fdi, found = 0;
@@ -518,7 +529,9 @@ int _VFF_fstat_r (struct _reent *r, int fd, struct stat *st)
 	int i, fdi, found = 0;
 	FILINFO info;
 	TCHAR lfnpath[128];
+	TCHAR lfnpathinfo[128];
 	memset(lfnpath, 0, 256);
+	memset(lfnpathinfo, 0, 256);
 	for(fdi=0; fdi<VFF_MAXFDS; fdi++)
 	{
 		if((int)vffoptab_fds[fdi]==fd)
@@ -534,16 +547,11 @@ int _VFF_fstat_r (struct _reent *r, int fd, struct stat *st)
 	}
 
 	for(i=0; i<strlen(vffoptab_fd_paths[fdi]); i++)lfnpath[i] = vffoptab_fd_paths[fdi][i];
+	info.lfname = lfnpathinfo;
+	info.lfsize = 128;	
 	r->_errno = VFF_ConvertFFError(f_stat(lfnpath, &info));
-	if(!(info.fattrib & 0x10))st->st_size = info.fsize;
-	st->st_blksize = 0x200;
-	st->st_blocks = st->st_size / 0x200;
-	if(st->st_size % 0x200)st->st_blocks++;
-	st->st_atime = VFF_GetFFLastMod(info.ftime, info.fdate);
-	st->st_mtime = st->st_atime;
-	st->st_ctime = st->st_atime;
-
 	if(r->_errno!=0)return -1;
+	VFF_ConvertFFInfoToStat(&info, st);
 	return 0;
 }
 
@@ -581,27 +589,18 @@ int _VFF_stat_r (struct _reent *r, const char *path, struct stat *st)
 	int i;
 	FILINFO info;
 	TCHAR lfnpath[128];
+	TCHAR lfnpathinfo[128];
 	memset(lfnpath, 0, 256);
+	memset(lfnpathinfo, 0, 256);
 	if(strchr(path, ':'))path = strchr(path, ':')+1;
 
 	for(i=0; i<strlen(path); i++)lfnpath[i] = path[i];
+	info.lfname = lfnpathinfo;
+	info.lfsize = 128;
 	r->_errno = VFF_ConvertFFError(f_stat(lfnpath, &info));
-	if(!(info.fattrib & 0x10))st->st_size = info.fsize;
-	st->st_blksize = 0x200;
-	st->st_blocks = st->st_size / 0x200;
-	if(st->st_size % 0x200)st->st_blocks++;
-	st->st_atime = VFF_GetFFLastMod(info.ftime, info.fdate);
-	st->st_mtime = st->st_atime;
-	st->st_ctime = st->st_atime;
-
 	if(r->_errno!=0)return -1;
+	VFF_ConvertFFInfoToStat(&info, st);
 	return 0;
-}
-
-int _VFF_link_r (struct _reent *r, const char *existing, const char *newLink)
-{
-	r->_errno = ENOTSUP;
-	return -1;
 }
 
 int _VFF_unlink_r (struct _reent *r, const char *path)
@@ -640,14 +639,40 @@ int _VFF_chdir_r (struct _reent *r, const char *path)
 
 int _VFF_rename_r (struct _reent *r, const char *oldName, const char *newName)
 {
-	r->_errno = ENOTSUP;
-	return -1;
+	int i;
+	TCHAR lfnpathold[128];
+	TCHAR lfnpathnew[128];
+	memset(lfnpathold, 0, 256);
+	memset(lfnpathnew, 0, 256);
+	if(strchr(oldName, ':'))oldName = strchr(oldName, ':')+1;
+	if(strchr(newName, ':'))newName = strchr(newName, ':')+1;
+	if(strlen(oldName)>255 || strlen(newName)>255)
+	{
+		r->_errno = ENAMETOOLONG;
+		return -1;
+	}
+	for(i=0; i<strlen(oldName); i++)lfnpathold[i] = oldName[i];
+	for(i=0; i<strlen(newName); i++)lfnpathnew[i] = newName[i];
+	r->_errno = VFF_ConvertFFError(f_rename(lfnpathold, lfnpathnew));
+	if(r->_errno!=0)return -1;
+	return 0;
 }
 
 int _VFF_mkdir_r (struct _reent *r, const char *path, int mode)
 {
-	r->_errno = ENOTSUP;
-	return -1;
+	int i;
+	TCHAR lfnpath[128];
+	memset(lfnpath, 0, 256);
+	if(strchr(path, ':'))path = strchr(path, ':')+1;
+	if(strlen(path)>255)
+	{
+		r->_errno = ENAMETOOLONG;
+		return -1;
+	}
+	for(i=0; i<strlen(path); i++)lfnpath[i] = path[i];
+	r->_errno = VFF_ConvertFFError(f_mkdir(lfnpath));
+	if(r->_errno!=0)return -1;
+	return 0;
 }
 
 int _VFF_statvfs_r (struct _reent *r, const char *path, struct statvfs *buf)//Not supported by libff.
@@ -658,26 +683,49 @@ int _VFF_statvfs_r (struct _reent *r, const char *path, struct statvfs *buf)//No
 
 DIR_ITER* _VFF_diropen_r(struct _reent *r, DIR_ITER *dirState, const char *path)
 {
-	r->_errno = ENOTSUP;
-	return NULL;
+	int i;
+	DIR *dir = (DIR*)dirState->dirStruct;
+	TCHAR lfnpath[128];
+	memset(lfnpath, 0, 256);
+	if(strchr(path, ':'))path = strchr(path, ':')+1;
+	if(strlen(path)>255)
+	{
+		r->_errno = ENAMETOOLONG;
+		return NULL;
+	}
+	for(i=0; i<strlen(path); i++)lfnpath[i] = path[i];
+	r->_errno = VFF_ConvertFFError(f_opendir(dir, lfnpath));
+	if(r->_errno!=0)return NULL;
+	return dirState;
 }
 
 int _VFF_dirreset_r (struct _reent *r, DIR_ITER *dirState)
 {
-	r->_errno = ENOTSUP;
-	return -1;
+	DIR *dir = (DIR*)dirState->dirStruct;
+	r->_errno = VFF_ConvertFFError(f_readdir(dir, NULL));
+	if(r->_errno!=0)return -1;
+	return 0;
 }
 
 int _VFF_dirnext_r (struct _reent *r, DIR_ITER *dirState, char *filename, struct stat *filestat)
 {
-	r->_errno = ENOTSUP;
-	return -1;
+	int i;
+	DIR *dir = (DIR*)dirState->dirStruct;
+	FILINFO info;
+	TCHAR lfnpath[128];
+	memset(lfnpath, 0, 256);
+	info.lfname = lfnpath;
+	info.lfsize = 128;
+	r->_errno = VFF_ConvertFFError(f_readdir(dir, &info));
+	if(r->_errno!=0)return -1;
+	VFF_ConvertFFInfoToStat(&info, filestat);
+	for(i=0; lfnpath[i]!=0 && i<128; i++)filename[i] = (char)lfnpath[i];
+	return 0;
 }
 
 int _VFF_dirclose_r (struct _reent *r, DIR_ITER *dirState)
 {
-	r->_errno = ENOTSUP;
-	return -1;
+	return 0;
 }
 
 #ifdef HW_RVL

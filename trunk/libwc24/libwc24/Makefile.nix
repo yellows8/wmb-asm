@@ -1,46 +1,85 @@
 #---------------------------------------------------------------------------------
-# Clear the implicit built in rules
-#---------------------------------------------------------------------------------
 .SUFFIXES:
 #---------------------------------------------------------------------------------
-ifeq ($(strip $(DEVKITPPC)),)
-$(error "Please set DEVKITPPC in your environment. export DEVKITPPC=<path to>devkitPPC")
-endif
 
-include $(DEVKITPPC)/wii_rules
+#---------------------------------------------------------------------------------
+# the prefix on the compiler executables
+#---------------------------------------------------------------------------------
+PREFIX		:=	
+
+export CC	:=	$(PREFIX)gcc
+export CXX	:=	$(PREFIX)g++
+export AS	:=	$(PREFIX)as
+export AR	:=	$(PREFIX)ar
+export OBJCOPY	:=	$(PREFIX)objcopy
+
+LIBWC24VERSION	:=	1.1.0
+
+#---------------------------------------------------------------------------------
+%.a:
+#---------------------------------------------------------------------------------
+	@echo $(notdir $@)
+	@rm -f $@
+	$(AR) -rc $@ $^
+
+#---------------------------------------------------------------------------------
+%.o: %.cpp
+	@echo $(notdir $<)
+	$(CXX) -MMD -MP -MF $(DEPSDIR)/$*.d $(CXXFLAGS) -c $< -o $@
+	
+#---------------------------------------------------------------------------------
+%.o: %.c
+	@echo $(notdir $<)
+	$(CC) -MMD -MP -MF $(DEPSDIR)/$*.d $(CFLAGS) -c $< -o $@
+
+
+#---------------------------------------------------------------------------------
+%.o: %.s
+	@echo $(notdir $<)
+	$(CC) -MMD -MP -MF $(DEPSDIR)/$*.d -x assembler-with-cpp $(ASFLAGS) -c $< -o $@
+
+#---------------------------------------------------------------------------------
+%.o: %.S
+	@echo $(notdir $<)
+	$(CC) -MMD -MP -MF $(DEPSDIR)/$*.d -x assembler-with-cpp $(ASFLAGS) -c $< -o $@
 
 #---------------------------------------------------------------------------------
 # TARGET is the name of the output
 # BUILD is the directory where object files & intermediate files will be placed
 # SOURCES is a list of directories containing source code
 # INCLUDES is a list of directories containing extra header files
+# MAXMOD_SOUNDBANK contains a directory of music and sound effect files
 #---------------------------------------------------------------------------------
-TARGET		:=	$(notdir $(CURDIR))
-BUILD		:=	build
-SOURCES		:=	source source/option
+TARGET		:=	$(shell basename $(CURDIR))
+BUILD		:=	build_nix
+SOURCES		:=	source
 DATA		:=	data  
-INCLUDES	:=  include
+INCLUDES	:=	include
 
 #---------------------------------------------------------------------------------
 # options for code generation
 #---------------------------------------------------------------------------------
 
-CFLAGS	= -g -O2 -Wall $(MACHDEP) $(INCLUDE)
-CXXFLAGS	=	$(CFLAGS)
+CFLAGS	:=	-Wall -O2 -fPIC -DLINUX
 
-LDFLAGS	=	-g $(MACHDEP) -Wl,-Map,$(notdir $@).map
+CFLAGS	+=	$(INCLUDE)
+CXXFLAGS	:= $(CFLAGS)
+
+ASFLAGS	:=	-g
+LDFLAGS	=	-g
 
 #---------------------------------------------------------------------------------
-# any extra libraries we wish to link with the project
+# any extra libraries we wish to link with the project (order is important)
 #---------------------------------------------------------------------------------
-LIBS	:=	-lwiiuse -lbte -logc -lm
-
+LIBS	:= 	-lm
+ 
+ 
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing
 # include and lib
 #---------------------------------------------------------------------------------
-LIBDIRS	:=
-
+LIBDIRS	:=	
+ 
 #---------------------------------------------------------------------------------
 # no real need to edit anything past this point unless you need to add additional
 # rules for different file extensions
@@ -55,87 +94,73 @@ export VPATH	:=	$(foreach dir,$(SOURCES),$(CURDIR)/$(dir)) \
 
 export DEPSDIR	:=	$(CURDIR)/$(BUILD)
 
-#---------------------------------------------------------------------------------
-# automatically build a list of object files for our project
-#---------------------------------------------------------------------------------
 CFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
 CPPFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp)))
-sFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
-SFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.S)))
+SFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
 BINFILES	:=	$(foreach dir,$(DATA),$(notdir $(wildcard $(dir)/*.*)))
-
+ 
 #---------------------------------------------------------------------------------
 # use CXX for linking C++ projects, CC for standard C
 #---------------------------------------------------------------------------------
 ifeq ($(strip $(CPPFILES)),)
+#---------------------------------------------------------------------------------
 	export LD	:=	$(CC)
+#---------------------------------------------------------------------------------
 else
+#---------------------------------------------------------------------------------
 	export LD	:=	$(CXX)
+#---------------------------------------------------------------------------------
 endif
+#---------------------------------------------------------------------------------
 
 export OFILES	:=	$(addsuffix .o,$(BINFILES)) \
-					$(CPPFILES:.cpp=.o) $(CFILES:.c=.o) \
-					$(sFILES:.s=.o) $(SFILES:.S=.o)
-
-#---------------------------------------------------------------------------------
-# build a list of include paths
-#---------------------------------------------------------------------------------
-export INCLUDE	:=	$(foreach dir,$(INCLUDES), -iquote $(CURDIR)/$(dir)) \
-					$(foreach dir,$(LIBDIRS),-I$(dir)/include) \
-					-I$(CURDIR)/$(BUILD) \
-					-I$(LIBOGC_INC)
-
-#---------------------------------------------------------------------------------
-# build a list of library paths
-#---------------------------------------------------------------------------------
-export LIBPATHS	:=	$(foreach dir,$(LIBDIRS),-L$(dir)/lib) \
-					-L$(LIBOGC_LIB)
-
-export OUTPUT	:=	$(CURDIR)/$(TARGET)
+			$(CPPFILES:.cpp=.o) $(CFILES:.c=.o) $(SFILES:.s=.o)
+ 
+export INCLUDE	:=	$(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
+			$(foreach dir,$(LIBDIRS),-I$(dir)/include) \
+			$(foreach dir,$(LIBDIRS),-I$(dir)/include) \
+			-I$(CURDIR)/$(BUILD)
+ 
+export LIBPATHS	:=	$(foreach dir,$(LIBDIRS),-L$(dir)/lib)
+ 
 .PHONY: $(BUILD) clean
-
+ 
 #---------------------------------------------------------------------------------
 $(BUILD):
 	@[ -d $@ ] || mkdir -p $@
-	@make --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
-	@make --no-print-directory -f $(CURDIR)/Makefile install
-
-install:
-	@cp $(OUTPUT).a $(DEVKITPRO)/libogc/lib/wii
-	@mkdir -p $(DEVKITPRO)/libogc/include/wc24
-	@cp include/wc24.h $(DEVKITPRO)/libogc/include/wc24
-	@cp include/kd.h $(DEVKITPRO)/libogc/include/wc24
-	@cp include/vff.h $(DEVKITPRO)/libogc/include/wc24
-
+	@make --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile.nix
+ 
 #---------------------------------------------------------------------------------
 clean:
 	@echo clean ...
-	@rm -fr $(BUILD) $(OUTPUT).elf $(OUTPUT).a
+	@rm -fr $(BUILD) $(TARGET) $(OUTPUT).so.1.1.0
 
-#---------------------------------------------------------------------------------
-run:
-	wiiload $(TARGET).dol
-
+install:
+	@cp $(OUTPUT).so.$(LIBWC24VERSION) /usr/lib
+	@cp $(OUTPUT).so /usr/lib
+	@mkdir -p /usr/include/wc24
+	@cp include/wc24.h /usr/include/wc24
+	@cp include/kd.h /usr/include/wc24
+	@cp include/vff.h /usr/include/wc24
+	@ldconfig -n /usr/lib
 
 #---------------------------------------------------------------------------------
 else
-
-DEPENDS	:=	$(OFILES:.o=.d)
-
+ 
 #---------------------------------------------------------------------------------
 # main targets
 #---------------------------------------------------------------------------------
-# -$(OUTPUT).a: $(OUTPUT).elf
-$(OUTPUT).a: $(OFILES)
+$(OUTPUT).so	:	$(OFILES)
+	$(LD) -shared -Wl,-soname,libwc24.so.1 -o $(OUTPUT).so.$(LIBWC24VERSION) $(LIBS) $(LIBPATHS) $(OFILES)
 
 #---------------------------------------------------------------------------------
 %.bin.o	:	%.bin
 #---------------------------------------------------------------------------------
 	@echo $(notdir $<)
 	$(bin2o)
-
--include $(DEPENDS)
-
-#---------------------------------------------------------------------------------
+ 
+-include $(DEPSDIR)/*.d
+ 
+#---------------------------------------------------------------------------------------
 endif
-#---------------------------------------------------------------------------------
+#---------------------------------------------------------------------------------------
