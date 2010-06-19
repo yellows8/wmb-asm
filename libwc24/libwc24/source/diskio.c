@@ -78,7 +78,6 @@ DSTATUS disk_initialize(BYTE drv)
 	fstats *stats = (fstats*)memalign(32, sizeof(fstats));
 	#endif	
 	struct stat filestats;
-	printf("disk_init\n");
 	if((int)drv >= vff_totalmountedfs)return STA_NOINIT;
 	#ifdef HW_RVL
 	if(vff_types[(int)drv]==0)retval = ISFS_GetFileStats((s32)disk_vff_handles[(int)drv], stats);
@@ -109,10 +108,8 @@ DSTATUS disk_status (BYTE drv)
 {
 	if((int)drv < vff_totalmountedfs)
 	{
-		//printf("disk status ok\n");
 		return 0;
 	}
-	//printf("disk status not ok\n");
 	return STA_NODISK;
 }
 
@@ -132,7 +129,7 @@ DRESULT disk_read(BYTE drv,BYTE *buff, DWORD sector, BYTE count)
 	sector-=2;
 
 	//retval = fseek(disk_vff_handles[(int)drv], 0x20 + (sector*0x200), SEEK_SET);
-	retval = ISFS_Seek(disk_vff_handles[(int)drv], 0x20 + (sector*0x200), SEEK_SET);	
+	retval = ISFS_Seek((s32)disk_vff_handles[(int)drv], 0x20 + (sector*0x200), SEEK_SET);	
 	if(retval<0)
 	{
 		printf("seek fail\n");
@@ -142,7 +139,7 @@ DRESULT disk_read(BYTE drv,BYTE *buff, DWORD sector, BYTE count)
 	//retval = fread(buff, 0x200, count, disk_vff_handles[(int)drv]);
 	while(count>0)
 	{
-		retval = ISFS_Read(disk_vff_handles[(int)drv], diskio_buffer, 0x200);
+		retval = ISFS_Read((s32)disk_vff_handles[(int)drv], diskio_buffer, 0x200);
 		if(retval!=0x200)
 		{
 			printf("read only %x bytes, wanted %x bytes\n", retval, 0x200);
@@ -171,7 +168,7 @@ DRESULT disk_write(BYTE drv, const BYTE *buff, DWORD sector, BYTE count)
 	sector-=2;
 
 	//retval = fseek(disk_vff_handles[(int)drv], 0x20 + (sector*0x200), SEEK_SET);
-	retval = ISFS_Seek(disk_vff_handles[(int)drv], 0x20 + (sector*0x200), SEEK_SET);	
+	retval = ISFS_Seek((s32)disk_vff_handles[(int)drv], 0x20 + (sector*0x200), SEEK_SET);	
 	if(retval<0)
 	{
 		printf("seek fail\n");
@@ -182,7 +179,7 @@ DRESULT disk_write(BYTE drv, const BYTE *buff, DWORD sector, BYTE count)
 	while(count>0)
 	{
 		memcpy(diskio_buffer, buff, 0x200);
-		retval = ISFS_Write(disk_vff_handles[(int)drv], diskio_buffer, 0x200);
+		retval = ISFS_Write((s32)disk_vff_handles[(int)drv], diskio_buffer, 0x200);
 		if(retval!=count)
 		{
 			printf("read only %x bytes, wanted %x bytes\n", retval, 0x200);

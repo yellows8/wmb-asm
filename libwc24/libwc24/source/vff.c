@@ -693,9 +693,12 @@ DIR_ITER* _VFF_diropen_r(struct _reent *r, DIR_ITER *dirState, const char *path)
 		r->_errno = ENAMETOOLONG;
 		return NULL;
 	}
+	printf("name\n");
 	for(i=0; i<strlen(path); i++)lfnpath[i] = path[i];
 	r->_errno = VFF_ConvertFFError(f_opendir(dir, lfnpath));
+	printf("chk err\n");	
 	if(r->_errno!=0)return NULL;
+	printf("opened\n");
 	return dirState;
 }
 
@@ -716,8 +719,12 @@ int _VFF_dirnext_r (struct _reent *r, DIR_ITER *dirState, char *filename, struct
 	memset(lfnpath, 0, 256);
 	info.lfname = lfnpath;
 	info.lfsize = 128;
+	printf("dirnext\n");
 	r->_errno = VFF_ConvertFFError(f_readdir(dir, &info));
+	printf("dirnext errno %d\n", r->_errno);
 	if(r->_errno!=0)return -1;
+	printf("name %c\n", info.fname[0]);
+	if(info.fname[0]==0)return -1;//End of directory.
 	VFF_ConvertFFInfoToStat(&info, filestat);
 	for(i=0; lfnpath[i]!=0 && i<128; i++)filename[i] = (char)lfnpath[i];
 	return 0;

@@ -142,6 +142,7 @@ install:
 	@cp include/wc24.h /usr/include/wc24
 	@cp include/kd.h /usr/include/wc24
 	@cp include/vff.h /usr/include/wc24
+	@cp include/types.h /usr/include/wc24
 	@ldconfig -n /usr/lib
 
 #---------------------------------------------------------------------------------
