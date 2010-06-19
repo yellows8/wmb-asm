@@ -19,9 +19,11 @@ Download content immediately.
 Get and set the KD UTC time.
 
 Known bugs:
-There is no known bugs in libwc24, if you find any report them at: http://code.google.com/p/wmb-asm/issues/list
+Bugs not listed here can be reported at: http://code.google.com/p/wmb-asm/issues/list
 
 1) With wc24app when you reload IOS when your system has IOS updated since the 3.4 update, ES_GetTitleID fails after the reload. This seems to be a libogc bug, ES_GetTitleID works fine when IOS isn't reloaded. libwc24 uses the HBC JODI titleid as default when ES_GetTitleID fails, so this error isn't a problem unless you reload from another title.
+
+2) The VFF devoptab directory reading code doesn't work, readdir fails.
 
 Changelog:
 v1.1:

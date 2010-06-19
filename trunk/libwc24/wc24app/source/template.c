@@ -441,11 +441,13 @@ void DoStuff(char *url)
 								memset(lfname, 0, 32*sizeof(TCHAR));
 							}
 							printf("f_readdir returned %d\n", retval);*/
-							while((dent = readdir(dir)))
+							printf("opened dir\n");
+							while((dent = readdir(dir))!=NULL)
 							{
 								printf("Found dir ent: %s\n", dent->d_name);
 							}
 							closedir(dir);
+							printf("closed dir\n");
 						}
 					}
 
