@@ -755,6 +755,8 @@ int _VFF_dirnext_r (struct _reent *r, DIR_ITER *dirState, char *filename, struct
 	}
 	for(i=0; path[i]!=0 && i<128; i++)filename[i] = (char)path[i];
 	filename[i+1] = 0;
+	if(filename[i]=='.' && lfnpath[0]!=0)filename[i] = 0;
+
 	free(lfnpath);
 	return 0;
 }
