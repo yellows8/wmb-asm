@@ -428,7 +428,7 @@ int _VFF_open_r (struct _reent *r, void *fileStruct, const char *path, int flags
 	int i, fdi, found = 0;
 	BYTE _flags = 0;
 	FIL *f = (FIL*)fileStruct;
-	TCHAR lfnpath[128];
+	TCHAR *lfnpath = (TCHAR*)malloc(128 * sizeof(TCHAR));
 	memset(f, 0, sizeof(FIL));
 	memset(lfnpath, 0, 256);
 	if(strchr(path, ':'))path = strchr(path, ':')+1;
@@ -448,6 +448,7 @@ int _VFF_open_r (struct _reent *r, void *fileStruct, const char *path, int flags
 	}
 	if(!found)
 	{
+		free(lfnpath);
 		r->_errno = EMFILE;
 		return -1;
 	}
@@ -459,6 +460,7 @@ int _VFF_open_r (struct _reent *r, void *fileStruct, const char *path, int flags
 	if(flags & O_EXCL)_flags |= FA_CREATE_ALWAYS;
 	for(i=0; i<strlen(path); i++)lfnpath[i] = path[i];
 	r->_errno = VFF_ConvertFFError(f_open(f, lfnpath, _flags));
+	free(lfnpath);
 	if(r->_errno!=0)return -1;
 	vffoptab_fds[fdi] = f;
 	memset(vffoptab_fd_paths[fdi], 0, 256);
@@ -528,8 +530,8 @@ int _VFF_fstat_r (struct _reent *r, int fd, struct stat *st)
 {
 	int i, fdi, found = 0;
 	FILINFO info;
-	TCHAR lfnpath[128];
-	TCHAR lfnpathinfo[128];
+	TCHAR *lfnpath = (TCHAR*)malloc(128 * sizeof(TCHAR));
+	TCHAR *lfnpathinfo = (TCHAR*)malloc(128 * sizeof(TCHAR));
 	memset(lfnpath, 0, 256);
 	memset(lfnpathinfo, 0, 256);
 	for(fdi=0; fdi<VFF_MAXFDS; fdi++)
@@ -542,6 +544,8 @@ int _VFF_fstat_r (struct _reent *r, int fd, struct stat *st)
 	}
 	if(!found)
 	{
+		free(lfnpath);
+		free(lfnpathinfo);
 		r->_errno = EMFILE;
 		return -1;
 	}
@@ -550,6 +554,8 @@ int _VFF_fstat_r (struct _reent *r, int fd, struct stat *st)
 	info.lfname = lfnpathinfo;
 	info.lfsize = 128;	
 	r->_errno = VFF_ConvertFFError(f_stat(lfnpath, &info));
+	free(lfnpath);
+	free(lfnpathinfo);
 	if(r->_errno!=0)return -1;
 	VFF_ConvertFFInfoToStat(&info, st);
 	return 0;
@@ -588,8 +594,8 @@ int _VFF_stat_r (struct _reent *r, const char *path, struct stat *st)
 {
 	int i;
 	FILINFO info;
-	TCHAR lfnpath[128];
-	TCHAR lfnpathinfo[128];
+	TCHAR *lfnpath = (TCHAR*)malloc(128 * sizeof(TCHAR));
+	TCHAR *lfnpathinfo = (TCHAR*)malloc(128 * sizeof(TCHAR));
 	memset(lfnpath, 0, 256);
 	memset(lfnpathinfo, 0, 256);
 	if(strchr(path, ':'))path = strchr(path, ':')+1;
@@ -598,6 +604,8 @@ int _VFF_stat_r (struct _reent *r, const char *path, struct stat *st)
 	info.lfname = lfnpathinfo;
 	info.lfsize = 128;
 	r->_errno = VFF_ConvertFFError(f_stat(lfnpath, &info));
+	free(lfnpath);
+	free(lfnpathinfo);
 	if(r->_errno!=0)return -1;
 	VFF_ConvertFFInfoToStat(&info, st);
 	return 0;
@@ -606,16 +614,18 @@ int _VFF_stat_r (struct _reent *r, const char *path, struct stat *st)
 int _VFF_unlink_r (struct _reent *r, const char *path)
 {
 	int i;
-	TCHAR lfnpath[128];
+	TCHAR *lfnpath = (TCHAR*)malloc(128 * sizeof(TCHAR));
 	memset(lfnpath, 0, 256);
 	if(strchr(path, ':'))path = strchr(path, ':')+1;
 	if(strlen(path)>255)
 	{
+		free(lfnpath);
 		r->_errno = ENAMETOOLONG;
 		return -1;
 	}
 	for(i=0; i<strlen(path); i++)lfnpath[i] = path[i];
 	r->_errno = VFF_ConvertFFError(f_unlink(lfnpath));
+	free(lfnpath);
 	if(r->_errno!=0)return -1;
 	return 0;
 }
@@ -623,16 +633,18 @@ int _VFF_unlink_r (struct _reent *r, const char *path)
 int _VFF_chdir_r (struct _reent *r, const char *path)
 {
 	int i;
-	TCHAR lfnpath[128];
+	TCHAR *lfnpath = (TCHAR*)malloc(128 * sizeof(TCHAR));
 	memset(lfnpath, 0, 256);
 	if(strchr(path, ':'))path = strchr(path, ':')+1;
 	if(strlen(path)>255)
 	{
+		free(lfnpath);
 		r->_errno = ENAMETOOLONG;
 		return -1;
 	}
 	for(i=0; i<strlen(path); i++)lfnpath[i] = path[i];
 	r->_errno = VFF_ConvertFFError(f_chdir(lfnpath));
+	free(lfnpath);
 	if(r->_errno!=0)return -1;
 	return 0;
 }
@@ -640,20 +652,24 @@ int _VFF_chdir_r (struct _reent *r, const char *path)
 int _VFF_rename_r (struct _reent *r, const char *oldName, const char *newName)
 {
 	int i;
-	TCHAR lfnpathold[128];
-	TCHAR lfnpathnew[128];
+	TCHAR *lfnpathold = (TCHAR*)malloc(128 * sizeof(TCHAR));
+	TCHAR *lfnpathnew = (TCHAR*)malloc(128 * sizeof(TCHAR));
 	memset(lfnpathold, 0, 256);
 	memset(lfnpathnew, 0, 256);
 	if(strchr(oldName, ':'))oldName = strchr(oldName, ':')+1;
 	if(strchr(newName, ':'))newName = strchr(newName, ':')+1;
 	if(strlen(oldName)>255 || strlen(newName)>255)
 	{
+		free(lfnpathold);
+		free(lfnpathnew);
 		r->_errno = ENAMETOOLONG;
 		return -1;
 	}
 	for(i=0; i<strlen(oldName); i++)lfnpathold[i] = oldName[i];
 	for(i=0; i<strlen(newName); i++)lfnpathnew[i] = newName[i];
 	r->_errno = VFF_ConvertFFError(f_rename(lfnpathold, lfnpathnew));
+	free(lfnpathold);
+	free(lfnpathnew);
 	if(r->_errno!=0)return -1;
 	return 0;
 }
@@ -661,16 +677,18 @@ int _VFF_rename_r (struct _reent *r, const char *oldName, const char *newName)
 int _VFF_mkdir_r (struct _reent *r, const char *path, int mode)
 {
 	int i;
-	TCHAR lfnpath[128];
+	TCHAR *lfnpath = (TCHAR*)malloc(128 * sizeof(TCHAR));
 	memset(lfnpath, 0, 256);
 	if(strchr(path, ':'))path = strchr(path, ':')+1;
 	if(strlen(path)>255)
 	{
+		free(lfnpath);
 		r->_errno = ENAMETOOLONG;
 		return -1;
 	}
 	for(i=0; i<strlen(path); i++)lfnpath[i] = path[i];
 	r->_errno = VFF_ConvertFFError(f_mkdir(lfnpath));
+	free(lfnpath);
 	if(r->_errno!=0)return -1;
 	return 0;
 }
@@ -685,20 +703,19 @@ DIR_ITER* _VFF_diropen_r(struct _reent *r, DIR_ITER *dirState, const char *path)
 {
 	int i;
 	DIR *dir = (DIR*)dirState->dirStruct;
-	TCHAR lfnpath[128];
+	TCHAR *lfnpath = (TCHAR*)malloc(128 * sizeof(TCHAR));
 	memset(lfnpath, 0, 256);
 	if(strchr(path, ':'))path = strchr(path, ':')+1;
 	if(strlen(path)>255)
 	{
+		free(lfnpath);
 		r->_errno = ENAMETOOLONG;
 		return NULL;
 	}
-	printf("name\n");
 	for(i=0; i<strlen(path); i++)lfnpath[i] = path[i];
 	r->_errno = VFF_ConvertFFError(f_opendir(dir, lfnpath));
-	printf("chk err\n");	
+	free(lfnpath);	
 	if(r->_errno!=0)return NULL;
-	printf("opened\n");
 	return dirState;
 }
 
@@ -710,23 +727,35 @@ int _VFF_dirreset_r (struct _reent *r, DIR_ITER *dirState)
 	return 0;
 }
 
+FILINFO _info;
 int _VFF_dirnext_r (struct _reent *r, DIR_ITER *dirState, char *filename, struct stat *filestat)
 {
 	int i;
 	DIR *dir = (DIR*)dirState->dirStruct;
-	FILINFO info;
-	TCHAR lfnpath[128];
-	memset(lfnpath, 0, 256);
-	info.lfname = lfnpath;
-	info.lfsize = 128;
-	printf("dirnext\n");
-	r->_errno = VFF_ConvertFFError(f_readdir(dir, &info));
-	printf("dirnext errno %d\n", r->_errno);
-	if(r->_errno!=0)return -1;
-	printf("name %c\n", info.fname[0]);
-	if(info.fname[0]==0)return -1;//End of directory.
-	VFF_ConvertFFInfoToStat(&info, filestat);
-	for(i=0; lfnpath[i]!=0 && i<128; i++)filename[i] = (char)lfnpath[i];
+	TCHAR *lfnpath = (TCHAR*)malloc(128 * sizeof(TCHAR));
+	TCHAR *path = lfnpath;
+	_info.lfname = lfnpath;
+	_info.lfsize = 128;
+	r->_errno = VFF_ConvertFFError(f_readdir(dir, &_info));
+	if(r->_errno!=0)
+	{
+		free(lfnpath);
+		return -1;
+	}
+	if(_info.fname[0]==0)
+	{
+		free(lfnpath);
+		return -1;//End of directory.
+	}
+	if(filestat)VFF_ConvertFFInfoToStat(&_info, filestat);
+	if(path[0]==0)
+	{
+		printf("using short name\n");
+		path = _info.fname;
+	}
+	for(i=0; path[i]!=0 && i<128; i++)filename[i] = (char)path[i];
+	filename[i+1] = 0;
+	free(lfnpath);
 	return 0;
 }
 

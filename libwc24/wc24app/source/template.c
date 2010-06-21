@@ -32,17 +32,17 @@ DEALINGS IN THE SOFTWARE.
 
 static void *xfb = NULL;
 static GXRModeObj *rmode = NULL;
+nwc24dl_record myrec;
+nwc24dl_entry myent;
+char mailurl[256];
 
 void IOSReload_SelectMenu();
 
 void DoStuff(char *url)
 {
-	nwc24dl_record rec;
-	nwc24dl_entry ent;
 	s32 retval;
 	int which, i;
 	u32 triggers[2];
-	char mailurl[256];
 	char titleidlow[5];
 	u64 titleid;
 	memset(mailurl, 0, 256);
@@ -129,7 +129,7 @@ void DoStuff(char *url)
 	if(which)
 	{
 		FILE *f = fopen("/nwc24dlbak.bin", "rb");
-		retval = WC24_FindEntry((u32)titleid, url, &ent);
+		retval = WC24_FindEntry((u32)titleid, url, &myent);
 		if(retval<0)
 		{
 			printf("Failed to find WC24 title data entry.\n");
@@ -137,15 +137,15 @@ void DoStuff(char *url)
 		else
 		{
 			fseek(f, 0x800 + (retval * sizeof(nwc24dl_entry)), SEEK_SET);
-			fread(&ent, 1, sizeof(nwc24dl_entry), f);
+			fread(&myent, 1, sizeof(nwc24dl_entry), f);
 			fseek(f, 0x80 + (retval * sizeof(nwc24dl_record)), SEEK_SET);
-			fread(&rec, 1, sizeof(nwc24dl_record), f);
+			fread(&myrec, 1, sizeof(nwc24dl_record), f);
 			
-			WC24_WriteEntry((u32)retval, &ent);
-			WC24_WriteRecord((u32)retval, &rec);
+			WC24_WriteEntry((u32)retval, &myent);
+			WC24_WriteRecord((u32)retval, &myrec);
 		}
 
-		retval = WC24_FindEntry((u32)titleid, mailurl, &ent);
+		retval = WC24_FindEntry((u32)titleid, mailurl, &myent);
 		if(retval<0)
 		{
 			printf("Failed to find WC24 mail entry.\n");
@@ -153,12 +153,12 @@ void DoStuff(char *url)
 		else
 		{
 			fseek(f, 0x800 + (retval * sizeof(nwc24dl_entry)), SEEK_SET);
-			fread(&ent, 1, sizeof(nwc24dl_entry), f);
+			fread(&myent, 1, sizeof(nwc24dl_entry), f);
 			fseek(f, 0x80 + (retval * sizeof(nwc24dl_record)), SEEK_SET);
-			fread(&rec, 1, sizeof(nwc24dl_record), f);
+			fread(&myrec, 1, sizeof(nwc24dl_record), f);
 			
-			WC24_WriteEntry((u32)retval, &ent);
-			WC24_WriteRecord((u32)retval, &rec);
+			WC24_WriteEntry((u32)retval, &myent);
+			WC24_WriteRecord((u32)retval, &myrec);
 		}
 		fclose(f);
 	}
@@ -177,7 +177,7 @@ void DoStuff(char *url)
 
 	if(which)
 	{
-		while((retval=WC24_FindRecord((u32)titleid, &rec))!=LIBWC24_ENOENT)//Delete all HBC records+entries.
+		while((retval=WC24_FindRecord((u32)titleid, &myrec))!=LIBWC24_ENOENT)//Delete all HBC records+entries.
 		{
 			printf("deleting %x %d\n", retval, retval);
 			WC24_DeleteRecord((u32)retval);
@@ -199,14 +199,14 @@ void DoStuff(char *url)
 	if(which)
 	{
 		printf("creating record\n");
-		retval = WC24_CreateRecord(&rec, &ent, 0, 0, 0x4842, WC24_TYPE_TITLEDATA, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_RSA_VERIFY_DISABLE, 0xf, 0x5a0, url, "wc24test");//Set the dl_freq fields to download hourly and daily.0x3c
+		retval = WC24_CreateRecord(&myrec, &myent, 0, 0, 0x4842, WC24_TYPE_TITLEDATA, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_RSA_VERIFY_DISABLE, 0xf, 0x5a0, url, "wc24test");//Set the dl_freq fields to download hourly and daily.0x3c
 		if(retval<0)
 		{
 			printf("WC24_CreateRecord returned %d\n", retval);
 			return;
 		}
 		
-		if(usb_isgeckoalive(1))usb_sendbuffer_safe(1, &ent, sizeof(nwc24dl_entry));
+		if(usb_isgeckoalive(1))usb_sendbuffer_safe(1, &myent, sizeof(nwc24dl_entry));
 	}
 
 	printf("Install WC24 msg board e-mail dl record+entry?(A = yes, B = no)\n");
@@ -224,14 +224,14 @@ void DoStuff(char *url)
 	if(which)
 	{
 		printf("creating record\n");
-		retval = WC24_CreateRecord(&rec, &ent, 0, 0, 0x4842, WC24_TYPE_MSGBOARD, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_RSA_VERIFY_DISABLE, 0xf, 0x5a0, mailurl, NULL);//Set the dl_freq fields to download hourly and daily.0x3c
+		retval = WC24_CreateRecord(&myrec, &myent, 0, 0, 0x4842, WC24_TYPE_MSGBOARD, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_RSA_VERIFY_DISABLE, 0xf, 0x5a0, mailurl, NULL);//Set the dl_freq fields to download hourly and daily.0x3c
 		if(retval<0)
 		{
 			printf("WC24_CreateRecord returned %d\n", retval);
 			return;
 		}
 		
-		if(usb_isgeckoalive(1))usb_sendbuffer_safe(1, &ent, sizeof(nwc24dl_entry));
+		if(usb_isgeckoalive(1))usb_sendbuffer_safe(1, &myent, sizeof(nwc24dl_entry));
 	}
 
 	printf("Set the next time KD calls STM_Wakeup, to the next 5 or 30 minutes?(A = 5 minutes, 1 = 30 minutes, B = no)\n");
@@ -287,7 +287,7 @@ void DoStuff(char *url)
 
 	if(which)
 	{
-		retval = WC24_FindEntry(0x4a4f4449, url, &ent);
+		retval = WC24_FindEntry(0x4a4f4449, url, &myent);
 		if(retval<0)
 		{
 			printf("Failed to find WC24 title data entry.\n");
@@ -299,7 +299,7 @@ void DoStuff(char *url)
 			printf("KD_Download returned %d\n", retval);
 		}
 
-		retval = WC24_FindEntry(0x4a4f4449, mailurl, &ent);
+		retval = WC24_FindEntry(0x4a4f4449, mailurl, &myent);
 		if(retval<0)
 		{
 			printf("Failed to find WC24 mail entry.\n");
@@ -330,25 +330,25 @@ void DoStuff(char *url)
 		time_t dltime;
 		//FIL *fdl;
 		char *dlbuf = NULL;
-		retval = WC24_FindEntry(0x4a4f4449, url, &ent);
+		retval = WC24_FindEntry(0x4a4f4449, url, &myent);
 		if(retval<0)
 		{
 			printf("Failed to find WC24 title data entry.\n");
 		}
 		else
 		{
-			dltime = WC24_TimestampToSeconds(ent.dl_timestamp);
+			dltime = WC24_TimestampToSeconds(myent.dl_timestamp);
 			time = localtime(&dltime);
-			printf("error_code %d total_errors %d ", ent.error_code, ent.total_errors);
-			if(ent.dl_timestamp!=0)
+			printf("error_code %d total_errors %d ", myent.error_code, myent.total_errors);
+			if(myent.dl_timestamp!=0)
 			{
 				printf("dl_timestamp %s ", asctime(time));
 			}
 			else
 			{
-				if(ent.error_code!=0 || ent.error_code!=WC24_EHTTP304)printf("This entry was never downloaded since dl_timestamp is zero.\n");
+				if(myent.error_code!=0 || myent.error_code!=WC24_EHTTP304)printf("This entry was never downloaded since dl_timestamp is zero.\n");
 			}
-			if((ent.error_code==0 || ent.error_code==WC24_EHTTP304) && ent.dl_timestamp!=0)
+			if((myent.error_code==0 || myent.error_code==WC24_EHTTP304) && myent.dl_timestamp!=0)
 			{
 				printf("Reading VFF since download was successful.\n");
 				printf("Mounting...\n");
@@ -378,7 +378,10 @@ void DoStuff(char *url)
 							//VFF_Read(fdl, (u8*)dlbuf, (u32)filestats->st_size);
 							retval = fread(dlbuf, 1, filestats.st_size, fdlfile);
 							printf("Content:\n");
-							for(i=0; i<(u32)filestats.st_size; i++)printf("%c", dlbuf[i]);
+							for(i=0; i<(u32)filestats.st_size; i++)
+							{
+								if(dlbuf[i])printf("%c", dlbuf[i]);//Don't print null bytes.
+							}
 							free(dlbuf);
 							printf("\n");
 						}
@@ -425,7 +428,7 @@ void DoStuff(char *url)
 							//memset(lfname, 0, 32*sizeof(TCHAR));
 							/*while((retval = f_readdir(&dir, &info))==0 && info.fname[0]!=0)
 							{
-								printf("Found dir ent: short name\n");
+								printf("Found dir myent: short name\n");
 								for(retval=0; retval<13; retval++)
 								{
 									if(info.fname[retval]==0)break;
@@ -444,7 +447,8 @@ void DoStuff(char *url)
 							printf("opened dir\n");
 							while((dent = readdir(dir))!=NULL)
 							{
-								printf("Found dir ent: %s\n", dent->d_name);
+								printf("foundit\n");
+								printf("Found dir myent: %s\n", dent->d_name);
 							}
 							closedir(dir);
 							printf("closed dir\n");
@@ -458,14 +462,14 @@ void DoStuff(char *url)
 			}
 		}
 
-		retval = WC24_FindEntry(0x4a4f4449, mailurl, &ent);
+		retval = WC24_FindEntry(0x4a4f4449, mailurl, &myent);
 		if(retval<0)
 		{
 			printf("Failed to find WC24 mail entry.\n");
 		}
 		else
 		{
-			printf("error_code %d total_errors %d ", ent.error_code, ent.total_errors);
+			printf("error_code %d total_errors %d ", myent.error_code, myent.total_errors);
 		}
 	}
 
