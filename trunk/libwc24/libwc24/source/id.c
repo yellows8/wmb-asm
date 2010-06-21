@@ -2,6 +2,8 @@
 //Copyright (C) 2008 by raven
 //This is Free Software released under the GNU/GPL License.
 
+#ifdef HW_RVL//This define was added by yellowstar6, for Linux libwc24 compatibility.
+
 #include <stdio.h>
 #include <malloc.h>
 #include <ogcsys.h>
@@ -240,4 +242,6 @@ s32 launch_title(u64 titleID)
 	
 	return 0;
 }
+
+#endif
 
