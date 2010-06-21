@@ -52,8 +52,8 @@ LIBWC24VERSION	:=	1.1.0
 #---------------------------------------------------------------------------------
 TARGET		:=	$(shell basename $(CURDIR))
 BUILD		:=	build_nix
-SOURCES		:=	source
-DATA		:=	data  
+SOURCES		:=	source source/option
+DATA		:=	  
 INCLUDES	:=	include
 
 #---------------------------------------------------------------------------------
@@ -137,7 +137,8 @@ clean:
 
 install:
 	@cp $(OUTPUT).so.$(LIBWC24VERSION) /usr/lib
-	@cp $(OUTPUT).so /usr/lib
+	@ln -f /usr/lib/$(TARGET).so.$(LIBWC24VERSION) /usr/lib/$(TARGET).so
+	@ln -f /usr/lib/$(TARGET).so.$(LIBWC24VERSION) /usr/lib/$(TARGET).so.1
 	@mkdir -p /usr/include/wc24
 	@cp include/wc24.h /usr/include/wc24
 	@cp include/kd.h /usr/include/wc24

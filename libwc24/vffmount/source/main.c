@@ -34,12 +34,7 @@ DEALINGS IN THE SOFTWARE.
 #include <unistd.h>
 #include <errno.h>
 #include <syslog.h>
-
-#include "tools.h"
-#include "fs_hmac.h"
-#include "ecc.h"
-
-#define	NANDFS_NAME_LEN	12
+#include <endian.h>
 
 #ifndef BIG_ENDIAN
 #define BIG_ENDIAN 4321
@@ -51,821 +46,14 @@ DEALINGS IN THE SOFTWARE.
 #define BYTE_ORDER LITTLE_ENDIAN
 #endif
 
-#define NAND_ECC_OK 0//From Bootmii MINI nand.h
-#define NAND_ECC_CORRECTED 1
-#define NAND_ECC_UNCORRECTABLE -1
-
-#define be32 be32_wrapper
-#define be16 be16_wrapper
-
-typedef struct _nandfs_file_node {//These _nandfs structs are based on MINI ppcskel nandfs.c
-	char name[NANDFS_NAME_LEN];
-	unsigned char attr;
-	unsigned char unk;
-	union {
-		unsigned short first_child;
-		unsigned short first_cluster;
-	};
-	unsigned short sibling;
-	unsigned int size;
-	unsigned int uid;
-	unsigned short gid;
-	unsigned int dummy;
-} __attribute__((packed)) nandfs_file_node;
-
-typedef struct _nandfs_sffs {
-	unsigned char magic[4];
-	unsigned int version;
-	unsigned int dummy;
-
-	unsigned short cluster_table[32768];
-	nandfs_file_node files[6143];
-	unsigned char padding[0x14];//Added by yellowstar6.
-} __attribute__((packed)) nandfs_sffs;
-
-typedef struct _nandfs_fp {
-	unsigned short first_cluster;
-	unsigned short cur_cluster;
-	unsigned int size;
-	unsigned int offset;
-	unsigned int cluster_index;
-        unsigned int nodeindex;
-	nandfs_file_node *node;
-} nandfs_fp;
-
-nandfs_sffs SFFS;
-unsigned int used_fds = 0;
-nandfs_fp fd_array[32];
-
-int nandfd;
-int has_ecc = 1;
-int SFFS_only = 0;
-int use_nand_permissions = 0;
-int check_sffs_hmac = 1;
-int hmac_abort = 0;
-int round_robin = -1;
-int round_robin_didupdate = 0;
-int write_enable = 1;
-int ignore_ecc = 0;
-int use_gecko = 0;
-
-int supercluster = -1;
-unsigned int sffs_cluster = 0;
-unsigned int sffs_version = 0;
-
-unsigned char nand_hmackey[20];
-unsigned char nand_aeskey[16];
-
-unsigned char nand_cryptbuf[0x4000];
-
-static unsigned char buffer[8*2048];
-
-char geckodev[256];
-
-unsigned short nand_nodeindex = 0;
-
-void aes_set_key(unsigned char *key);
-void aes_decrypt(unsigned char *iv, unsigned char *inbuf, unsigned char *outbuf, unsigned long long len);
-void aes_encrypt(unsigned char *iv, unsigned char *inbuf, unsigned char *outbuf, unsigned long long len);
-
-unsigned int be32_wrapper(unsigned int x);
-unsigned short be16_wrapper(unsigned short x);
-
-int nand_correct(u32 pageno, void *data, void *ecc)//From Bootmii MINI nand.c
-{
-	u8 *dp = (u8*)data;
-	u32 *ecc_read = (u32*)((u8*)ecc+0x30);
-	u32 *ecc_calc = (u32*)((u8*)ecc+0x40);
-	int i;
-	int uncorrectable = 0;
-	int corrected = 0;
-	
-	for(i=0;i<4;i++) {
-		u32 syndrome = *ecc_read ^ *ecc_calc; //calculate ECC syncrome
-		// don't try to correct unformatted pages (all FF)
-		if ((*ecc_read != 0xFFFFFFFF) && syndrome) {
-			if(!((syndrome-1)&syndrome)) {
-				// single-bit error in ECC
-				corrected++;
-			} else {
-				// byteswap and extract odd and even halves
-				u16 even = (syndrome >> 24) | ((syndrome >> 8) & 0xf00);
-				u16 odd = ((syndrome << 8) & 0xf00) | ((syndrome >> 8) & 0x0ff);
-				if((even ^ odd) != 0xfff) {
-					// oops, can't fix this one
-					uncorrectable++;
-				} else {
-					// fix the bad bit
-					dp[odd >> 3] ^= 1<<(odd&7);
-					corrected++;
-				}
-			}
-		}
-		dp += 0x200;
-		ecc_read++;
-		ecc_calc++;
-	}
-	if(uncorrectable || corrected)
-		syslog(0, "ECC stats for NAND page 0x%x: %d uncorrectable, %d corrected\n", pageno, uncorrectable, corrected);
-	if(uncorrectable)
-		return NAND_ECC_UNCORRECTABLE;
-	if(corrected)
-		return NAND_ECC_CORRECTED;
-	return NAND_ECC_OK;
-}
-
-int nand_read_sector(int sector, int num_sectors, unsigned char *buffer, unsigned char *ecc)
-{
-	int retval = NAND_ECC_OK;
-	unsigned char buf[0x840];
-	unsigned int sect;
-	int len;
-	if(sector<0 || num_sectors<=0 || buffer==NULL)return NAND_ECC_OK;
-
-	if(!use_gecko)
-	{
-		if(has_ecc)lseek(nandfd, sector * 0x840, SEEK_SET);
-		if(!has_ecc)lseek(nandfd, sector * 0x800, SEEK_SET);
-	}	
-	for(; num_sectors>0; num_sectors--)
-	{
-		if(!use_gecko)
-		{
-			read(nandfd, buffer, 0x800);
-		}
-		else
-		{
-			if(gecko_write("READ", 4)!=0)
-			{
-				syslog(0, "Gecko write failed.\n");
-				return -1;
-			}
-			syslog(0, "Sent READ command.");
-			sect = be32(sector);
-			if(gecko_write(&sect, 4)!=0)
-			{
-				syslog(0, "Gecko write failed.\n");
-				return -1;
-			}
-			syslog(0, "Sent sector number.");
-			if(gecko_read(buf, 0x840)!=0)
-			{
-				syslog(0, "Gecko read failed.\n");
-				return -1;
-			}
-			char str[256];
-			memset(str, 0, 256);
-			sprintf(str, "Read page: %x %x", buffer, buf);
-			syslog(0, str);
-			memcpy(buffer, buf, 0x800);
-			syslog(0, "Copied page.");
-			if(has_ecc && ecc)memcpy(ecc, &buf[0x800], 0x40);
-			syslog(0, "Copied ecc.");
-			/*if(gecko_read(ecc, 0x40)!=0)
-			{
-				syslog(0, "Gecko read failed.\n");
-				return -1;
-			}
-			syslog(0, "Read spare.");*/
-		}
-		if(has_ecc)
-		{
-			if(ecc)
-			{
-				if(!use_gecko)
-				{
-					read(nandfd, ecc, 0x40);
-					memcpy(buf, buffer, 0x800);
-					memcpy(&buf[0x800], ecc, 0x40);
-					retval = check_ecc(buf);//MINI does ECC correction for us.
-					//retval = nand_correct(sector, buffer, ecc);
-				}
-				ecc+= 0x40;
-			}
-			else
-			{
-				lseek(nandfd, 0x40, SEEK_CUR);
-			}
-		}
-		buffer+= 0x800;
-		sector++;
-	}
-	return retval;
-}
-
-void nand_write_sector(int sector, int num_sectors, unsigned char *buffer, unsigned char *ecc)
-{
-	unsigned char null[0x40];
-	if(sector<0 || num_sectors<=0 || buffer==NULL)return;
-	memset(null, 0, 0x40);
-
-	if(has_ecc)lseek(nandfd, sector * 0x840, SEEK_SET);
-	if(!has_ecc)lseek(nandfd, sector * 0x800, SEEK_SET);
-	for(; num_sectors>0; num_sectors--)
-	{
-		write(nandfd, buffer, 0x800);
-		if(has_ecc)
-		{
-			if(ecc)
-			{
-				calc_ecc(buffer, ecc + 0x30);
-				calc_ecc(buffer + 512, ecc + 0x30 + 4);
-				calc_ecc(buffer + 1024, ecc + 0x30 + 8);
-				calc_ecc(buffer + 1536, ecc + 0x30 + 12);
-				write(nandfd, ecc, 0x40);
-				ecc+=0x40;
-			}
-			else
-			{
-				write(nandfd, null, 0x40);
-			}
-		}
-		buffer+=0x800;
-	}
-}
-
-int nand_read_cluster(int cluster_number, unsigned char *cluster, unsigned char *ecc)
-{
-	unsigned char eccbuf[0x200];
-	int retval = nand_read_sector(cluster_number * 8, 8, cluster, eccbuf);
-	if(ecc)
-	{	
-		memcpy(ecc, &eccbuf[0x40 * 6], 0x40);
-		memcpy(&ecc[0x40], &eccbuf[0x40 * 7], 0x40);//HMAC is in the 7th and 8th sectors.
-	}
-	return retval;
-}
-
-void nand_write_cluster(int cluster_number, unsigned char *cluster, unsigned char *hmac)
-{
-	unsigned char eccbuf[0x200];
-	memset(eccbuf, 0, 0x200);
-	if(hmac)
-	{
-		memcpy(&eccbuf[(0x40 * 6) + 1], hmac, 0x14);
-		memcpy(&eccbuf[(0x40 * 6) + 0x15], hmac, 12);
-		memcpy(&eccbuf[(0x40 * 7) + 1], &hmac[12], 8);//HMAC is in the 7th and 8th sectors.
-	}
-	nand_write_sector(cluster_number * 8, 8, cluster, eccbuf);
-}
-
-int nand_read_cluster_decrypted(int cluster_number, unsigned char *cluster, unsigned char *ecc)
-{
-	unsigned char iv[16];
-	int retval;	
-	memset(iv, 0, 16);
-
-	retval = nand_read_cluster(cluster_number, nand_cryptbuf, ecc);
-	aes_decrypt(iv, nand_cryptbuf, cluster, 0x4000);
-	return retval;
-}
-
-void nand_write_cluster_encrypted(int cluster_number, unsigned char *cluster, unsigned char *ecc)
-{
-	unsigned char iv[16];
-	memset(iv, 0, 16);
-	aes_encrypt(iv, cluster, nand_cryptbuf, 0x4000);
-	nand_write_cluster(cluster_number, nand_cryptbuf, ecc);
-}
-
-int sffs_init(int suclus)//Somewhat based on Bootmii MINI ppcskel nandfs.c SFFS init code.
-{
-	int i;
-	int si = -1;
-	unsigned int lowver = 0xfffffff7, lowsuperclus = 0, lowclus = 0;
-	unsigned char buf[0x800];
-	nandfs_sffs *bufptr = (nandfs_sffs*)buf;
-	unsigned char *sffsptr = (unsigned char*)&SFFS;
-	unsigned char supercluster_hmac[0x80];
-	unsigned char calc_hmac[20];
-	
-	if(!SFFS_only)i = 0x7f00;
-	if(SFFS_only)i = 0;
-
-	if(round_robin>=0)suclus = round_robin;
-
-	for(; i<0x7fff; i+=0x10)
-	{
-		si++;
-		nand_read_sector(i*8, 1, buf, NULL);
-		if(memcmp(bufptr->magic, "SFFS", 4)!=0)continue;
-		if(suclus==-2)
-		{
-			if(sffs_cluster==0 || sffs_version < be32(bufptr->version))
-			{
-				sffs_cluster = i;
-				sffs_version = be32(bufptr->version);
-				supercluster = si;
-			}
-		}
-		else if(suclus==-1)
-		{
-			printf("SFFS supercluster %x cluster %x version %x\n", si, i, be32(bufptr->version));
-		}
-		else
-		{
-			if(si == suclus)
-			{
-				sffs_cluster = i;
-				sffs_version = be32(bufptr->version);
-				supercluster = si;
-			}
-			if(lowver > be32(bufptr->version))
-			{
-				lowver = be32(bufptr->version);
-				lowsuperclus = si;
-				lowclus = i;
-			}
-		}
-	}
-
-	if(sffs_cluster==0 && suclus!=-1)
-	{
-		if(suclus<0)printf("No SFFS supercluster found. Your NAND SFFS is seriously broken.\n");
-		if(suclus>=0)printf("Failed to find SFFS supercluster with index %x.\n", suclus);
-		return -1;
-	}
-	else if(suclus==-1)return -1;
-
-	printf("SFFS scanning done.\n");
-	memset(&SFFS, 0, 0x40000);
-	for(i=0; i<16; i++)
-	{
-		nand_read_cluster(sffs_cluster + i, sffsptr, supercluster_hmac);
-		sffsptr+= 0x4000;
-
-	}
-	printf("Reading done.\n");
-
-	FILE *f = fopen("metadata", "w");
-	fwrite(&SFFS, 1, 0x40000, f);
-	fclose(f);
-
-	f = fopen("keys", "w");
-	fwrite(nand_hmackey, 1, 16, f);
-	fclose(f);
-
-	if(check_sffs_hmac)
-	{
-		memset(calc_hmac, 0, 20);
-		fs_hmac_meta(&SFFS, sffs_cluster, calc_hmac);
-		f = fopen("dump", "w");
-		fwrite(supercluster_hmac, 1, 0x80, f);
-		fwrite(calc_hmac, 1, 20, f);
-		fclose(f);
-		if(memcmp(&supercluster_hmac[1], calc_hmac, 20)==0)
-		{
-			printf("SFFS HMAC valid.\n");
-		}
-		else
-		{
-			printf("SFFS HMAC calc failed.\n");
-			if(hmac_abort)return -1;
-		}
-	}
-
-	if(round_robin>=0)
-	{
-		printf("Changed SFFS cluster %x supercluster %x version %x to version %x\n", sffs_cluster, supercluster, be32(SFFS.version), lowver - 1);
-		SFFS.version = be32(lowver - 1);
-		round_robin = -2;
-		round_robin_didupdate = 1;
-		update_sffs();
-		return -1;
-	}
-
-	return 0;
-}
-
-int update_sffs()
-{
-	unsigned char calc_hmac[20];
-	int i;
-	unsigned char *sffsptr = (unsigned char*)&SFFS;
-	if(!write_enable)return 0;
-	memset(calc_hmac, 0, 20);
-	
-	if(round_robin==-2)
-	{
-		if(round_robin_didupdate==0)
-		{
-			supercluster++;
-			round_robin_didupdate = 1;
-		}
-	}
-	else
-	{
-		supercluster++;
-	}
-	if(supercluster>15)supercluster = 0;
-	sffs_cluster = 0x7f00 + (supercluster * 0x10);
-	
-	if(round_robin>=0)
-	{	
-		sffs_version++;
-		SFFS.version = be32(sffs_version);
-	}
-
-	fs_hmac_meta(&SFFS, sffs_cluster, calc_hmac);
-	for(i=0; i<16; i++)
-	{
-		nand_write_cluster(sffs_cluster + i, sffsptr, i==15?calc_hmac:NULL);
-		sffsptr+= 0x4000;
-	}
-
-	return 0;
-}
-
-int nandfs_findemptynode()
-{
-	int i;
-	for(i=0; i<6143; i++)
-	{
-		if(SFFS.files[i].attr==0)break;
-	}
-	if(i==6142)return -ENOSPC;
-	return i;
-}
-
-int nandfs_allocatecluster()
-{
-	int i;
-	unsigned short clus;
-	for(i=0; i<0x8000; i++)
-	{
-		clus = be16(SFFS.cluster_table[i]);
-		if(clus==0xfffe)break;
-	}
-	if(i==0x7fff)return -ENOSPC;
-	SFFS.cluster_table[i] = be16(0xfffb);
-	return i;
-}
-
-int nandfs_open(nandfs_file_node *fp, const char *path, int type, unsigned short *index)//This is based on the function from MINI ppcskel nandfs.c
-{
-	char *ptr, *ptr2;
-	unsigned int len;
-	nandfs_file_node *cur = SFFS.files;
-	nand_nodeindex = 0;
-
-	memset(fp, 0, sizeof(nandfs_file_node));
-
-	if(strcmp(cur->name, "/") != 0) {
-		syslog(0, "your nandfs is corrupted. fixit!\n");
-		return -1;
-	}
-
-	if(strcmp(path, "/")!=0)
-	{
-		nand_nodeindex = be16(cur->first_child);
-		cur = &SFFS.files[be16(cur->first_child)];
-	}
-
-	if(strcmp(path, "/")!=0)
-	{
-	ptr = (char *)path;
-	do {
-		ptr++;
-		ptr2 = strchr(ptr, '/');
-		if (ptr2 == NULL)
-			len = strlen(ptr);
-		else {
-			ptr2++;
-			len = ptr2 - ptr - 1;
-		}
-		if (len > 12)
-		{
-			printf("invalid length: %s %s %s [%d]\n",
-					ptr, ptr2, path, len);
-			return -1;
-		}
-
-		for (;;) {
-			if(ptr2 != NULL && strncmp(cur->name, ptr, len) == 0
-			     && strnlen(cur->name, 12) == len
-			     && (cur->attr&3) == 2
-			     && (signed short)(be16(cur->first_child)&0xffff) != (signed short)0xffff) {
-				nand_nodeindex = be16(cur->first_child);				
-				cur = &SFFS.files[be16(cur->first_child)];
-				ptr = ptr2-1;
-				break;
-			} else if(ptr2 == NULL &&
-				   strncmp(cur->name, ptr, len) == 0 &&
-				   strnlen(cur->name, 12) == len &&
-				   (cur->attr&3) == type) {
-				break;
-			} else if((cur->sibling&0xffff) != 0xffff) {
-				nand_nodeindex = be16(cur->sibling);
-				cur = &SFFS.files[be16(cur->sibling)];
-			} else {
-				return -1;
-			}
-		}
-		
-	} while(ptr2 != NULL);
-	}
-
-	memcpy(fp, cur, sizeof(nandfs_file_node));
-	return 0;
-}
-
-int nandfs_read(void *ptr, unsigned int size, unsigned int nmemb, nandfs_fp *fp)//Based on Bootmii MINI ppcskel nandfs.c
-{
-	unsigned int total = size*nmemb;
-	unsigned int copy_offset, copy_len;
-	int retval;
-	int realtotal = (unsigned int)total;
-        unsigned char calc_hmac[20];
-	unsigned char spare[0x80];
-
-	if (fp->offset + total > fp->size)
-		total = fp->size - fp->offset;
-
-	if (total == 0)
-		return 0;
-
-	if(fp->cur_cluster==0xffff)
-	{
-		syslog(0, "Erm, clus = 0xffff");
-		return -EIO;
-	}
-
-	realtotal = (unsigned int)total;
-	while(total > 0) {
-		syslog(0, "clus %x", fp->cur_cluster);
-		retval = nand_read_cluster_decrypted(fp->cur_cluster, buffer, spare);
-		if(retval<0 && !ignore_ecc)return -EIO;
-		fs_hmac_data(buffer, be32(fp->node->uid), fp->node->name, fp->nodeindex, be32(fp->node->dummy), fp->cluster_index, calc_hmac);
-		if(hmac_abort && memcmp(calc_hmac, &spare[1], 20)!=0)
-		{
-			syslog(0, "Bad cluster HMAC.");
-			return -EIO;
-		}
-		copy_offset = fp->offset % (2048 * 8);
-		copy_len = (2048 * 8) - copy_offset;
-		if(copy_len > total)
-			copy_len = total;
-		memcpy(ptr, buffer + copy_offset, copy_len);
-		ptr+= copy_len;
-		total -= copy_len;
-		fp->offset += copy_len;
-
-		if ((copy_offset + copy_len) >= (2048 * 8))
-		{
-			fp->cur_cluster = be16(SFFS.cluster_table[fp->cur_cluster]);
-			fp->cluster_index++;
-		}
-	}
-
-	return realtotal;
-}
-
-int nandfs_write(void *ptr, unsigned int size, unsigned int nmemb, nandfs_fp *fp)//Based on Bootmii MINI ppcskel nandfs.c
-{
-	unsigned int total = size*nmemb;
-	unsigned int copy_offset, copy_len;
-	int retval;
-	int realtotal = (unsigned int)total;
-        unsigned char calc_hmac[20];
-	unsigned char spare[0x80];
-
-	if (total == 0)return 0;
-
-	if(fp->cur_cluster==fp->first_cluster && fp->cur_cluster==0xffff)
-	{
-		fp->first_cluster = nandfs_allocatecluster();
-		fp->cur_cluster = fp->first_cluster;
-		fp->node->first_cluster = be16(fp->first_cluster);
-	}
-
-	realtotal = (unsigned int)total;
-	while(total > 0) {
-		retval = nand_read_cluster_decrypted(fp->cur_cluster, buffer, spare);
-		if(retval<0 && !ignore_ecc)return -EIO;
-		
-		copy_offset = fp->offset % (2048 * 8);
-		copy_len = (2048 * 8) - copy_offset;
-		if(copy_len > total)
-			copy_len = total;
-		memcpy(buffer + copy_offset, ptr, copy_len);
-		ptr+= copy_len;
-		total -= copy_len;
-		fp->offset += copy_len;
-
-		fs_hmac_data(buffer, be32(fp->node->uid), fp->node->name, fp->nodeindex, be32(fp->node->dummy), fp->cluster_index, calc_hmac);
-
-		nand_write_cluster_encrypted(fp->cur_cluster, buffer, calc_hmac);
-
-		if ((copy_offset + copy_len) >= (2048 * 8))
-		{
-			if(be16(SFFS.cluster_table[fp->cur_cluster])==0xfffb)SFFS.cluster_table[fp->cur_cluster] = be16(nandfs_allocatecluster());
-			fp->cur_cluster = be16(SFFS.cluster_table[fp->cur_cluster]);
-			fp->cluster_index++;
-		}
-
-	}
-
-	if(fp->offset>fp->size)
-	{
-		fp->size = fp->offset;
-		fp->node->size = be32(fp->size);
-	}
-	update_sffs();
-	return realtotal;
-}
-
-int nandfs_seek(nandfs_fp *fp, unsigned int where, unsigned int whence)
-{
-	int clusters = 0;
-	if(whence==SEEK_SET)fp->offset = where;
-	if(whence==SEEK_CUR)fp->offset += where;
-	if(whence==SEEK_END)fp->offset = fp->size;
-	if(fp->offset>fp->size)return -EINVAL;
-
-	if(fp->offset)clusters = fp->offset / 0x4000;
-	syslog(0, "seek: clusters %x where %x offset %x", clusters, where, fp->offset);
-	fp->cur_cluster = fp->first_cluster;
-	fp->cluster_index = 0;
-	while(clusters>0)
-	{
-		fp->cur_cluster = be16(SFFS.cluster_table[fp->cur_cluster]);
-		clusters--;
-		fp->cluster_index++;
-	}
-
-	return 0;
-}
-
-int nandfs_unlink(const char *path, int type, int clear)
-{
-	int i, endi, stop = 0;
-	nandfs_file_node cur, dir;
-	char parentpath[256];
-	unsigned short index, ind, tempcluster, tempclus;
-
-	if(!write_enable)return 0;
-	syslog(0, "Unlink: path %s type %d", path, type);
-	if(nandfs_open(&cur, path, type, &nand_nodeindex)==-1)
-	{
-		syslog(0, "no ent: %s", path);
-		return -ENOENT;
-	}
-	index = nand_nodeindex;
-
-	for(i=strlen(path)-1; i>0 && path[i]!='/'; i--);
-	memset(parentpath, 0, 256);
-	strncpy(parentpath, path, i);
-
-	if(nandfs_open(&dir, parentpath, 2, &nand_nodeindex)==-1)
-	{
-		syslog(0, "no ent: %s", parentpath);
-		return -ENOENT;
-	}
-	syslog(0, "parent dir %s", parentpath);
-
-	if(dir.first_child!=0xffff)
-	{
-		stop = 0;
-		ind = be16(dir.first_child);
-		memcpy(&dir, &SFFS.files[(int)ind], sizeof(nandfs_file_node));
-		if(ind!=index)
-		{
-			do
-			{
-				if(be16(dir.sibling)==index)break;
-				if(dir.sibling!=0xffff)
-				{
-					ind = be16(dir.sibling);
-					memcpy(&dir, &SFFS.files[ind], sizeof(nandfs_file_node));
-				}
-				else
-				{
-					stop = 1;
-				}
-			} while(!stop);
-			SFFS.files[ind].sibling = cur.sibling;
-		}
-		else
-		{
-			SFFS.files[nand_nodeindex].first_child = cur.sibling;
-		}
-	}
-	else if(type==2)return -ENOTEMPTY;
-
-	
-	syslog(0, "found it");
-	if(type==1 && clear==0)
-	{
-		tempcluster = be16(cur.first_cluster);	
-		while(tempcluster!=0xfffb && tempcluster!=0xffff)
-		{
-			tempclus = be16(SFFS.cluster_table[tempcluster]);
-			SFFS.cluster_table[tempcluster] = be16(0xfffe);
-			tempcluster = tempclus;
-		}
-		
-	}
-
-	syslog(0, "stuff");
-	if(clear==0)memset(&SFFS.files[index], 0, sizeof(nandfs_file_node));
-	if(clear>0)SFFS.files[index].sibling = 0xffff;
-
-	update_sffs();
-	if(clear>0)return index;
-	return 0;
-}
-
-int nandfs_create(const char *path, int type, mode_t newperms, uid_t uid, gid_t gid, int newnode)
-{
-	int i, endi, stop = 0;
-	int newind = 0;
-	nandfs_file_node cur, dir;
-	char parentpath[256];
-	unsigned short index, ind, tempcluster, tempclus;
-
-	if(!write_enable)return -EROFS;
-	syslog(0, "Create: path %s type %d", path, type);
-
-	for(i=strlen(path)-1; i>0 && path[i]!='/'; i--);
-	memset(parentpath, 0, 256);
-	strncpy(parentpath, path, i);
-
-	if(nandfs_open(&cur, path, type, &nand_nodeindex)>=0)
-	{
-		syslog(0, "exists: %s", path);
-		return -EEXIST;
-	}
-
-	if(nandfs_open(&dir, parentpath, 2, &nand_nodeindex)==-1)
-	{
-		syslog(0, "no ent: %s", parentpath);
-		return -ENOENT;
-	}
-	syslog(0, "parent dir %s", parentpath);
-
-	if(newnode==-1)newind = nandfs_findemptynode();
-	if(newnode>=0)newind = newnode;
-
-	
-	if(newnode==-1)
-	{
-		memset(&SFFS.files[newind], 0, sizeof(nandfs_file_node));//It should already be all-zero, but make sure it's all zero.
-		memset(parentpath, 0, 256);
-		strncpy(parentpath, &path[i+1], 255);
-		strncpy(SFFS.files[newind].name, parentpath, 12);
-	
-		SFFS.files[newind].attr = type;
-		if(newperms & S_IRUSR)SFFS.files[newind].attr |= 1<<6;
-		if(newperms & S_IWUSR)SFFS.files[newind].attr |= 2<<6;
-		if(newperms & S_IRGRP)SFFS.files[newind].attr |= 1<<4;
-		if(newperms & S_IWGRP)SFFS.files[newind].attr |= 2<<4;
-		if(newperms & S_IROTH)SFFS.files[newind].attr |= 1<<2;
-		if(newperms & S_IWOTH)SFFS.files[newind].attr |= 2<<2;
-	
-		SFFS.files[newind].first_cluster = 0xffff;
-		SFFS.files[newind].sibling = 0xffff;
-		SFFS.files[newind].uid = be32(uid);
-		SFFS.files[newind].gid = be16(gid);
-	}
-
-	if(dir.first_child!=0xffff)
-	{
-		stop = 0;
-		ind = be16(dir.first_child);
-		memcpy(&dir, &SFFS.files[(int)ind], sizeof(nandfs_file_node));
-		do
-		{
-			if(dir.sibling!=0xffff)
-			{
-				ind = be16(dir.sibling);
-				memcpy(&dir, &SFFS.files[ind], sizeof(nandfs_file_node));
-			}
-			else
-			{
-				stop = 1;
-			}
-		} while(!stop);
-		SFFS.files[ind].sibling = be16(newind);
-	}
-	else
-	{
-		SFFS.files[nand_nodeindex].first_child = be16(newind);
-	}
-
-	
-
-	update_sffs();
-}
-
 void fs_destroy(void* usr)
 {
-	close(nandfd);
 	closelog();
 }
 
 int fs_statfs(const char *path, struct statvfs *fsinfo)
 {
-	int freeblocks = 0;
+	/*int freeblocks = 0;
 	int i;
 	memset(fsinfo, 0, sizeof(struct statvfs));
 	fsinfo->f_bsize = 2048;
@@ -887,13 +75,13 @@ int fs_statfs(const char *path, struct statvfs *fsinfo)
 	}
 	fsinfo->f_ffree = freeblocks;
 	fsinfo->f_files = 6143 - freeblocks;
-	return 0;
+	return 0;*/
 }
 
 static int
 fs_getattr(const char *path, struct stat *stbuf)
 {
-	nandfs_file_node cur;
+	/*nandfs_file_node cur;
 	int type = -1;
 	unsigned int perms = 0;
 	int i;
@@ -966,14 +154,14 @@ fs_getattr(const char *path, struct stat *stbuf)
 		stbuf->st_ino = nand_nodeindex;
 		syslog(0, "Type file %s %02x %o", cur.name, cur.attr, perms);
 	}
-	return 0;
+	return 0;*/
 }
 
 static int
 fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
            off_t offset, struct fuse_file_info *fi)
 {
-	nandfs_file_node cur;
+	/*nandfs_file_node cur;
 	char fn[13];
 	char str[256];
 	int stop;
@@ -1012,12 +200,12 @@ fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 		} while(!stop);
 	}
 
-	return 0;
+	return 0;*/
 }
 
 int fs_rename(const char *path, const char *newpath)
 {
-	int i, i2, ind;
+	/*int i, i2, ind;
 	nandfs_file_node cur;
 
 	if(!write_enable)return 0;
@@ -1047,86 +235,33 @@ int fs_rename(const char *path, const char *newpath)
 		if((i = nandfs_create(newpath, 1, 0, 0, 0, ind))<0)return i;//nandfs_create calls update_sffs, so we don't need to call it again here.
 	}
 
-	return 0;
-}
-
-int fs_chown(const char *path, uid_t uid, gid_t gid)
-{
-	int i;
-	nandfs_file_node cur;
-
-	if(!write_enable || !use_nand_permissions)return 0;
-	syslog(0, "Chown: path %s uid %x gid %x", path, uid, gid);
-	if(nandfs_open(&cur, path, 1, &nand_nodeindex)==-1)
-	{
-		if(nandfs_open(&cur, path, 2, &nand_nodeindex)==-1)
-		{
-			syslog(0, "no ent: %s", path);
-			return -ENOENT;
-		}
-	}
-	
-	SFFS.files[nand_nodeindex].uid = be32((unsigned int)uid);
-	SFFS.files[nand_nodeindex].gid = be16((unsigned short)gid);
-
-	update_sffs();
-
-	return 0;
-}
-
-int fs_chmod(const char *path, mode_t newperms)
-{
-	int i;
-	nandfs_file_node cur;
-
-	if(!write_enable || !use_nand_permissions)return 0;
-	syslog(0, "Chmod: path %s newperms %o", path, newperms);
-	if(nandfs_open(&cur, path, 1, &nand_nodeindex)==-1)
-	{
-		if(nandfs_open(&cur, path, 2, &nand_nodeindex)==-1)
-		{
-			syslog(0, "no ent: %s", path);
-			return -ENOENT;
-		}
-	}
-	
-	SFFS.files[nand_nodeindex].attr &= 3;
-	if(newperms & S_IRUSR)SFFS.files[nand_nodeindex].attr |= 1<<6;
-	if(newperms & S_IWUSR)SFFS.files[nand_nodeindex].attr |= 2<<6;
-	if(newperms & S_IRGRP)SFFS.files[nand_nodeindex].attr |= 1<<4;
-	if(newperms & S_IWGRP)SFFS.files[nand_nodeindex].attr |= 2<<4;
-	if(newperms & S_IROTH)SFFS.files[nand_nodeindex].attr |= 1<<2;
-	if(newperms & S_IWOTH)SFFS.files[nand_nodeindex].attr |= 2<<2;
-
-	update_sffs();
-
-	return 0;
+	return 0;*/
 }
 
 int fs_unlink(const char *path)
 {
-	return nandfs_unlink(path, 1, 0);
+	//return nandfs_unlink(path, 1, 0);
 }
 
 int fs_rmdir(const char *path)
 {
-	return nandfs_unlink(path, 2, 0);
+	//return nandfs_unlink(path, 2, 0);
 }
 
 int fs_mknod(const char *path, mode_t mode, dev_t dev)
 {
-	if(!(mode & S_IFREG))return -EINVAL;
-	return nandfs_create(path, 1, mode, 0, 0, -1);
+	/*if(!(mode & S_IFREG))return -EINVAL;
+	return nandfs_create(path, 1, mode, 0, 0, -1);*/
 }
 
 int fs_mkdir(const char *path, mode_t mode)
 {
-	return nandfs_create(path, 2, mode, 0, 0, -1);
+	//return nandfs_create(path, 2, mode, 0, 0, -1);
 }
 
 int fs_truncate(const char *path, off_t size)
 {
-	int i, way;
+	/*int i, way;
 	unsigned int num, num2, newclusters, oldclusters;
 	unsigned short tempcluster, tempclus;
 	nandfs_file_node cur;
@@ -1200,13 +335,13 @@ int fs_truncate(const char *path, off_t size)
 		}
 	}
 	update_sffs();
-	return 0;
+	return 0;*/
 }
 
 static int
 fs_open(const char *path, struct fuse_file_info *fi)
 {
-	int i;
+	/*int i;
 	nandfs_file_node cur;
 	syslog(0, "open: %s", path);
 	//if((fi->flags & 3) != O_RDONLY)return -EACCES;
@@ -1242,59 +377,46 @@ fs_open(const char *path, struct fuse_file_info *fi)
 	fd_array[i].nodeindex = nand_nodeindex;
 
 	fi->fh = (uint64_t)i;
-	return 0;
+	return 0;*/
 }
 
 static int
 fs_release(const char *path, struct fuse_file_info *fi)
 {
-	syslog(0, "closing fd %d", (int)fi->fh);
+	/*syslog(0, "closing fd %d", (int)fi->fh);
 	if(!(used_fds & 1<<fi->fh))return -EBADF;
 	used_fds &= ~1<<(unsigned int)fi->fh;
 	memset(&fd_array[(int)fi->fh], 0, sizeof(nandfs_fp));
 	syslog(0, "done");
-	return 0;
+	return 0;*/
 }
 
 static int
 fs_read(const char *path, char *buf, size_t size, off_t offset,
         struct fuse_file_info *fi)
 {
-	syslog(0, "read fd %d offset %x size %x", (int)fi->fh, (int)offset, (int)size);
+	/*syslog(0, "read fd %d offset %x size %x", (int)fi->fh, (int)offset, (int)size);
 	if(!(used_fds & 1<<fi->fh))return -EBADF;
 	syslog(0, "fd valid");
 	memset(buf, 0, size);
 	nandfs_seek(&fd_array[(int)fi->fh], offset, SEEK_SET);
 	int num = nandfs_read(buf, size, 1, &fd_array[(int)fi->fh]);
 	syslog(0, "readbytes %x", num);
-	return num;
+	return num;*/
 }
 
 static int
 fs_write(const char *path, const char *buf, size_t size, off_t offset,
          struct fuse_file_info *fi)
 {
-	syslog(0, "write fd %d offset %x size %x", (int)fi->fh, (int)offset, (int)size);
+	/*syslog(0, "write fd %d offset %x size %x", (int)fi->fh, (int)offset, (int)size);
 
 	if(!(used_fds & 1<<fi->fh))return -EBADF;
 	syslog(0, "fd valid");
 	nandfs_seek(&fd_array[(int)fi->fh], offset, SEEK_SET);
 	int num = nandfs_write(buf, size, 1, &fd_array[(int)fi->fh]);
 	syslog(0, "writebytes %x", num);
-	return num;
-}
-
-#undef be32
-#undef be16
-
-unsigned int be32_wrapper(unsigned int x)
-{
-	return be32(&x);
-}
-
-unsigned short be16_wrapper(unsigned short x)
-{
-	return be16(&x);
+	return num;*/
 }
 
 static const struct fuse_operations fsops = {
@@ -1303,8 +425,6 @@ static const struct fuse_operations fsops = {
    .getattr = fs_getattr,
    .readdir = fs_readdir,
    .rename  = fs_rename,
-   .chown  = fs_chown,
-   .chmod  = fs_chmod,
    .unlink  = fs_unlink,
    .rmdir  = fs_rmdir,
    .mknod  = fs_mknod,
@@ -1323,9 +443,9 @@ int main(int argc, char **argv)
 	char str[256];
 	//int argi;
 
-	printf("wiinandfuse v1.1 by yellowstar6\n");
-	memset(keyname, 0, 256);
-	strncpy(keyname, "default", 255);
+	printf("vffmount v1.0 by yellowstar6\n");
+	//memset(keyname, 0, 256);
+	//strncpy(keyname, "default", 255);
 	if(argc<3)
 	{
 		printf("Mount Wii VFF files with FUSE.\n");
@@ -1345,7 +465,7 @@ int main(int argc, char **argv)
 	fuse_opt_add_arg(&args, "-o");
 	fuse_opt_add_arg(&args, "allow_root");//Allow root to access the FS.
 
-	openlog("wiinandfuse", 0, LOG_USER);
+	openlog("vffmount", 0, LOG_USER);
 	syslog(0, "STARTED");
 
 	

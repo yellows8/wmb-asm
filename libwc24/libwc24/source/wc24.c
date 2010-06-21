@@ -21,12 +21,15 @@ DEALINGS IN THE SOFTWARE.
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <gccore.h>
 #include <string.h>
 #include <malloc.h>
 
-#include "wc24.h"
+#ifdef HW_RVL
+#include <gccore.h>
 #include "id.h"
+#endif
+
+#include "wc24.h"
 
 u32 wc24_did_init = 0;
 s32 nwc24dlbin_fd = 0;
@@ -35,15 +38,20 @@ u64 wc24_titleid = 0x000100014a4f4449LL;
 
 s32 WC24_Init(int id)
 {
+	s32 retval;
 	if(wc24_did_init)return LIBWC24_EINIT;
-	s32 retval = ISFS_Initialize();
+	#ifdef HW_RVL
+	retval = ISFS_Initialize();
 	if(retval<0)return retval;
-	
+	#endif
+
+	#ifdef HW_RVL
 	if(id)
 	{
 		retval = identify_title("00010001", "4a4f4449");
 		if(retval<0)return retval;
-	}	
+	}
+	#endif
 
 	retval = WC24_OpenNWC4DLBin();
 	if(retval<0)return retval;
@@ -52,14 +60,21 @@ s32 WC24_Init(int id)
 	if(NWC24DL_Header==NULL)
 	{
 		printf("Failed to allocate hdr buf.\n");
+		#ifdef HW_RVL		
 		ISFS_Close(nwc24dlbin_fd);
+		#endif
 		nwc24dlbin_fd = 0;
 		return 0;
 	}
+
+	#ifdef HW_RVL
 	retval = ISFS_Seek(nwc24dlbin_fd, 0, SEEK_SET);
 	if(retval<0)return retval;
 	retval = ISFS_Read(nwc24dlbin_fd, NWC24DL_Header, sizeof(nwc24dl_header));
 	if(retval<0)return retval;
+	#endif
+
+	#ifdef HW_RVL
 	retval = KD_Open();
 	if(retval<0)
 	{
@@ -67,14 +82,17 @@ s32 WC24_Init(int id)
 		WC24_CloseNWC4DLBin();
 		return retval;
 	}
+	#endif
 
 	wc24_did_init = 1;
+	#ifdef HW_RVL
 	retval = ES_GetTitleID(&wc24_titleid);
 	if(retval<0)
 	{
 		printf("ES_GetTitleID returned %d\n", retval);
 		//return retval;
 	}
+	#endif
 
 	return WC24_CloseNWC4DLBin();
 }
@@ -85,6 +103,7 @@ s32 WC24_Shutdown()
 	if(!wc24_did_init)return LIBWC24_EINIT;
 	wc24_did_init = 0;
 	free(NWC24DL_Header);
+	#ifdef HW_RVL
 	retval = KD_Close();
 	if(retval<0)
 	{
@@ -92,19 +111,25 @@ s32 WC24_Shutdown()
 		if(nwc24dlbin_fd)WC24_CloseNWC4DLBin();
 		return retval;
 	}
+	#endif
 	if(nwc24dlbin_fd)retval = WC24_CloseNWC4DLBin();
 	return retval;
 }
 
 s32 WC24_OpenNWC4DLBin()
 {
+	#ifdef HW_RVL
 	nwc24dlbin_fd = ISFS_Open("/shared2/wc24/nwc24dl.bin", ISFS_OPEN_RW);
+	#endif
 	return nwc24dlbin_fd;
 }
 
 s32 WC24_CloseNWC4DLBin()
 {
-	s32 retval = ISFS_Close(nwc24dlbin_fd);
+	s32 retval = 0;
+	#ifdef HW_RVL	
+	retval = ISFS_Close(nwc24dlbin_fd);
+	#endif
 	nwc24dlbin_fd = 0;
 	return retval;
 }
@@ -130,6 +155,7 @@ s32 WC24_ReadRecord(u32 index, nwc24dl_record *rec)
 		}
 	}
 	
+	#ifdef HW_RVL
 	retval = ISFS_Seek(nwc24dlbin_fd, 0x80 + (index * sizeof(nwc24dl_record)), SEEK_SET);
 	if(retval<0)
 	{
@@ -144,6 +170,7 @@ s32 WC24_ReadRecord(u32 index, nwc24dl_record *rec)
 	}
 	memcpy(rec, buf, sizeof(nwc24dl_record));
 	free(buf);
+	#endif
 
 	if(open)
 	{
@@ -170,6 +197,7 @@ s32 WC24_WriteRecord(u32 index, nwc24dl_record *rec)
 	}
 	
 	memcpy(buf, rec, sizeof(nwc24dl_record));
+	#ifdef HW_RVL
 	retval = ISFS_Seek(nwc24dlbin_fd, 0x80 + (index * sizeof(nwc24dl_record)), SEEK_SET);
 	if(retval<0)
 	{
@@ -182,7 +210,8 @@ s32 WC24_WriteRecord(u32 index, nwc24dl_record *rec)
 	{
 		return retval;
 	}
-	
+	#endif
+
 	if(open)
 	{
 		retval = WC24_CloseNWC4DLBin();
@@ -207,18 +236,24 @@ s32 WC24_ReadEntry(u32 index, nwc24dl_entry *ent)
 		}
 	}
 	
+	#ifdef HW_RVL
 	retval = ISFS_Seek(nwc24dlbin_fd, 0x800 + (index * sizeof(nwc24dl_entry)), SEEK_SET);
 	if(retval<0)
 	{
 		free(buf);
 		return retval;
 	}
+	#endif
+
+	#ifdef HW_RVL
 	retval = ISFS_Read(nwc24dlbin_fd, buf, sizeof(nwc24dl_entry));
 	if(retval<0)
 	{
 		free(buf);
 		return retval;
 	}
+	#endif
+
 	memcpy(ent, buf, sizeof(nwc24dl_entry));
 	free(buf);	
 
@@ -247,6 +282,7 @@ s32 WC24_WriteEntry(u32 index, nwc24dl_entry *ent)
 	}
 	
 	memcpy(buf, ent, sizeof(nwc24dl_entry));
+	#ifdef HW_RVL
 	retval = ISFS_Seek(nwc24dlbin_fd, 0x800 + (index * sizeof(nwc24dl_entry)), SEEK_SET);
 	if(retval<0)
 	{
@@ -259,6 +295,7 @@ s32 WC24_WriteEntry(u32 index, nwc24dl_entry *ent)
 	{
 		return retval;
 	}
+	#endif
 	
 	if(open)
 	{
@@ -408,17 +445,22 @@ s32 WC24_DeleteRecord(u32 index)
 
 s32 WC24_CreateWC24DlVFF(u32 filesize)
 {
-	s32 retval;
+	s32 retval = 0;
 	char *filename = (char*)memalign(32, 256);
 	memset(filename, 0, 256);
+	#ifdef HW_RVL
 	retval = ES_GetDataDir(wc24_titleid, filename);
 	if(retval<0)
 	{
 		free(filename);
 		return retval;
 	}
+	#endif
+
 	strcat(filename, "/wc24dl.vff");
+	#ifdef HW_RVL
 	retval = VFF_CreateVFF(filename, filesize);
+	#endif
 	free(filename);
 	return retval;
 }
@@ -428,12 +470,15 @@ s32 WC24_MountWC24DlVFF()
 	s32 retval;
 	char *filename = (char*)memalign(32, 256);
 	memset(filename, 0, 256);
+	#ifdef HW_RVL
 	retval = ES_GetDataDir(wc24_titleid, filename);
 	if(retval<0)
 	{
 		free(filename);
 		return retval;
 	}
+	#endif
+
 	strcat(filename, "/wc24dl.vff");
 	retval = VFF_Mount(filename);
 	free(filename);

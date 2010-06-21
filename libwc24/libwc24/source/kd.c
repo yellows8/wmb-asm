@@ -19,6 +19,8 @@ OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 DEALINGS IN THE SOFTWARE.
 */
 
+#ifdef HW_RVL
+
 #include <gctypes.h>
 #include <gccore.h>
 #include <stdio.h>
@@ -156,4 +158,6 @@ s32 KD_GetTimeTriggers(u32 *triggers)
 	if(retval==0)retval = outbuf[0];
 	return retval;
 }
+
+#endif
 

@@ -128,26 +128,44 @@ DRESULT disk_read(BYTE drv,BYTE *buff, DWORD sector, BYTE count)
 	if(sector>=31 && vff_fat_types[(int)drv]==32)sector-=31;
 	sector-=2;
 
-	//retval = fseek(disk_vff_handles[(int)drv], 0x20 + (sector*0x200), SEEK_SET);
-	retval = ISFS_Seek((s32)disk_vff_handles[(int)drv], 0x20 + (sector*0x200), SEEK_SET);	
-	if(retval<0)
+	#ifdef HW_RVL	
+	if(vff_types[(int)drv]==0)
 	{
-		printf("seek fail\n");
-		return RES_PARERR;
+		retval = ISFS_Seek((s32)disk_vff_handles[(int)drv], 0x20 + (sector*0x200), SEEK_SET);	
+		if(retval<0)
+		{
+			printf("seek fail\n");
+			return RES_PARERR;
+		}
+	}
+	#endif
+	if(vff_types[(int)drv]==1)
+	{
+		retval = fseek((FILE*)disk_vff_handles[(int)drv], 0x20 + (sector*0x200), SEEK_SET);
+		if(retval<0)return RES_PARERR;
 	}
 
-	//retval = fread(buff, 0x200, count, disk_vff_handles[(int)drv]);
-	while(count>0)
+	if(vff_types[(int)drv]==1)
 	{
-		retval = ISFS_Read((s32)disk_vff_handles[(int)drv], diskio_buffer, 0x200);
-		if(retval!=0x200)
+		retval = fread(buff, 0x200, count, (FILE*)disk_vff_handles[(int)drv]);
+		if(retval!=(0x200 * count))return RES_PARERR;
+	}
+	else
+	{
+		while(count>0)
 		{
-			printf("read only %x bytes, wanted %x bytes\n", retval, 0x200);
-			return RES_PARERR;
-		}		
-		memcpy(buff, diskio_buffer, 0x200);
-		buff+=0x200;
-		count--;
+			#ifdef HW_RVL
+			retval = ISFS_Read((s32)disk_vff_handles[(int)drv], diskio_buffer, 0x200);
+			#endif
+			if(retval!=0x200)
+			{
+				printf("read only %x bytes, wanted %x bytes\n", retval, 0x200);
+				return RES_PARERR;
+			}		
+			memcpy(buff, diskio_buffer, 0x200);
+			buff+=0x200;
+			count--;
+		}
 	}
 	return 0;
 }
@@ -167,26 +185,44 @@ DRESULT disk_write(BYTE drv, const BYTE *buff, DWORD sector, BYTE count)
 	if(sector>=31 && vff_fat_types[(int)drv]==32)sector-=31;
 	sector-=2;
 
-	//retval = fseek(disk_vff_handles[(int)drv], 0x20 + (sector*0x200), SEEK_SET);
-	retval = ISFS_Seek((s32)disk_vff_handles[(int)drv], 0x20 + (sector*0x200), SEEK_SET);	
-	if(retval<0)
+	#ifdef HW_RVL	
+	if(vff_types[(int)drv]==0)
 	{
-		printf("seek fail\n");
-		return RES_PARERR;
+		retval = ISFS_Seek((s32)disk_vff_handles[(int)drv], 0x20 + (sector*0x200), SEEK_SET);	
+		if(retval<0)
+		{
+			printf("seek fail\n");
+			return RES_PARERR;
+		}
+	}
+	#endif
+	if(vff_types[(int)drv]==1)
+	{
+		retval = fseek((FILE*)disk_vff_handles[(int)drv], 0x20 + (sector*0x200), SEEK_SET);
+		if(retval<0)return RES_PARERR;
 	}
 
-	//retval = fwrite(buff, 0x200, count, disk_vff_handles[(int)drv]);
-	while(count>0)
+	if(vff_types[(int)drv]==1)
 	{
-		memcpy(diskio_buffer, buff, 0x200);
-		retval = ISFS_Write((s32)disk_vff_handles[(int)drv], diskio_buffer, 0x200);
-		if(retval!=count)
+		retval = fwrite(buff, 0x200, count, (FILE*)disk_vff_handles[(int)drv]);
+		if(retval!=(0x200 * count))return RES_PARERR;
+	}
+	else
+	{
+		while(count>0)
 		{
-			printf("read only %x bytes, wanted %x bytes\n", retval, 0x200);
-			return RES_PARERR;
-		}		
-		buff+=0x200;
-		count--;
+			memcpy(diskio_buffer, buff, 0x200);
+			#ifdef HW_RVL
+			retval = ISFS_Write((s32)disk_vff_handles[(int)drv], diskio_buffer, 0x200);
+			#endif
+			if(retval!=count)
+			{
+				printf("read only %x bytes, wanted %x bytes\n", retval, 0x200);
+				return RES_PARERR;
+			}		
+			buff+=0x200;
+			count--;
+		}
 	}
 	return 0;
 }
