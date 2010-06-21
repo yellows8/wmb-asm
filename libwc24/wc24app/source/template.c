@@ -328,7 +328,6 @@ void DoStuff(char *url)
 	{
 		struct tm *time;
 		time_t dltime;
-		//FIL *fdl;
 		char *dlbuf = NULL;
 		retval = WC24_FindEntry(0x4a4f4449, url, &myent);
 		if(retval<0)
@@ -361,7 +360,6 @@ void DoStuff(char *url)
 					FILE *fdlfile = NULL;
 					struct stat filestats;
 					printf("Opening wc24test file in VFF...\n");
-					//fdl = VFF_Open("wc24test");
 					fdlfile = fopen("vff:/wc24test", "r");
 					if(fdlfile==NULL)
 					{
@@ -375,7 +373,6 @@ void DoStuff(char *url)
 						if(dlbuf)
 						{
 							memset(dlbuf, 0, filestats.st_size);
-							//VFF_Read(fdl, (u8*)dlbuf, (u32)filestats->st_size);
 							retval = fread(dlbuf, 1, filestats.st_size, fdlfile);
 							printf("Content:\n");
 							for(i=0; i<(u32)filestats.st_size; i++)
@@ -390,7 +387,6 @@ void DoStuff(char *url)
 							printf("Failed to allocate buffer for content, or filesize is zero.\n");
 						}
 						printf("Closing file...\n");
-						//VFF_Close(fdl);
 						fclose(fdlfile);
 					}
 
@@ -408,15 +404,6 @@ void DoStuff(char *url)
 
 					if(which)
 					{
-						/*DIR dir;
-						FILINFO info;
-						TCHAR lfname[32];
-						memset(lfname, 0, 32*sizeof(TCHAR));
-						memset(&info, 0, sizeof(FILINFO));
-						info.lfsize = 32;
-						info.lfname = lfname;
-						lfname[0] = '/';
-						retval = f_opendir(&dir, lfname);*/
 						DIR *dir = opendir("vff:/");
 						struct dirent *dent;
 						if(dir==NULL)
@@ -425,30 +412,10 @@ void DoStuff(char *url)
 						}
 						else
 						{
-							//memset(lfname, 0, 32*sizeof(TCHAR));
-							/*while((retval = f_readdir(&dir, &info))==0 && info.fname[0]!=0)
-							{
-								printf("Found dir myent: short name\n");
-								for(retval=0; retval<13; retval++)
-								{
-									if(info.fname[retval]==0)break;
-									printf("%c", (char)info.fname[retval]);
-								}
-								printf("\nlong name\n");
-								for(retval=0; retval<32; retval++)
-								{
-									if(lfname[retval]==0)break;
-									printf("%c", (char)lfname[retval]);
-								}
-								printf("\n");
-								memset(lfname, 0, 32*sizeof(TCHAR));
-							}
-							printf("f_readdir returned %d\n", retval);*/
 							printf("opened dir\n");
 							while((dent = readdir(dir))!=NULL)
 							{
-								printf("foundit\n");
-								printf("Found dir myent: %s\n", dent->d_name);
+								printf("Found dirent: %s\n", dent->d_name);
 							}
 							closedir(dir);
 							printf("closed dir\n");
