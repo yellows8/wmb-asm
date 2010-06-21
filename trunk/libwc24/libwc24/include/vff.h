@@ -62,10 +62,6 @@ s32 VFF_Mount(char *path);//Opens a VFF, only one VFF can be open at a time.
 s32 VFF_Unmount();
 u32 VFF_GetFATSize(u32 filesize);
 u32 VFF_GetFATType(u32 filesize);
-//FIL *VFF_Open(char *path);//Opens a file in the mounted VFF, the leading root directory slash is optional. VFF_Open, VFF_Close, and VFF_Read are just wrappers for the libff functions.
-//void VFF_Close(FIL *ctx);
-//s32 VFF_Read(FIL *ctx, u8 *buffer, u32 length);//Reads data from a file in the mounted VFF.
-//s32 VFF_Write(FIL *ctx, u8 *buffer, u32 length);
 
 #ifdef __cplusplus
    }

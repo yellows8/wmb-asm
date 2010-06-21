@@ -23,8 +23,6 @@ Bugs not listed here can be reported at: http://code.google.com/p/wmb-asm/issues
 
 1) With wc24app when you reload IOS when your system has IOS updated since the 3.4 update, ES_GetTitleID fails after the reload. This seems to be a libogc bug, ES_GetTitleID works fine when IOS isn't reloaded. libwc24 uses the HBC JODI titleid as default when ES_GetTitleID fails, so this error isn't a problem unless you reload from another title.
 
-2) The VFF devoptab directory reading code doesn't convert dirent names, short names need converted to simple names without the '?'.
-
 Changelog:
 v1.1:
 The libwc24 v1.0 source tarball(not the pre-compiled library and dol) had a ISFS heap buffer overflow bug. Only 0x10 bytes for the size of a record is allocated for reading and writing records, but ISFS always reads/writes at least 0x20 bytes. This was fixed in libwc24 v1.1.

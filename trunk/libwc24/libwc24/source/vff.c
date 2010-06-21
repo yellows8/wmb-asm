@@ -308,45 +308,6 @@ s32 VFF_Unmount()
 	return 0;
 }
 
-FIL *VFF_Open(char *path)
-{
-	s32 retval;
-	FIL *f = (FIL*)malloc(sizeof(FIL));
-	TCHAR lfnpath[128];
-	memset(f, 0, sizeof(FIL));
-	memset(lfnpath, 0, 256);
-	for(retval=0; retval<strlen(path); retval++)lfnpath[retval] = path[retval];
-	retval = (s32)f_open(f, lfnpath, FA_READ | FA_WRITE);
-	if(retval!=0)
-	{
-		printf("f_open returned %d\n", retval);
-		free(f);
-		return NULL;
-	}
-	return f;
-}
-
-void VFF_Close(FIL *ctx)
-{
-	if(ctx==NULL)return;
-	f_close(ctx);
-	free(ctx);
-}
-
-s32 VFF_Read(FIL *ctx, u8 *buffer, u32 length)
-{
-	UINT readbytes = 0;
-	f_read(ctx, buffer, length, &readbytes);
-	return readbytes;
-}
-
-s32 VFF_Write(FIL *ctx, u8 *buffer, u32 length)
-{
-	UINT writtenbytes = 0;
-	f_write(ctx, buffer, length, &writtenbytes);
-	return writtenbytes;
-}
-
 int VFF_ConvertFFError(FRESULT error)
 {
 	switch(error)
@@ -734,6 +695,7 @@ int _VFF_dirnext_r (struct _reent *r, DIR_ITER *dirState, char *filename, struct
 	DIR *dir = (DIR*)dirState->dirStruct;
 	TCHAR *lfnpath = (TCHAR*)malloc(128 * sizeof(TCHAR));
 	TCHAR *path = lfnpath;
+	char ext[5];
 	_info.lfname = lfnpath;
 	_info.lfsize = 128;
 	r->_errno = VFF_ConvertFFError(f_readdir(dir, &_info));
@@ -748,14 +710,31 @@ int _VFF_dirnext_r (struct _reent *r, DIR_ITER *dirState, char *filename, struct
 		return -1;//End of directory.
 	}
 	if(filestat)VFF_ConvertFFInfoToStat(&_info, filestat);
-	if(path[0]==0)
-	{
-		printf("using short name\n");
-		path = _info.fname;
-	}
+	if(path[0]==0)path = _info.fname;
 	for(i=0; path[i]!=0 && i<128; i++)filename[i] = (char)path[i];
 	filename[i+1] = 0;
-	if(filename[i]=='.' && lfnpath[0]!=0)filename[i] = 0;
+	if(filename[i]=='.' && lfnpath[0]!=0)filename[i] = 0;//Remove the extra '.' from long filenames without an file extension.
+	if(lfnpath[0]==0)
+	{
+		memset(ext, 0, 5);
+		strncpy(&ext[1], &filename[9], 3);
+		for(i=0; i<3; i++)
+		{
+			if(ext[i+1]=='?')ext[i+1] = 0;
+		}
+		if(strlen(&ext[1])>0)ext[0] = '.';
+
+		memset(&filename[8], 0, 4);
+		for(i = 7; i>=0; i--)
+		{
+			if(filename[i]!='?')break;
+			if(filename[i]=='?')filename[i] = 0;
+		}
+		if(filename[i]!=' ' && filename[i]!=0 && strlen(ext)>0)
+		{
+			strcpy(&filename[i+1], ext);
+		}
+	}
 
 	free(lfnpath);
 	return 0;
