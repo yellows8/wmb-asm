@@ -21,7 +21,7 @@ Get and set the KD UTC time.
 Known bugs:
 Bugs not listed here can be reported at: http://code.google.com/p/wmb-asm/issues/list
 
-1) With wc24app when you reload IOS when your system has IOS updated since the 3.4 update, ES_GetTitleID fails after the reload. This seems to be a libogc bug, ES_GetTitleID works fine when IOS isn't reloaded. libwc24 uses the HBC JODI titleid as default when ES_GetTitleID fails, so this error isn't a problem unless you reload from another title.
+1) With wc24app when you reload IOS when your system has IOS updated since the 3.4 update, ES_GetTitleID fails after the reload. This seems to be a libogc bug, ES_GetTitleID works fine when IOS isn't reloaded. libwc24 uses the HBC JODI titleid as default when ES_GetTitleID fails, so this error isn't a problem unless you reload from another title. After an IOS reload, the current identification is reset, which breaks HBC data dir access. On pre-3.4 IOS, you can identify as HBC to work around that issue, but that won't work on 3.4+ IOS.
 
 Changelog:
 v1.1:
@@ -29,9 +29,8 @@ The libwc24 v1.0 source tarball(not the pre-compiled library and dol) had a ISFS
 Added support for KD_SetNextWakeup and KD_GetTimeTriggers.
 Added support for KD_Download flag sync UTC time.
 KD_Open and KD_Close are now called by WC24_Init and WC24_Shutdown.
-VFF files can be read and written with libff, but only MS-DOS 8.3 can be used still since LFN needs a Unicode library.
 Fixed typo for the WC24_EHTTP304 define value. In libwc24 v1.0 this caused wc24app to skip VFF reading since wc24app/libwc24 didn't recognize the error from ent.error_code.
-VFF files are now read and written with libff, with long filenames support.
+VFF files are now read and written with libff, with long filenames support. VFF files can be mounted, and can be used with a devoptab VFF device.
 
 v1.0:
 Initial release.
@@ -39,5 +38,5 @@ Initial release.
 Credits:
 Raven's id.c from fs_browser for identifying as HBC
 Bushing for VFF FAT size code: http://wiibrew.org/wiki/VFF
-Elm Chan FatFs
+Elm Chan FatFs. libff ff.c, ff.h, option/syscall.c, and option/ccsbcs.c were modified to redefine f_* functions as fvff_* functions.
 

@@ -13,12 +13,12 @@
 /*------------------------------------------------------------------------*/
 /* Create a Synchronization Object
 /*------------------------------------------------------------------------*/
-/* This function is called in f_mount function to create a new
+/* This function is called in fvff_mount function to create a new
 /  synchronization object, such as semaphore and mutex. When a FALSE is
-/  returned, the f_mount function fails with FR_INT_ERR.
+/  returned, the fvff_mount function fails with FR_INT_ERR.
 */
 
-BOOL ff_cre_syncobj (	/* TRUE:Function succeeded, FALSE:Could not create due to any error */
+BOOL ffvff_cre_syncobj (	/* TRUE:Function succeeded, FALSE:Could not create due to any error */
 	BYTE vol,			/* Corresponding logical drive being processed */
 	_SYNC_t *sobj		/* Pointer to return the created sync object */
 )
@@ -45,12 +45,12 @@ BOOL ff_cre_syncobj (	/* TRUE:Function succeeded, FALSE:Could not create due to 
 /*------------------------------------------------------------------------*/
 /* Delete a Synchronization Object                                        */
 /*------------------------------------------------------------------------*/
-/* This function is called in f_mount function to delete a synchronization
-/  object that created with ff_cre_syncobj function. When a FALSE is
-/  returned, the f_mount function fails with FR_INT_ERR.
+/* This function is called in fvff_mount function to delete a synchronization
+/  object that created with ffvff_cre_syncobj function. When a FALSE is
+/  returned, the fvff_mount function fails with FR_INT_ERR.
 */
 
-BOOL ff_del_syncobj (	/* TRUE:Function succeeded, FALSE:Could not delete due to any error */
+BOOL ffvff_del_syncobj (	/* TRUE:Function succeeded, FALSE:Could not delete due to any error */
 	_SYNC_t sobj		/* Sync object tied to the logical drive to be deleted */
 )
 {
@@ -77,7 +77,7 @@ BOOL ff_del_syncobj (	/* TRUE:Function succeeded, FALSE:Could not delete due to 
 /  When a FALSE is returned, the file function fails with FR_TIMEOUT.
 */
 
-BOOL ff_req_grant (	/* TRUE:Got a grant to access the volume, FALSE:Could not get a grant */
+BOOL ffvff_req_grant (	/* TRUE:Got a grant to access the volume, FALSE:Could not get a grant */
 	_SYNC_t sobj	/* Sync object to wait */
 )
 {
@@ -103,7 +103,7 @@ BOOL ff_req_grant (	/* TRUE:Got a grant to access the volume, FALSE:Could not ge
 /* This function is called on leaving file functions to unlock the volume.
 */
 
-void ff_rel_grant (
+void ffvff_rel_grant (
 	_SYNC_t sobj	/* Sync object to be signaled */
 )
 {
@@ -129,7 +129,7 @@ void ff_rel_grant (
 /* If a NULL is returned, the file function fails with FR_NOT_ENOUGH_CORE.
 */
 
-void* ff_memalloc (	/* Returns pointer to the allocated memory block */
+void* ffvff_memalloc (	/* Returns pointer to the allocated memory block */
 	UINT size		/* Number of bytes to allocate */
 )
 {
@@ -141,7 +141,7 @@ void* ff_memalloc (	/* Returns pointer to the allocated memory block */
 /* Free a memory block                                                    */
 /*------------------------------------------------------------------------*/
 
-void ff_memfree(
+void ffvff_memfree(
 	void* mblock	/* Pointer to the memory block to free */
 )
 {

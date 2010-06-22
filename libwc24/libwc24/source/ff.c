@@ -15,7 +15,7 @@
 /-----------------------------------------------------------------------------/
 / Feb 26,'06 R0.00  Prototype.
 /
-/ Apr 29,'06 R0.01  First stable version.
+/ Apr 29,'06 R0.01  First stablf_e version.
 /
 / Jun 01,'06 R0.02  Added FAT12 support.
 /                   Removed unbuffered mode.
@@ -187,27 +187,27 @@ BYTE Drive;				/* Current drive */
 
 
 #if _USE_LFN == 0			/* No LFN */
-#define	DEF_NAMEBUF			BYTE sfn[12]
+#define	DEfvff_NAMEBUF			BYTE sfn[12]
 #define INIT_BUF(dobj)		(dobj).fn = sfn
 #define	FREE_BUF()
 
 #elif _USE_LFN == 1			/* LFN with static LFN working buffer */
 static WCHAR LfnBuf[_MAX_LFN + 1];
-#define	DEF_NAMEBUF			BYTE sfn[12]
+#define	DEfvff_NAMEBUF			BYTE sfn[12]
 #define INIT_BUF(dobj)		{ (dobj).fn = sfn; (dobj).lfn = LfnBuf; }
 #define	FREE_BUF()
 
 #elif _USE_LFN == 2 		/* LFN with dynamic LFN working buffer on the stack */
-#define	DEF_NAMEBUF			BYTE sfn[12]; WCHAR lbuf[_MAX_LFN + 1]
+#define	DEfvff_NAMEBUF			BYTE sfn[12]; WCHAR lbuf[_MAX_LFN + 1]
 #define INIT_BUF(dobj)		{ (dobj).fn = sfn; (dobj).lfn = lbuf; }
 #define	FREE_BUF()
 
 #elif _USE_LFN == 3 		/* LFN with dynamic LFN working buffer on the heap */
-#define	DEF_NAMEBUF			BYTE sfn[12]; WCHAR *lfn
-#define INIT_BUF(dobj)		{ lfn = ff_memalloc((_MAX_LFN + 1) * 2); \
+#define	DEfvff_NAMEBUF			BYTE sfn[12]; WCHAR *lfn
+#define INIT_BUF(dobj)		{ lfn = ffvff_memalloc((_MAX_LFN + 1) * 2); \
 							  if (!lfn) LEAVE_FF((dobj).fs, FR_NOT_ENOUGH_CORE); \
 							  (dobj).lfn = lfn;	(dobj).fn = sfn; }
-#define	FREE_BUF()			ff_memfree(lfn)
+#define	FREE_BUF()			ffvff_memfree(lfn)
 
 #else
 #error Wrong LFN configuration.
@@ -282,7 +282,7 @@ int lock_fs (
 	FATFS *fs		/* File system object */
 )
 {
-	return ff_req_grant(fs->sobj);
+	return ffvff_req_grant(fs->sobj);
 }
 
 
@@ -296,7 +296,7 @@ void unlock_fs (
 		res != FR_INVALID_DRIVE &&
 		res != FR_INVALID_OBJECT &&
 		res != FR_TIMEOUT) {
-		ff_rel_grant(fs->sobj);
+		ffvff_rel_grant(fs->sobj);
 	}
 }
 #endif
@@ -842,8 +842,8 @@ int cmp_lfn (			/* 1:Matched, 0:Not matched */
 	do {
 		uc = LD_WORD(dir+LfnOfs[s]);	/* Pick an LFN character from the entry */
 		if (wc) {	/* Last char has not been processed */
-			wc = ff_wtoupper(uc);		/* Convert it to upper case */
-			if (i >= _MAX_LFN || wc != ff_wtoupper(lfnbuf[i++]))	/* Compare it */
+			wc = ffvff_wtoupper(uc);		/* Convert it to upper case */
+			if (i >= _MAX_LFN || wc != ffvff_wtoupper(lfnbuf[i++]))	/* Compare it */
 				return 0;				/* Not matched */
 		} else {
 			if (uc != 0xFFFF) return 0;	/* Check filler */
@@ -1297,7 +1297,7 @@ FRESULT create_name (
 				return FR_INVALID_NAME;
 			w = (w << 8) + b;
 		}
-		w = ff_convert(w, 1);			/* Convert OEM to Unicode */
+		w = ffvff_convert(w, 1);			/* Convert OEM to Unicode */
 		if (!w) return FR_INVALID_NAME;	/* Reject invalid code */
 #endif
 		if (w < 0x80 && chk_chr("\"*:<>\?|\x7F", w)) /* Reject illegal chars for LFN */
@@ -1351,10 +1351,10 @@ FRESULT create_name (
 
 		if (w >= 0x80) {				/* Non ASCII char */
 #ifdef _EXCVT
-			w = ff_convert(w, 0);		/* Unicode -> OEM code */
+			w = ffvff_convert(w, 0);		/* Unicode -> OEM code */
 			if (w) w = excvt[w - 0x80];	/* Convert extended char to upper (SBCS) */
 #else
-			w = ff_convert(ff_wtoupper(w), 0);	/* Upper converted Unicode -> OEM code */
+			w = ffvff_convert(ffvff_wtoupper(w), 0);	/* Upper converted Unicode -> OEM code */
 #endif
 			cf |= NS_LFN;				/* Force create LFN entry */
 		}
@@ -1501,7 +1501,7 @@ void get_fileinfo (		/* No return code */
 #if _LFN_UNICODE
 			if (IsDBCS1(c) && i < 7 && IsDBCS2(dir[i + 1]))
 				c = (c << 8) | dir[++i];
-			c = ff_convert(c, 1);
+			c = ffvff_convert(c, 1);
 			if (!c) c = '?';
 #endif
 			*p++ = c;
@@ -1515,7 +1515,7 @@ void get_fileinfo (		/* No return code */
 #if _LFN_UNICODE
 				if (IsDBCS1(c) && i < 10 && IsDBCS2(dir[i + 1]))
 					c = (c << 8) | dir[++i];
-				c = ff_convert(c, 1);
+				c = ffvff_convert(c, 1);
 				if (!c) c = '?';
 #endif
 				*p++ = c;
@@ -1538,7 +1538,7 @@ void get_fileinfo (		/* No return code */
 			lfn = dj->lfn;
 			while ((w = *lfn++) != 0) {			/* Get an LFN char */
 #if !_LFN_UNICODE
-				w = ff_convert(w, 0);			/* Unicode -> OEM conversion */
+				w = ffvff_convert(w, 0);			/* Unicode -> OEM conversion */
 				if (!w) { i = 0; break; }		/* Could not convert, no LFN */
 				if (_DF1S && w >= 0x100)		/* Put 1st byte if it is a DBC */
 					tp[i++] = (TCHAR)(w >> 8);
@@ -1846,7 +1846,7 @@ FRESULT validate (	/* FR_OK(0): The object is valid, !=0: Invalid */
 /* Mount/Unmount a Logical Drive                                         */
 /*-----------------------------------------------------------------------*/
 
-FRESULT f_mount (
+FRESULT fvff_mount (
 	BYTE vol,		/* Logical drive number to be mounted/unmounted */
 	FATFS *fs		/* Pointer to new file system object (NULL for unmount)*/
 )
@@ -1860,7 +1860,7 @@ FRESULT f_mount (
 
 	if (rfs) {
 #if _FS_REENTRANT					/* Discard sync object of the current volume */
-		if (!ff_del_syncobj(rfs->sobj)) return FR_INT_ERR;
+		if (!ffvff_del_syncobj(rfs->sobj)) return FR_INT_ERR;
 #endif
 		rfs->fs_type = 0;			/* Clear old fs object */
 	}
@@ -1868,7 +1868,7 @@ FRESULT f_mount (
 	if (fs) {
 		fs->fs_type = 0;			/* Clear new fs object */
 #if _FS_REENTRANT					/* Create sync object for the new volume */
-		if (!ff_cre_syncobj(vol, &fs->sobj)) return FR_INT_ERR;
+		if (!ffvff_cre_syncobj(vol, &fs->sobj)) return FR_INT_ERR;
 #endif
 	}
 	FatFs[vol] = fs;				/* Register new fs object */
@@ -1883,7 +1883,7 @@ FRESULT f_mount (
 /* Open or Create a File                                                 */
 /*-----------------------------------------------------------------------*/
 
-FRESULT f_open (
+FRESULT fvff_open (
 	FIL *fp,			/* Pointer to the blank file object */
 	const TCHAR *path,	/* Pointer to the file name */
 	BYTE mode			/* Access mode and file open mode flags */
@@ -1892,7 +1892,7 @@ FRESULT f_open (
 	FRESULT res;
 	DIR dj;
 	BYTE *dir;
-	DEF_NAMEBUF;
+	DEfvff_NAMEBUF;
 
 
 	fp->fs = 0;			/* Clear file object */
@@ -2015,7 +2015,7 @@ FRESULT f_open (
 /* Read File                                                             */
 /*-----------------------------------------------------------------------*/
 
-FRESULT f_read (
+FRESULT fvff_read (
 	FIL *fp, 		/* Pointer to the file object */
 	void *buff,		/* Pointer to data buffer */
 	UINT btr,		/* Number of bytes to read */
@@ -2108,7 +2108,7 @@ FRESULT f_read (
 /* Write File                                                            */
 /*-----------------------------------------------------------------------*/
 
-FRESULT f_write (
+FRESULT fvff_write (
 	FIL *fp,			/* Pointer to the file object */
 	const void *buff,	/* Pointer to the data to be written */
 	UINT btw,			/* Number of bytes to write */
@@ -2222,7 +2222,7 @@ FRESULT f_write (
 /* Synchronize the File Object                                           */
 /*-----------------------------------------------------------------------*/
 
-FRESULT f_sync (
+FRESULT fvff_sync (
 	FIL *fp		/* Pointer to the file object */
 )
 {
@@ -2270,7 +2270,7 @@ FRESULT f_sync (
 /* Close File                                                            */
 /*-----------------------------------------------------------------------*/
 
-FRESULT f_close (
+FRESULT fvff_close (
 	FIL *fp		/* Pointer to the file object to be closed */
 )
 {
@@ -2283,7 +2283,7 @@ FRESULT f_close (
 	LEAVE_FF(fs, res);
 
 #else
-	res = f_sync(fp);		/* Flush cached data */
+	res = fvff_sync(fp);		/* Flush cached data */
 #if _FS_SHARE
 	if (res == FR_OK) {		/* Decrement open counter */
 #if _FS_REENTRANT
@@ -2311,7 +2311,7 @@ FRESULT f_close (
 
 #if _FS_RPATH
 
-FRESULT f_chdrive (
+FRESULT fvff_chdrive (
 	BYTE drv		/* Drive number */
 )
 {
@@ -2325,14 +2325,14 @@ FRESULT f_chdrive (
 
 
 
-FRESULT f_chdir (
+FRESULT fvff_chdir (
 	const TCHAR *path	/* Pointer to the directory path */
 )
 {
 	FRESULT res;
 	DIR dj;
 	BYTE *dir;
-	DEF_NAMEBUF;
+	DEfvff_NAMEBUF;
 
 
 	res = chk_mounted(&path, &dj.fs, 0);
@@ -2366,7 +2366,7 @@ FRESULT f_chdir (
 /* Seek File R/W Pointer                                                 */
 /*-----------------------------------------------------------------------*/
 
-FRESULT f_lseek (
+FRESULT fvff_lseek (
 	FIL *fp,		/* Pointer to the file object */
 	DWORD ofs		/* File pointer from top of file */
 )
@@ -2530,14 +2530,14 @@ FRESULT f_lseek (
 /* Create a Directroy Object                                             */
 /*-----------------------------------------------------------------------*/
 
-FRESULT f_opendir (
+FRESULT fvff_opendir (
 	DIR *dj,			/* Pointer to directory object to create */
 	const TCHAR *path	/* Pointer to the directory path */
 )
 {
 	FRESULT res;
 	BYTE *dir;
-	DEF_NAMEBUF;
+	DEfvff_NAMEBUF;
 
 
 	res = chk_mounted(&path, &dj->fs, 0);
@@ -2572,13 +2572,13 @@ FRESULT f_opendir (
 /* Read Directory Entry in Sequense                                      */
 /*-----------------------------------------------------------------------*/
 
-FRESULT f_readdir (
+FRESULT fvff_readdir (
 	DIR *dj,			/* Pointer to the open directory object */
 	FILINFO *fno		/* Pointer to file information to return */
 )
 {
 	FRESULT res;
-	DEF_NAMEBUF;
+	DEfvff_NAMEBUF;
 
 
 	res = validate(dj->fs, dj->id);			/* Check validity of the object */
@@ -2592,6 +2592,7 @@ FRESULT f_readdir (
 				dj->sect = 0;
 				res = FR_OK;
 			}
+
 			if (res == FR_OK) {				/* A valid entry is found */
 				get_fileinfo(dj, fno);		/* Get the object information */
 				res = dir_next(dj, 0);		/* Increment index for next */
@@ -2614,14 +2615,14 @@ FRESULT f_readdir (
 /* Get File Status                                                       */
 /*-----------------------------------------------------------------------*/
 
-FRESULT f_stat (
+FRESULT fvff_stat (
 	const TCHAR *path,	/* Pointer to the file path */
 	FILINFO *fno		/* Pointer to file information to return */
 )
 {
 	FRESULT res;
 	DIR dj;
-	DEF_NAMEBUF;
+	DEfvff_NAMEBUF;
 
 
 	res = chk_mounted(&path, &dj.fs, 0);
@@ -2647,7 +2648,7 @@ FRESULT f_stat (
 /* Get Number of Free Clusters                                           */
 /*-----------------------------------------------------------------------*/
 
-FRESULT f_getfree (
+FRESULT fvff_getfree (
 	const TCHAR *path,	/* Pointer to the logical drive number (root dir) */
 	DWORD *nclst,		/* Pointer to the variable to return number of free clusters */
 	FATFS **fatfs		/* Pointer to pointer to corresponding file system object to return */
@@ -2712,7 +2713,7 @@ FRESULT f_getfree (
 /* Truncate File                                                         */
 /*-----------------------------------------------------------------------*/
 
-FRESULT f_truncate (
+FRESULT fvff_truncate (
 	FIL *fp		/* Pointer to the file object */
 )
 {
@@ -2760,7 +2761,7 @@ FRESULT f_truncate (
 /* Delete a File or Directory                                            */
 /*-----------------------------------------------------------------------*/
 
-FRESULT f_unlink (
+FRESULT fvff_unlink (
 	const TCHAR *path		/* Pointer to the file or directory path */
 )
 {
@@ -2768,7 +2769,7 @@ FRESULT f_unlink (
 	DIR dj, sdj;
 	BYTE *dir;
 	DWORD dclst;
-	DEF_NAMEBUF;
+	DEfvff_NAMEBUF;
 
 
 	res = chk_mounted(&path, &dj.fs, 1);
@@ -2828,7 +2829,7 @@ FRESULT f_unlink (
 /* Create a Directory                                                    */
 /*-----------------------------------------------------------------------*/
 
-FRESULT f_mkdir (
+FRESULT fvff_mkdir (
 	const TCHAR *path		/* Pointer to the directory path */
 )
 {
@@ -2836,7 +2837,7 @@ FRESULT f_mkdir (
 	DIR dj;
 	BYTE *dir, n;
 	DWORD dsc, dcl, pcl, tim = get_fattime();
-	DEF_NAMEBUF;
+	DEfvff_NAMEBUF;
 
 
 	res = chk_mounted(&path, &dj.fs, 1);
@@ -2904,7 +2905,7 @@ FRESULT f_mkdir (
 /* Change Attribute                                                      */
 /*-----------------------------------------------------------------------*/
 
-FRESULT f_chmod (
+FRESULT fvff_chmod (
 	const TCHAR *path,	/* Pointer to the file path */
 	BYTE value,			/* Attribute bits */
 	BYTE mask			/* Attribute mask to change */
@@ -2913,7 +2914,7 @@ FRESULT f_chmod (
 	FRESULT res;
 	DIR dj;
 	BYTE *dir;
-	DEF_NAMEBUF;
+	DEfvff_NAMEBUF;
 
 
 	res = chk_mounted(&path, &dj.fs, 1);
@@ -2946,7 +2947,7 @@ FRESULT f_chmod (
 /* Change Timestamp                                                      */
 /*-----------------------------------------------------------------------*/
 
-FRESULT f_utime (
+FRESULT fvff_utime (
 	const TCHAR *path,	/* Pointer to the file/directory name */
 	const FILINFO *fno	/* Pointer to the time stamp to be set */
 )
@@ -2954,7 +2955,7 @@ FRESULT f_utime (
 	FRESULT res;
 	DIR dj;
 	BYTE *dir;
-	DEF_NAMEBUF;
+	DEfvff_NAMEBUF;
 
 
 	res = chk_mounted(&path, &dj.fs, 1);
@@ -2987,7 +2988,7 @@ FRESULT f_utime (
 /* Rename File/Directory                                                 */
 /*-----------------------------------------------------------------------*/
 
-FRESULT f_rename (
+FRESULT fvff_rename (
 	const TCHAR *path_old,	/* Pointer to the old name */
 	const TCHAR *path_new	/* Pointer to the new name */
 )
@@ -2996,7 +2997,7 @@ FRESULT f_rename (
 	DIR djo, djn;
 	BYTE buf[21], *dir;
 	DWORD dw;
-	DEF_NAMEBUF;
+	DEfvff_NAMEBUF;
 
 
 	res = chk_mounted(&path_old, &djo.fs, 1);
@@ -3067,7 +3068,7 @@ FRESULT f_rename (
 /*-----------------------------------------------------------------------*/
 #if _USE_FORWARD && _FS_TINY
 
-FRESULT f_forward (
+FRESULT fvff_forward (
 	FIL *fp, 						/* Pointer to the file object */
 	UINT (*func)(const BYTE*,UINT),	/* Pointer to the streaming function */
 	UINT btr,						/* Number of bytes to forward */
@@ -3130,7 +3131,7 @@ FRESULT f_forward (
 #define N_FATS		1			/* 1 or 2 */
 
 
-FRESULT f_mkfs (
+FRESULT fvff_mkfs (
 	BYTE drv,		/* Logical drive number */
 	BYTE sfd,		/* Partitioning rule 0:FDISK, 1:SFD */
 	UINT au			/* Allocation unit size [bytes] */
@@ -3342,7 +3343,7 @@ FRESULT f_mkfs (
 /*-----------------------------------------------------------------------*/
 /* Get a string from the file                                            */
 /*-----------------------------------------------------------------------*/
-TCHAR* f_gets (
+TCHAR* fvff_gets (
 	TCHAR* buff,	/* Pointer to the string buffer to read */
 	int len,		/* Size of string buffer (characters) */
 	FIL* fil		/* Pointer to the file object */
@@ -3355,20 +3356,20 @@ TCHAR* f_gets (
 
 
 	while (n < len - 1) {			/* Read bytes until buffer gets filled */
-		f_read(fil, s, 1, &rc);
+		fvff_read(fil, s, 1, &rc);
 		if (rc != 1) break;			/* Break on EOF or error */
 		c = s[0];
 #if _LFN_UNICODE					/* Read a character in UTF-8 encoding */
 		if (c >= 0x80) {
 			if (c < 0xC0) continue;	/* Skip stray trailer */
 			if (c < 0xE0) {			/* Two-byte sequense */
-				f_read(fil, s, 1, &rc);
+				fvff_read(fil, s, 1, &rc);
 				if (rc != 1) break;
 				c = ((c & 0x1F) << 6) | (s[0] & 0x3F);
 				if (c < 0x80) c = '?';
 			} else {
 				if (c < 0xF0) {		/* Three-byte sequense */
-					f_read(fil, s, 2, &rc);
+					fvff_read(fil, s, 2, &rc);
 					if (rc != 2) break;
 					c = (c << 12) | ((s[0] & 0x3F) << 6) | (s[1] & 0x3F);
 					if (c < 0x800) c = '?';
@@ -3396,7 +3397,7 @@ TCHAR* f_gets (
 /*-----------------------------------------------------------------------*/
 /* Put a character to the file                                           */
 /*-----------------------------------------------------------------------*/
-int f_putc (
+int fvff_putc (
 	TCHAR c,	/* A character to be output */
 	FIL* fil	/* Pointer to the file object */
 )
@@ -3406,7 +3407,7 @@ int f_putc (
 
 
 #if _USE_STRFUNC >= 2
-	if (c == '\n') f_putc ('\r', fil);	/* LF -> CRLF conversion */
+	if (c == '\n') fvff_putc ('\r', fil);	/* LF -> CRLF conversion */
 #endif
 
 #if _LFN_UNICODE	/* Write the character in UTF-8 encoding */
@@ -3429,7 +3430,7 @@ int f_putc (
 	s[0] = (BYTE)c;
 	btw = 1;
 #endif
-	f_write(fil, s, btw, &bw);		/* Write the char to the file */
+	fvff_write(fil, s, btw, &bw);		/* Write the char to the file */
 	return (bw == btw) ? 1 : EOF;	/* Return the result */
 }
 
@@ -3439,7 +3440,7 @@ int f_putc (
 /*-----------------------------------------------------------------------*/
 /* Put a string to the file                                              */
 /*-----------------------------------------------------------------------*/
-int f_puts (
+int fvff_puts (
 	const TCHAR* str,	/* Pointer to the string to be output */
 	FIL* fil			/* Pointer to the file object */
 )
@@ -3448,7 +3449,7 @@ int f_puts (
 
 
 	for (n = 0; *str; str++, n++) {
-		if (f_putc(*str, fil) == EOF) return EOF;
+		if (fvff_putc(*str, fil) == EOF) return EOF;
 	}
 	return n;
 }
@@ -3459,7 +3460,7 @@ int f_puts (
 /*-----------------------------------------------------------------------*/
 /* Put a formatted string to the file                                    */
 /*-----------------------------------------------------------------------*/
-int f_printf (
+int fvff_printf (
 	FIL* fil,			/* Pointer to the file object */
 	const TCHAR* str,	/* Pointer to the format string */
 	...					/* Optional arguments... */
@@ -3479,7 +3480,7 @@ int f_printf (
 		c = *str++;
 		if (c == 0) break;			/* End of string */
 		if (c != '%') {				/* Non escape character */
-			cc = f_putc(c, fil);
+			cc = fvff_putc(c, fil);
 			if (cc != EOF) cc = 1;
 			continue;
 		}
@@ -3500,9 +3501,9 @@ int f_printf (
 		if (IsLower(d)) d -= 0x20;
 		switch (d) {				/* Type is... */
 		case 'S' :					/* String */
-			cc = f_puts(va_arg(arp, TCHAR*), fil); continue;
+			cc = fvff_puts(va_arg(arp, TCHAR*), fil); continue;
 		case 'C' :					/* Character */
-			cc = f_putc((TCHAR)va_arg(arp, int), fil); continue;
+			cc = fvff_putc((TCHAR)va_arg(arp, int), fil); continue;
 		case 'B' :					/* Binary */
 			r = 2; break;
 		case 'O' :					/* Octal */
@@ -3513,7 +3514,7 @@ int f_printf (
 		case 'X' :					/* Hexdecimal */
 			r = 16; break;
 		default:					/* Unknown */
-			cc = f_putc(c, fil); continue;
+			cc = fvff_putc(c, fil); continue;
 		}
 
 		/* Get an argument */
@@ -3535,11 +3536,11 @@ int f_printf (
 		if (f & 4) s[i++] = '-';
 		cc = 0;
 		while (i < w-- && cc != EOF) {
-			cc = f_putc((TCHAR)((f & 1) ? '0' : ' '), fil);
+			cc = fvff_putc((TCHAR)((f & 1) ? '0' : ' '), fil);
 			res++;
 		}
 		do {
-			cc = f_putc(s[--i], fil); 
+			cc = fvff_putc(s[--i], fil); 
 			res++;
 		} while (i && cc != EOF);
 		if (cc != EOF) cc = 0;
