@@ -241,8 +241,6 @@ extern const PARTITION Drives[];	/* Logical drive# to physical location conversi
 
 #endif
 
-
-
 /* Type of path name strings on FatFs API */
 
 #if _LFN_UNICODE			/* Unicode string */
@@ -401,7 +399,7 @@ typedef enum {
 	FR_INVALID_DRIVE,		/* (11) The logical drive number is invalid */
 	FR_NOT_ENABLED,			/* (12) The volume has no work area */
 	FR_NO_FILESYSTEM,		/* (13) There is no valid FAT volume on the physical drive */
-	FR_MKFS_ABORTED,		/* (14) The f_mkfs() aborted due to any parameter error */
+	FR_MKFS_ABORTED,		/* (14) The fvff_mkfs() aborted due to any parameter error */
 	FR_TIMEOUT,				/* (15) Could not get a grant to access the volume within defined period */
 	FR_LOCKED,				/* (16) The operation is rejected according to the file shareing policy */
 	FR_NOT_ENOUGH_CORE,		/* (17) LFN working buffer could not be allocated */
@@ -413,42 +411,42 @@ typedef enum {
 /*--------------------------------------------------------------*/
 /* FatFs module application interface                           */
 
-FRESULT f_mount (BYTE, FATFS*);						/* Mount/Unmount a logical drive */
-FRESULT f_open (FIL*, const TCHAR*, BYTE);			/* Open or create a file */
-FRESULT f_read (FIL*, void*, UINT, UINT*);			/* Read data from a file */
-FRESULT f_lseek (FIL*, DWORD);						/* Move file pointer of a file object */
-FRESULT f_close (FIL*);								/* Close an open file object */
-FRESULT f_opendir (DIR*, const TCHAR*);				/* Open an existing directory */
-FRESULT f_readdir (DIR*, FILINFO*);					/* Read a directory item */
-FRESULT f_stat (const TCHAR*, FILINFO*);			/* Get file status */
+FRESULT fvff_mount (BYTE, FATFS*);						/* Mount/Unmount a logical drive */
+FRESULT fvff_open (FIL*, const TCHAR*, BYTE);			/* Open or create a file */
+FRESULT fvff_read (FIL*, void*, UINT, UINT*);			/* Read data from a file */
+FRESULT fvff_lseek (FIL*, DWORD);						/* Move file pointer of a file object */
+FRESULT fvff_close (FIL*);								/* Close an open file object */
+FRESULT fvff_opendir (DIR*, const TCHAR*);				/* Open an existing directory */
+FRESULT fvff_readdir (DIR*, FILINFO*);					/* Read a directory item */
+FRESULT fvff_stat (const TCHAR*, FILINFO*);			/* Get file status */
 #if !_FS_READONLY
-FRESULT f_write (FIL*, const void*, UINT, UINT*);	/* Write data to a file */
-FRESULT f_getfree (const TCHAR*, DWORD*, FATFS**);	/* Get number of free clusters on the drive */
-FRESULT f_truncate (FIL*);							/* Truncate file */
-FRESULT f_sync (FIL*);								/* Flush cached data of a writing file */
-FRESULT f_unlink (const TCHAR*);					/* Delete an existing file or directory */
-FRESULT	f_mkdir (const TCHAR*);						/* Create a new directory */
-FRESULT f_chmod (const TCHAR*, BYTE, BYTE);			/* Change attriburte of the file/dir */
-FRESULT f_utime (const TCHAR*, const FILINFO*);		/* Change timestamp of the file/dir */
-FRESULT f_rename (const TCHAR*, const TCHAR*);		/* Rename/Move a file or directory */
+FRESULT fvff_write (FIL*, const void*, UINT, UINT*);	/* Write data to a file */
+FRESULT fvff_getfree (const TCHAR*, DWORD*, FATFS**);	/* Get number of free clusters on the drive */
+FRESULT fvff_truncate (FIL*);							/* Truncate file */
+FRESULT fvff_sync (FIL*);								/* Flush cached data of a writing file */
+FRESULT fvff_unlink (const TCHAR*);					/* Delete an existing file or directory */
+FRESULT	fvff_mkdir (const TCHAR*);						/* Create a new directory */
+FRESULT fvff_chmod (const TCHAR*, BYTE, BYTE);			/* Change attriburte of the file/dir */
+FRESULT fvff_utime (const TCHAR*, const FILINFO*);		/* Change timestamp of the file/dir */
+FRESULT fvff_rename (const TCHAR*, const TCHAR*);		/* Rename/Move a file or directory */
 #endif
 #if _USE_FORWARD
-FRESULT f_forward (FIL*, UINT(*)(const BYTE*,UINT), UINT, UINT*);	/* Forward data to the stream */
+FRESULT fvff_forward (FIL*, UINT(*)(const BYTE*,UINT), UINT, UINT*);	/* Forward data to the stream */
 #endif
 #if _USE_MKFS
-FRESULT f_mkfs (BYTE, BYTE, UINT);					/* Create a file system on the drive */
+FRESULT fvff_mkfs (BYTE, BYTE, UINT);					/* Create a file system on the drive */
 #endif
 #if _FS_RPATH
-FRESULT f_chdir (const TCHAR*);						/* Change current directory */
-FRESULT f_chdrive (BYTE);							/* Change current drive */
+FRESULT fvff_chdir (const TCHAR*);						/* Change current directory */
+FRESULT fvff_chdrive (BYTE);							/* Change current drive */
 #endif
 #if _USE_STRFUNC
-int f_putc (TCHAR, FIL*);							/* Put a character to the file */
-int f_puts (const TCHAR*, FIL*);					/* Put a string to the file */
-int f_printf (FIL*, const TCHAR*, ...);				/* Put a formatted string to the file */
-TCHAR* f_gets (TCHAR*, int, FIL*);					/* Get a string from the file */
-#define f_eof(fp) (((fp)->fptr == (fp)->fsize) ? 1 : 0)
-#define f_error(fp) (((fp)->flag & FA__ERROR) ? 1 : 0)
+int fvff_putc (TCHAR, FIL*);							/* Put a character to the file */
+int fvff_puts (const TCHAR*, FIL*);					/* Put a string to the file */
+int fvff_printf (FIL*, const TCHAR*, ...);				/* Put a formatted string to the file */
+TCHAR* fvff_gets (TCHAR*, int, FIL*);					/* Get a string from the file */
+#define fvff_eof(fp) (((fp)->fptr == (fp)->fsize) ? 1 : 0)
+#define fvff_error(fp) (((fp)->flag & FA__ERROR) ? 1 : 0)
 #ifndef EOF
 #define EOF (-1)
 #endif
@@ -466,20 +464,20 @@ DWORD get_fattime (void);
 
 /* Unicode support functions */
 #if _USE_LFN						/* Unicode - OEM code conversion */
-WCHAR ff_convert (WCHAR, UINT);		/* OEM-Unicode bidirectional conversion */
-WCHAR ff_wtoupper (WCHAR);			/* Unicode upper-case conversion */
+WCHAR ffvff_convert (WCHAR, UINT);		/* OEM-Unicode bidirectional conversion */
+WCHAR ffvff_wtoupper (WCHAR);			/* Unicode upper-case conversion */
 #if _USE_LFN == 3					/* Memory functions */
-void* ff_memalloc (UINT);			/* Allocate memory block */
-void ff_memfree (void*);			/* Free memory block */
+void* ffvff_memalloc (UINT);			/* Allocate memory block */
+void ffvff_memfree (void*);			/* Free memory block */
 #endif
 #endif
 
 /* Sync functions */
 #if _FS_REENTRANT
-int ff_cre_syncobj (BYTE, _SYNC_t*);/* Create a sync object */
-int ff_del_syncobj (_SYNC_t);		/* Delete a sync object */
-int ff_req_grant (_SYNC_t);			/* Lock sync object */
-void ff_rel_grant (_SYNC_t);		/* Unlock sync object */
+int ffvff_cre_syncobj (BYTE, _SYNC_t*);/* Create a sync object */
+int ffvff_del_syncobj (_SYNC_t);		/* Delete a sync object */
+int ffvff_req_grant (_SYNC_t);			/* Lock sync object */
+void ffvff_rel_grant (_SYNC_t);		/* Unlock sync object */
 #endif
 
 

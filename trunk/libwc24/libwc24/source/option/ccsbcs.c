@@ -314,6 +314,7 @@ const WCHAR Tbl[] = {	/*  CP1250(0x80-0xFF) to Unicode conversion table */
 	0x0159, 0x016F, 0x00FA, 0x0171, 0x00FC, 0x00FD, 0x0163, 0x02D9
 };
 
+
 #elif _CODE_PAGE == 1251
 #define _TBLDEF 1
 static
@@ -498,7 +499,7 @@ const WCHAR Tbl[] = {	/*  CP1258(0x80-0xFF) to Unicode conversion table */
 #endif
 
 
-WCHAR ff_convert (	/* Converted character, Returns zero on error */
+WCHAR ffvff_convert (	/* Converted character, Returns zero on error */
 	WCHAR	src,	/* Character code to be converted */
 	UINT	dir		/* 0: Unicode to OEMCP, 1: OEMCP to Unicode */
 )
@@ -525,7 +526,7 @@ WCHAR ff_convert (	/* Converted character, Returns zero on error */
 }
 
 
-WCHAR ff_wtoupper (	/* Upper converted character */
+WCHAR ffvff_wtoupper (	/* Upper converted character */
 	WCHAR chr		/* Input character */
 )
 {

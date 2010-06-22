@@ -51,8 +51,6 @@
 #define	_USE_FASTSEEK	0	/* 0:Disable or 1:Enable */
 /* To enable fast seek feature, set _USE_FASTSEEK to 1. */
 
-
-
 /*---------------------------------------------------------------------------/
 / Locale and Namespace Configurations
 /----------------------------------------------------------------------------*/

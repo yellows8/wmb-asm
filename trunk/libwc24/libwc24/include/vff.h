@@ -63,6 +63,28 @@ s32 VFF_Unmount();
 u32 VFF_GetFATSize(u32 filesize);
 u32 VFF_GetFATType(u32 filesize);
 
+#ifndef HW_RVL
+int _VFF_open_r (struct _reent *r, void *fileStruct, const char *path, int flags, int mode);
+int _VFF_close_r (struct _reent *r, int fd);
+ssize_t _VFF_read_r (struct _reent *r, int fd, char *ptr, size_t len);
+ssize_t _VFF_write_r (struct _reent *r, int fd, const char *ptr, size_t len);
+off_t _VFF_seek_r (struct _reent *r, int fd, off_t pos, int dir);
+int _VFF_fstat_r (struct _reent *r, int fd, struct stat *st);
+int _VFF_ftruncate_r (struct _reent *r, int fd, off_t len);
+int _VFF_fsync_r (struct _reent *r, int fd);
+int _VFF_stat_r (struct _reent *r, const char *path, struct stat *st);
+int _VFF_unlink_r (struct _reent *r, const char *path);
+int _VFF_chdir_r (struct _reent *r, const char *path);
+int _VFF_rename_r (struct _reent *r, const char *oldName, const char *newName);
+int _VFF_mkdir_r (struct _reent *r, const char *path, int mode);
+int _VFF_statvfs_r (struct _reent *r, const char *path, struct statvfs *buf);
+DIR_ITER* _VFF_diropen_r(struct _reent *r, DIR_ITER *dirState, const char *path);
+int _VFF_dirreset_r (struct _reent *r, DIR_ITER *dirState);
+int _VFF_dirnext_r (struct _reent *r, DIR_ITER *dirState, char *filename, struct stat *filestat);
+int _VFF_dirclose_r (struct _reent *r, DIR_ITER *dirState);
+
+#endif
+
 #ifdef __cplusplus
    }
 #endif

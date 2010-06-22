@@ -17,6 +17,8 @@ typedef signed short s16;
 typedef signed char s8;
 typedef signed long long s64;
 
+typedef signed int ssize_t;
+
 struct _reent
 {
 	int _errno;

@@ -297,8 +297,8 @@ s32 VFF_Mount(char *path)
 	#ifdef HW_RVL
 	if(type==0)
 	{
-		disk_vff_handles[vff_totalmountedfs] = ISFS_Open(isfspath, ISFS_OPEN_RW);
-		if((s32)disk_vff_handles[vff_totalmountedfs]<0)return disk_vff_handles[vff_totalmountedfs];
+		disk_vff_handles[vff_totalmountedfs] = (void*)ISFS_Open(isfspath, ISFS_OPEN_RW);
+		if((s32)disk_vff_handles[vff_totalmountedfs]<0)return (s32)disk_vff_handles[vff_totalmountedfs];
 	}
 	#endif
 	if(type==1)
@@ -308,7 +308,7 @@ s32 VFF_Mount(char *path)
 	}
 	//if(disk_vff_handles[vff_totalmountedfs]==NULL)return -1;
 	vff_types[vff_totalmountedfs] = type;
-	retval = (s32)f_mount((BYTE)vff_totalmountedfs, &vff_filesystems[vff_totalmountedfs]);
+	retval = (s32)fvff_mount((BYTE)vff_totalmountedfs, &vff_filesystems[vff_totalmountedfs]);
 	if(retval!=0)return retval;
 	vff_totalmountedfs++;
 	#ifdef HW_RVL
@@ -327,7 +327,7 @@ s32 VFF_Unmount()
 	vff_totalmountedfs--;
 	type = vff_types[vff_totalmountedfs];
 	#ifdef HW_RVL	
-	if(type==0)ISFS_Close(disk_vff_handles[vff_totalmountedfs]);
+	if(type==0)ISFS_Close((s32)disk_vff_handles[vff_totalmountedfs]);
 	#endif
 	if(type==1)fclose(disk_vff_handles[vff_totalmountedfs]);
 	#ifdef HW_RVL
@@ -448,7 +448,7 @@ int _VFF_open_r (struct _reent *r, void *fileStruct, const char *path, int flags
 	if(flags & O_CREAT)_flags |= FA_CREATE_NEW;
 	if(flags & O_EXCL)_flags |= FA_CREATE_ALWAYS;
 	for(i=0; i<strlen(path); i++)lfnpath[i] = path[i];
-	r->_errno = VFF_ConvertFFError(f_open(f, lfnpath, _flags));
+	r->_errno = VFF_ConvertFFError(fvff_open(f, lfnpath, _flags));
 	free(lfnpath);
 	if(r->_errno!=0)return -1;
 	vffoptab_fds[fdi] = f;
@@ -477,7 +477,7 @@ int _VFF_close_r (struct _reent *r, int fd)
 		return -1;
 	}
 
-	r->_errno = VFF_ConvertFFError(f_close(f));
+	r->_errno = VFF_ConvertFFError(fvff_close(f));
 	if(r->_errno!=0)return -1;
 	vffoptab_fds[fdi] = NULL;
 	return 0;
@@ -488,7 +488,7 @@ ssize_t _VFF_read_r (struct _reent *r, int fd, char *ptr, size_t len)
 	FIL *f;
 	UINT bytes = 0;
 	f = (FIL*)fd;
-	r->_errno = VFF_ConvertFFError(f_read(f, ptr, len, &bytes));
+	r->_errno = VFF_ConvertFFError(fvff_read(f, ptr, len, &bytes));
 	if(r->_errno!=0)return -1;
 	return bytes;
 }
@@ -498,7 +498,7 @@ ssize_t _VFF_write_r (struct _reent *r, int fd, const char *ptr, size_t len)
 	FIL *f;
 	UINT bytes = 0;
 	f = (FIL*)fd;
-	r->_errno = VFF_ConvertFFError(f_write(f, ptr, len, &bytes));
+	r->_errno = VFF_ConvertFFError(fvff_write(f, ptr, len, &bytes));
 	if(r->_errno!=0)return -1;
 	return bytes;
 }
@@ -510,7 +510,7 @@ off_t _VFF_seek_r (struct _reent *r, int fd, off_t pos, int dir)
 	f = (FIL*)fd;
 	if(dir==SEEK_CUR)pos+= (int)f->fptr;
 	if(dir==SEEK_END)pos+= (int)f->fsize;
-	r->_errno = VFF_ConvertFFError(f_lseek(f, _pos));
+	r->_errno = VFF_ConvertFFError(fvff_lseek(f, _pos));
 	if(r->_errno!=0)return -1;
 	return 0;
 }
@@ -542,7 +542,7 @@ int _VFF_fstat_r (struct _reent *r, int fd, struct stat *st)
 	for(i=0; i<strlen(vffoptab_fd_paths[fdi]); i++)lfnpath[i] = vffoptab_fd_paths[fdi][i];
 	info.lfname = lfnpathinfo;
 	info.lfsize = 128;	
-	r->_errno = VFF_ConvertFFError(f_stat(lfnpath, &info));
+	r->_errno = VFF_ConvertFFError(fvff_stat(lfnpath, &info));
 	free(lfnpath);
 	free(lfnpathinfo);
 	if(r->_errno!=0)return -1;
@@ -555,14 +555,14 @@ int _VFF_ftruncate_r (struct _reent *r, int fd, off_t len)
 	FIL *f;
 	unsigned int temp, num;
 	f = (FIL*)fd;
-	r->_errno = VFF_ConvertFFError(f_truncate(f));
+	r->_errno = VFF_ConvertFFError(fvff_truncate(f));
 	if(r->_errno!=0)return -1;
 
 	temp = 0;
 	num = 0;
 	while(len>0)
 	{
-		r->_errno = VFF_ConvertFFError(f_write(f, &temp, 1, &num));
+		r->_errno = VFF_ConvertFFError(fvff_write(f, &temp, 1, &num));
 		len--;
 		if(r->_errno!=0)return -1;
 	}
@@ -574,7 +574,7 @@ int _VFF_fsync_r (struct _reent *r, int fd)
 {
 	FIL *f;
 	f = (FIL*)fd;
-	r->_errno = VFF_ConvertFFError(f_sync(f));
+	r->_errno = VFF_ConvertFFError(fvff_sync(f));
 	if(r->_errno!=0)return -1;
 	return 0;
 }
@@ -592,7 +592,7 @@ int _VFF_stat_r (struct _reent *r, const char *path, struct stat *st)
 	for(i=0; i<strlen(path); i++)lfnpath[i] = path[i];
 	info.lfname = lfnpathinfo;
 	info.lfsize = 128;
-	r->_errno = VFF_ConvertFFError(f_stat(lfnpath, &info));
+	r->_errno = VFF_ConvertFFError(fvff_stat(lfnpath, &info));
 	free(lfnpath);
 	free(lfnpathinfo);
 	if(r->_errno!=0)return -1;
@@ -613,7 +613,7 @@ int _VFF_unlink_r (struct _reent *r, const char *path)
 		return -1;
 	}
 	for(i=0; i<strlen(path); i++)lfnpath[i] = path[i];
-	r->_errno = VFF_ConvertFFError(f_unlink(lfnpath));
+	r->_errno = VFF_ConvertFFError(fvff_unlink(lfnpath));
 	free(lfnpath);
 	if(r->_errno!=0)return -1;
 	return 0;
@@ -632,7 +632,7 @@ int _VFF_chdir_r (struct _reent *r, const char *path)
 		return -1;
 	}
 	for(i=0; i<strlen(path); i++)lfnpath[i] = path[i];
-	r->_errno = VFF_ConvertFFError(f_chdir(lfnpath));
+	r->_errno = VFF_ConvertFFError(fvff_chdir(lfnpath));
 	free(lfnpath);
 	if(r->_errno!=0)return -1;
 	return 0;
@@ -656,7 +656,7 @@ int _VFF_rename_r (struct _reent *r, const char *oldName, const char *newName)
 	}
 	for(i=0; i<strlen(oldName); i++)lfnpathold[i] = oldName[i];
 	for(i=0; i<strlen(newName); i++)lfnpathnew[i] = newName[i];
-	r->_errno = VFF_ConvertFFError(f_rename(lfnpathold, lfnpathnew));
+	r->_errno = VFF_ConvertFFError(fvff_rename(lfnpathold, lfnpathnew));
 	free(lfnpathold);
 	free(lfnpathnew);
 	if(r->_errno!=0)return -1;
@@ -676,7 +676,7 @@ int _VFF_mkdir_r (struct _reent *r, const char *path, int mode)
 		return -1;
 	}
 	for(i=0; i<strlen(path); i++)lfnpath[i] = path[i];
-	r->_errno = VFF_ConvertFFError(f_mkdir(lfnpath));
+	r->_errno = VFF_ConvertFFError(fvff_mkdir(lfnpath));
 	free(lfnpath);
 	if(r->_errno!=0)return -1;
 	return 0;
@@ -702,7 +702,7 @@ DIR_ITER* _VFF_diropen_r(struct _reent *r, DIR_ITER *dirState, const char *path)
 		return NULL;
 	}
 	for(i=0; i<strlen(path); i++)lfnpath[i] = path[i];
-	r->_errno = VFF_ConvertFFError(f_opendir(dir, lfnpath));
+	r->_errno = VFF_ConvertFFError(fvff_opendir(dir, lfnpath));
 	free(lfnpath);	
 	if(r->_errno!=0)return NULL;
 	return dirState;
@@ -711,7 +711,7 @@ DIR_ITER* _VFF_diropen_r(struct _reent *r, DIR_ITER *dirState, const char *path)
 int _VFF_dirreset_r (struct _reent *r, DIR_ITER *dirState)
 {
 	DIR *dir = (DIR*)dirState->dirStruct;
-	r->_errno = VFF_ConvertFFError(f_readdir(dir, NULL));
+	r->_errno = VFF_ConvertFFError(fvff_readdir(dir, NULL));
 	if(r->_errno!=0)return -1;
 	return 0;
 }
@@ -726,7 +726,7 @@ int _VFF_dirnext_r (struct _reent *r, DIR_ITER *dirState, char *filename, struct
 	char ext[5];
 	_info.lfname = lfnpath;
 	_info.lfsize = 128;
-	r->_errno = VFF_ConvertFFError(f_readdir(dir, &_info));
+	r->_errno = VFF_ConvertFFError(fvff_readdir(dir, &_info));
 	if(r->_errno!=0)
 	{
 		free(lfnpath);
