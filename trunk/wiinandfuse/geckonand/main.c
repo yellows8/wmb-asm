@@ -12,6 +12,8 @@ Copyright (C) 2009              John Kelley <wiidev@kelley.ca>
 # see file COPYING or http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 */
 
+//Based on ppcskel.
+
 #include "bootmii_ppc.h"
 #include "string.h"
 #include "ipc.h"
