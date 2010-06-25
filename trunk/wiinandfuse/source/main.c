@@ -107,6 +107,7 @@ int round_robin = -1;
 int round_robin_didupdate = 0;
 int write_enable = 1;
 int ignore_ecc = 0;
+int use_gecko = 0;
 
 int supercluster = -1;
 unsigned int sffs_cluster = 0;
@@ -118,6 +119,8 @@ unsigned char nand_aeskey[16];
 unsigned char nand_cryptbuf[0x4000];
 
 static unsigned char buffer[8*2048];
+
+char geckodev[256];
 
 unsigned short nand_nodeindex = 0;
 
@@ -175,22 +178,68 @@ int nand_read_sector(int sector, int num_sectors, unsigned char *buffer, unsigne
 {
 	int retval = NAND_ECC_OK;
 	unsigned char buf[0x840];
+	unsigned int sect;
+	int len;
 	if(sector<0 || num_sectors<=0 || buffer==NULL)return NAND_ECC_OK;
 
-	if(has_ecc)lseek(nandfd, sector * 0x840, SEEK_SET);
-	if(!has_ecc)lseek(nandfd, sector * 0x800, SEEK_SET);
+	if(!use_gecko)
+	{
+		if(has_ecc)lseek(nandfd, sector * 0x840, SEEK_SET);
+		if(!has_ecc)lseek(nandfd, sector * 0x800, SEEK_SET);
+	}	
 	for(; num_sectors>0; num_sectors--)
 	{
-		read(nandfd, buffer, 0x800);
+		if(!use_gecko)
+		{
+			read(nandfd, buffer, 0x800);
+		}
+		else
+		{
+			if(gecko_write("READ", 4)!=0)
+			{
+				syslog(0, "Gecko write failed.\n");
+				return -1;
+			}
+			syslog(0, "Sent READ command.");
+			sect = be32(sector);
+			if(gecko_write(&sect, 4)!=0)
+			{
+				syslog(0, "Gecko write failed.\n");
+				return -1;
+			}
+			syslog(0, "Sent sector number.");
+			if(gecko_read(buf, 0x840)!=0)
+			{
+				syslog(0, "Gecko read failed.\n");
+				return -1;
+			}
+			char str[256];
+			memset(str, 0, 256);
+			sprintf(str, "Read page: %x %x", buffer, buf);
+			syslog(0, str);
+			memcpy(buffer, buf, 0x800);
+			syslog(0, "Copied page.");
+			if(has_ecc && ecc)memcpy(ecc, &buf[0x800], 0x40);
+			syslog(0, "Copied ecc.");
+			/*if(gecko_read(ecc, 0x40)!=0)
+			{
+				syslog(0, "Gecko read failed.\n");
+				return -1;
+			}
+			syslog(0, "Read spare.");*/
+		}
 		if(has_ecc)
 		{
 			if(ecc)
 			{
-				read(nandfd, ecc, 0x40);
-				memcpy(buf, buffer, 0x800);
-				memcpy(&buf[0x800], ecc, 0x40);
-				retval = check_ecc(buf);
-				//retval = nand_correct(sector, buffer, ecc);
+				if(!use_gecko)
+				{
+					read(nandfd, ecc, 0x40);
+					memcpy(buf, buffer, 0x800);
+					memcpy(&buf[0x800], ecc, 0x40);
+					retval = check_ecc(buf);//MINI does ECC correction for us.
+					//retval = nand_correct(sector, buffer, ecc);
+				}
 				ecc+= 0x40;
 			}
 			else
@@ -265,6 +314,7 @@ int nand_read_cluster_decrypted(int cluster_number, unsigned char *cluster, unsi
 	unsigned char iv[16];
 	int retval;	
 	memset(iv, 0, 16);
+
 	retval = nand_read_cluster(cluster_number, nand_cryptbuf, ecc);
 	aes_decrypt(iv, nand_cryptbuf, cluster, 0x4000);
 	return retval;
@@ -337,6 +387,7 @@ int sffs_init(int suclus)//Somewhat based on Bootmii MINI ppcskel nandfs.c SFFS 
 	}
 	else if(suclus==-1)return -1;
 
+	printf("SFFS scanning done.\n");
 	memset(&SFFS, 0, 0x40000);
 	for(i=0; i<16; i++)
 	{
@@ -344,11 +395,24 @@ int sffs_init(int suclus)//Somewhat based on Bootmii MINI ppcskel nandfs.c SFFS 
 		sffsptr+= 0x4000;
 
 	}
+	printf("Reading done.\n");
+
+	FILE *f = fopen("metadata", "w");
+	fwrite(&SFFS, 1, 0x40000, f);
+	fclose(f);
+
+	f = fopen("keys", "w");
+	fwrite(nand_hmackey, 1, 16, f);
+	fclose(f);
 
 	if(check_sffs_hmac)
 	{
 		memset(calc_hmac, 0, 20);
 		fs_hmac_meta(&SFFS, sffs_cluster, calc_hmac);
+		f = fopen("dump", "w");
+		fwrite(supercluster_hmac, 1, 0x80, f);
+		fwrite(calc_hmac, 1, 20, f);
+		fclose(f);
 		if(memcmp(&supercluster_hmac[1], calc_hmac, 20)==0)
 		{
 			printf("SFFS HMAC valid.\n");
@@ -935,6 +999,7 @@ fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 			filler(buf, fn, NULL, 0);
 			//memset(str, 0, 256);
 			//sprintf(str, "sib %x fn %s", be16(cur.sibling), fn);
+
 			//syslog(0, str);
 			if(cur.sibling!=0xffff)
 			{
@@ -1260,6 +1325,7 @@ int main(int argc, char **argv)
 	int argi;
 	FILE *fkey;
 	int ver = -2;
+	unsigned char cmd[5];
 
 	printf("wiinandfuse v1.1 by yellowstar6\n");
 	memset(keyname, 0, 256);
@@ -1278,10 +1344,14 @@ int main(int argc, char **argv)
 		printf("-v: Abort/EIO if HMAC verification of SFFS or file data fails. If SFFS verification fails, wiinandfuse aborts and NAND isn't mounted. If file data verification fails, read will return EIO.\n");
 		printf("-r<supercluster>: Disable round-robin SFFS updating, default is on. When disabled, only the first metadata update has the version and supercluster increased. If supercluster is specified, the specified supercluster index  has the version set to the version of the oldest supercluster minus one.\n");
 		printf("-e: Ignore ECC errors, default is disabled. When disabled, when pages have invalid ECC reads return EIO.\n");
+		printf("-u<usb gecko device>: Use a USB Gecko to communicate with MINI app geckonand to read/write NAND directly. If a device isn't specified, the default is /dev/ttyUSB0. When this option is used, the first parameter for the NAND dump filename is omitted.\n");
 		return 0;
 	}
 	
-	for(argi=3; argi<argc; argi++)
+	use_gecko = 0;
+	memset(geckodev, 0, 256);
+	strncpy(geckodev, "/dev/ttyUSB0", 255);
+	for(argi=1; argi<argc; argi++)
 	{
 		if(strcmp(argv[argi], "-s")==0)SFFS_only = 1;
 		if(strncmp(argv[argi], "-k", 2)==0)
@@ -1319,96 +1389,166 @@ int main(int argc, char **argv)
 			}
 		}
 		if(strcmp(argv[argi], "-e")==0)ignore_ecc = 1;
+		if(strncmp(argv[argi], "-u", 2)==0)
+		{
+			use_gecko = 1;
+			if(strlen(argv[argi])>2)strncpy(geckodev, &argv[argi][2], 255);
+		}
 	}
 
-	nandfd = open(argv[1], O_RDWR);
-	if(nandfd<0)
+	if(!use_gecko)
 	{
-
-		printf("Failed to open %s\n", argv[1]);
-		return -1;
+		nandfd = open(argv[1], O_RDWR);
+		if(nandfd<0)
+		{
+			printf("Failed to open %s\n", argv[1]);
+			return -1;
+		}
+	}
+	else
+	{
+		printf("Opening gecko...\n");
+		if((nandfd = gecko_open(geckodev))<0)
+		{
+			printf("Failed to open gecko device: %d\n", nandfd);
+			return -1;
+		}
 	}
 
 	fuse_opt_add_arg(&args, argv[0]);
-	fuse_opt_add_arg(&args, argv[2]);
+	fuse_opt_add_arg(&args, argv[2 - use_gecko]);
 	fuse_opt_add_arg(&args, "-o");
 	fuse_opt_add_arg(&args, "allow_root");//Allow root to access the FS.
 
 	openlog("wiinandfuse", 0, LOG_USER);
 	syslog(0, "STARTED");
 
-	fstat(nandfd, &filestats);
-	if(!SFFS_only)
+	if(!use_gecko)
 	{
-		if(filestats.st_size==0x21000400)//The NAND image is a Bootmii dump with keys.
+		fstat(nandfd, &filestats);
+		if(!SFFS_only)
 		{
-			lseek(nandfd, 0x21000144, SEEK_SET);
-			read(nandfd, nand_hmackey, 20);
-			read(nandfd, nand_aeskey, 16);
+			if(filestats.st_size==0x21000400)//The NAND image is a Bootmii dump with keys.
+			{
+				lseek(nandfd, 0x21000144, SEEK_SET);
+				read(nandfd, nand_hmackey, 20);
+				read(nandfd, nand_aeskey, 16);
+			}
+			else//The dump is raw without Bootmii keys.
+			{
+				if(filestats.st_size==0x21000000)
+				{
+					has_ecc = 1;
+				}
+				else if(filestats.st_size==0x20000000)
+				{
+					has_ecc = 0;
+				}
+				else
+				{
+					printf("NAND image filesize not recognized, it's corrupted. 0x%x\n", (unsigned int)filestats.st_size);
+					close(nandfd);
+					closelog();
+					return 0;
+				}
+
+				memset(str, 0, 256);
+				sprintf(str, "%s/.wii/%s/nand-hmac", getenv("HOME"), keyname);
+				fkey = fopen(str, "r");
+				if(fkey==NULL)
+				{
+					printf("Failed to open %s\n", str);
+					close(nandfd);
+					closelog();
+					return 0;
+				}			
+				fread(nand_hmackey, 1, 20, fkey);
+				fclose(fkey);
+
+				memset(str, 0, 256);
+				sprintf(str, "%s/.wii/%s/nand-key", getenv("HOME"), keyname);
+				fkey = fopen(str, "r");
+				if(fkey==NULL)
+				{
+					printf("Failed to open %s\n", str);
+					close(nandfd);
+					closelog();
+					return 0;
+				}			
+				fread(nand_aeskey, 1, 16, fkey);
+				fclose(fkey);
+			}
 		}
-		else//The dump is raw without Bootmii keys.
+		else
 		{
-			if(filestats.st_size==0x21000000)
+			write_enable = 0;
+			if(filestats.st_size==0x420000)
 			{
 				has_ecc = 1;
 			}
-			else if(filestats.st_size==0x20000000)
+			else if(filestats.st_size==0x400000)
 			{
 				has_ecc = 0;
 			}
 			else
 			{
-				printf("NAND image filesize not recognized, it's corrupted. 0x%x\n", (unsigned int)filestats.st_size);
+				printf("SFFS filesize not recognized, it's corrupted. 0x%x\n", (unsigned int)filestats.st_size);
 				close(nandfd);
 				closelog();
 				return 0;
 			}
-
-			memset(str, 0, 256);
-			sprintf(str, "%s/.wii/%s/nand-hmac", getenv("HOME"), keyname);
-			fkey = fopen(str, "r");
-			if(fkey==NULL)
-			{
-				printf("Failed to open %s\n", str);
-				close(nandfd);
-				closelog();
-				return 0;
-			}			
-			fread(nand_hmackey, 1, 20, fkey);
-			fclose(fkey);
-
-			memset(str, 0, 256);
-			sprintf(str, "%s/.wii/%s/nand-key", getenv("HOME"), keyname);
-			fkey = fopen(str, "r");
-			if(fkey==NULL)
-			{
-				printf("Failed to open %s\n", str);
-				close(nandfd);
-				closelog();
-				return 0;
-			}			
-			fread(nand_aeskey, 1, 16, fkey);
-			fclose(fkey);
 		}
 	}
 	else
 	{
-		write_enable = 0;
-		if(filestats.st_size==0x420000)
+		printf("Initializing geckonand connection and retrieving keys...\n");
+		if((argi = gecko_write("KEYS", 4))!=0)
 		{
-			has_ecc = 1;
-		}
-		else if(filestats.st_size==0x400000)
-		{
-			has_ecc = 0;
-		}
-		else
-		{
-			printf("SFFS filesize not recognized, it's corrupted. 0x%x\n", (unsigned int)filestats.st_size);
+			printf("Gecko write failed. %d\n", argi);
 			close(nandfd);
 			closelog();
-			return 0;
+			return -1;
 		}
+		printf("Sent KEYS command.\n");
+
+		memset(cmd, 0, 5);
+		if(gecko_read(cmd, 4)!=0)
+		{
+			printf("Gecko read failed.\n");
+			close(nandfd);
+			closelog();
+			return -1;
+		}
+		printf("Recieved reply.\n");
+
+		if(strncmp(cmd, "KEYS", 4)!=0)
+		{
+			printf("Read invalid command response: %s\n", cmd);
+			close(nandfd);
+			closelog();
+			return -1;
+		}
+		
+		if(gecko_read(nand_aeskey, 16)!=0)
+		{
+			printf("Gecko read failed.\n");
+			close(nandfd);
+			closelog();
+			return -1;
+		}
+
+		printf("Recieved NAND AES key.\n");
+		if(gecko_read(nand_hmackey, 20)!=0)
+		{
+			printf("Gecko read failed.\n");
+			close(nandfd);
+			closelog();
+			return -1;
+		}
+
+		printf("Recieved NAND HMAC key.\n");
+		has_ecc = 1;
+		write_enable = 0;
 	}
 
 	aes_set_key(nand_aeskey);
@@ -1420,9 +1560,7 @@ int main(int argc, char **argv)
 		closelog();
 		return 0;
 	}
-
-	//close(nandfd);
-   return fuse_main(args.argc, args.argv, &fsops, NULL);
-   //return fuse_main(1, &argv[2], &fsops, NULL);
+	
+   	return fuse_main(args.argc, args.argv, &fsops, NULL);
 }
 
