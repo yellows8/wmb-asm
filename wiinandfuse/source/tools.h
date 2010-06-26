@@ -8,6 +8,7 @@
 // basic data types
 
 #include <stdint.h>
+#include <stdio.h>
 
 typedef int8_t s8;
 typedef int16_t s16;
@@ -47,15 +48,16 @@ void debugf(const unsigned int verbosity, const char * stuff, ...);
 // crypto
 struct wii_keys
 {
+	u32 console_id;
 	u8 common_key[0x10];
 	u8 nand_key[0x10];
 	u8 nand_hmac[0x14];
 	u8 root_key[0x204];
 };
 
-struct wii_keys *get_keys();
+struct wii_keys *get_keys(void);
 void load_keys(char * wiiname);
-void load_keys_otp(const char *path);
+void load_keys_otp(FILE *fp);
 
 void md5(u8 *data, u32 len, u8 *hash);
 void sha(u8 *data, u32 len, u8 *hash);
@@ -66,7 +68,7 @@ int check_cert_chain(u8 *data, u32 data_len, u8 *cert, u32 cert_len,
 		unsigned int use_strncmp);
 
 // compression
-void do_yaz0(u8 *in, u32 in_size, u8 *out, u32 out_size);
+void do_yaz0(u8 *in, u8 *out, u32 out_size);
 
 // error handling
 void fatal(const char *s, ...);

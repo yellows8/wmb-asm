@@ -10,15 +10,9 @@
 #include <string.h>
 #include <stdio.h>
 
-#ifdef _WIN32
-#define __LITTLE_ENDIAN 1234
-#define __BYTE_ORDER __LITTLE_ENDIAN
-#endif
-#include <endian.h>
-
-//#include "rijndael.h"
+#include "rijndael.h"
 #include "sha1.h"
-//#include "md5.h"
+#include "md5.h"
 
 //
 // basic data types
@@ -26,29 +20,17 @@
 
 u16 be16(const u8 *p)
 {
-#if __BYTE_ORDER == __LITTLE_ENDIAN
 	return (p[0] << 8) | p[1];
-#else
-	return (u16)*p;
-#endif
 }
 
 u32 be32(const u8 *p)
 {
-#if __BYTE_ORDER == __LITTLE_ENDIAN
 	return (p[0] << 24) | (p[1] << 16) | (p[2] << 8) | p[3];
-#else
-	return (u32)*p;
-#endif
 }
 
 u64 be64(const u8 *p)
 {
-#if __BYTE_ORDER == __LITTLE_ENDIAN
 	return ((u64)be32(p) << 32) | be32(p + 4);
-#else
-	return (u64)*p;
-#endif
 }
 
 u64 be34(const u8 *p)
@@ -58,22 +40,14 @@ u64 be34(const u8 *p)
 
 void wbe16(u8 *p, u16 x)
 {
-#if __BYTE_ORDER == __LITTLE_ENDIAN
 	p[0] = x >> 8;
 	p[1] = x;
-#else
-	(u16)*p = x;
-#endif
 }
 
 void wbe32(u8 *p, u32 x)
 {
-#if __BYTE_ORDER == __LITTLE_ENDIAN
 	wbe16(p, x >> 16);
 	wbe16(p + 2, x);
-#else
-	(u32)*p = x;
-#endif
 }
 
 void wbe64(u8 *p, u64 x)
@@ -105,16 +79,16 @@ void debugf(const unsigned int verbosity, const char * stuff, ...) {
 // crypto
 //
 
-/*void md5(u8 *data, u32 len, u8 *hash)
+void md5(u8 *data, u32 len, u8 *hash)
 {
 	struct MD5Context ctx;
 
 	MD5Init(&ctx);
 	MD5Update(&ctx, data, len);
 	MD5Final(hash, &ctx);
-}*/
+}
 
-/*void sha(u8 *data, u32 len, u8 *hash)
+void sha(u8 *data, u32 len, u8 *hash)
 {
 	struct SHA1Context ctx;
 	int i;
@@ -130,10 +104,10 @@ void debugf(const unsigned int verbosity, const char * stuff, ...) {
 		*hash++ = ctx.Message_Digest[i] >> 8 & 0xff;
 		*hash++ = ctx.Message_Digest[i] & 0xff;
 	}
-}*/
+}
 
 static struct wii_keys keys;
-struct wii_keys *get_keys()
+struct wii_keys *get_keys(void)
 {
 	return &keys;
 }
@@ -170,23 +144,23 @@ void load_keys(char * wiiname)
 	get_key("root-key", keys.root_key, sizeof keys.root_key);
 }
 
-void load_keys_otp(const char *path)
+void load_keys_otp(FILE *fp)
 {
 	// FIXME: add error handling (maybe..)
-	FILE *fp;
-	char otp[128];
+	u8 otp[128];
+	int bytes_read;
+	printf("loading keys from otp\n");
+	bytes_read = fread(otp, 1, sizeof otp, fp);
+	if (bytes_read < (int)sizeof(otp)) fatal("Short read from OTP: %d bytes out of %d bytes", bytes_read, otp);
 
-	fp = fopen(path, "r");
-	fread(otp, 128, 1, fp);
-	fclose(fp);
-
+	keys.console_id = be32(otp + 0x24);
 	memcpy(keys.common_key, otp + 20, 16);
 	memcpy(keys.nand_key, otp + 88, 16);
 	memcpy(keys.nand_hmac, otp + 68, 20);
 	get_key("root-key", keys.root_key, sizeof keys.root_key);
 }
 
-/*void aes_cbc_dec(u8 *key, u8 *iv, u8 *in, u32 len, u8 *out)
+void aes_cbc_dec(u8 *key, u8 *iv, u8 *in, u32 len, u8 *out)
 {
 	aes_set_key(key);
 	aes_decrypt(iv, in, out, len);
@@ -205,7 +179,7 @@ void decrypt_title_key(u8 *tik, u8 *title_key)
 	memset(iv, 0, sizeof iv);
 	memcpy(iv, tik + 0x01dc, 8);
 	aes_cbc_dec(get_keys()->common_key, iv, tik + 0x01bf, 16, title_key);
-}*/
+}
 
 static u8 *get_root_key(void)
 {
@@ -263,7 +237,7 @@ struct _check_rsa_cache
 	struct _check_rsa_cache *next;
 };
 static struct _check_rsa_cache *check_rsa_cache = NULL;
-/*static int check_rsa(u8 *h, u8 *sig, u8 *key, u32 n, int cache, unsigned int use_strncmp)
+static int check_rsa(u8 *h, u8 *sig, u8 *key, u32 n, int cache, unsigned int use_strncmp)
 {
 	u8 correct[0x200];
 	u8 x[0x200];
@@ -319,7 +293,7 @@ static struct _check_rsa_cache *check_rsa_cache = NULL;
 //fprintf(stderr, "x is:\n");
 //hexdump(x, n);
 
-	if (use_strncmp && strncmp(correct + n - 20, x + n - 20, 20) == 0)
+	if (use_strncmp && strncmp((char *)correct + n - 20, (char *)x + n - 20, 20) == 0)
 		ret = 0;
 	else if(memcmp(correct, x, n) == 0)
 		ret = 0;
@@ -346,7 +320,7 @@ static struct _check_rsa_cache *check_rsa_cache = NULL;
 	} else {
 		return ret;
 	}
-}*/
+}
 
 static int check_hash(u8 *h, u8 *sig, u8 *key, int cache, unsigned int use_strncmp)
 {
@@ -365,13 +339,13 @@ static int check_hash(u8 *h, u8 *sig, u8 *key, int cache, unsigned int use_strnc
 	return -7;
 }
 
-static u8 *find_cert_in_chain(u8 *sub, u8 *cert, u32 cert_len)
+static u8 *find_cert_in_chain(char *sub, u8 *cert, u32 cert_len)
 {
 	char parent[64];
 	char *child;
 	u32 sig_len, sub_len;
 	u8 *p;
-	u8 *issuer;
+	char *issuer;
 
 	strncpy(parent, sub, sizeof parent);
 	parent[sizeof parent - 1] = 0;
@@ -387,8 +361,8 @@ static u8 *find_cert_in_chain(u8 *sub, u8 *cert, u32 cert_len)
 		sig_len = get_sig_len(p);
 		if (sig_len == 0)
 			return 0;
-		issuer = p + sig_len;
-		sub_len = get_sub_len(issuer);
+		issuer = (char *)p + sig_len;
+		sub_len = get_sub_len((u8 *)issuer);
 		if (sub_len == 0)
 			return 0;
 
@@ -400,7 +374,7 @@ static u8 *find_cert_in_chain(u8 *sub, u8 *cert, u32 cert_len)
 	return 0;
 }
 
-/*int check_cert_chain(u8 *data, u32 data_len, u8 *cert, u32 cert_len,
+int check_cert_chain(u8 *data, u32 data_len, u8 *cert, u32 cert_len,
 		unsigned int use_strncmp)
 {
 	u8 *sig;
@@ -425,7 +399,7 @@ static u8 *find_cert_in_chain(u8 *sub, u8 *cert, u32 cert_len)
 	cache = 0;
 	for (;;) {
 //fprintf(stderr, ">>>>>> checking sig by %s...\n", sub);
-		if (strcmp(sub, "Root") == 0) {
+		if (strcmp((char *)sub, "Root") == 0) {
 			key = get_root_key();
 			sha(sub, sub_len, h);
 			if (be32(sig) != 0x10000)
@@ -434,7 +408,7 @@ static u8 *find_cert_in_chain(u8 *sub, u8 *cert, u32 cert_len)
 					use_strncmp);
 		}
 
-		key_cert = find_cert_in_chain(sub, cert, cert_len);
+		key_cert = find_cert_in_chain((char *)sub, cert, cert_len);
 		if (key_cert == 0)
 			return -3;
 
@@ -455,13 +429,13 @@ static u8 *find_cert_in_chain(u8 *sub, u8 *cert, u32 cert_len)
 			return -5;
 		cache = 1;
 	}
-}*/
+}
 
 //
 // compression
 //
 
-void do_yaz0(u8 *in, u32 in_size, u8 *out, u32 out_size)
+void do_yaz0(u8 *in, u8 *out, u32 out_size)
 {
 	u32 nout;
 	u8 bits;
