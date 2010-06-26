@@ -10,10 +10,8 @@
 */
 
 #include <stdio.h>
-
-#define u8 unsigned char       /* 8 bits  */
-#define u32 unsigned long       /* 32 bits */
-#define u64 unsigned long long
+#include <string.h>
+#include "tools.h"
 
 /* rotates x one bit to the left */
 
@@ -38,10 +36,10 @@ static u32 rco[30];
 
 /* Parameter-dependent data */
 
-int Nk,Nb,Nr;
-u8 fi[24],ri[24];
-u32 fkey[120];
-u32 rkey[120];
+static int Nk,Nb,Nr;
+static u8 fi[24],ri[24];
+static u32 fkey[120];
+static u32 rkey[120];
 
 static u32 pack(u8 *b)
 { /* pack bytes into a 32-bit Word */
@@ -108,7 +106,7 @@ static u32 InvMixCol(u32 x)
     return y;
 }
 
-u8 ByteSub(u8 x)
+static u8 ByteSub(u8 x)
 {
     u8 y=ptab[255-ltab[x]];  /* multiplicative inverse */
     x=y;  x=ROTL(x);
@@ -119,7 +117,7 @@ u8 ByteSub(u8 x)
     return y;
 }
 
-void gentables(void)
+static void gentables(void)
 { /* generate tables */
     int i;
     u8 y,b[4];
@@ -166,7 +164,7 @@ void gentables(void)
     }
 }
 
-void gkey(int nb,int nk,char *key)
+static void gkey(int nb,int nk,u8 *key)
 { /* blocksize=32*nb bits. Key=32*nk bits */
   /* currently nb,bk = 4, 6 or 8          */
   /* key comes as 4*Nk bytes              */
@@ -238,7 +236,7 @@ void gkey(int nb,int nk,char *key)
  * Instead of just one ftable[], I could have 4, the other     *
  * 3 pre-rotated to save the ROTL8, ROTL16 and ROTL24 overhead */ 
 
-void encrypt(char *buff)
+static void encrypt(u8 *buff)
 {
     int i,j,k,m;
     u32 a[8],b[8],*x,*y,*t;
@@ -285,7 +283,7 @@ void encrypt(char *buff)
     return;
 }
 
-void decrypt(char *buff)
+static void decrypt(u8 *buff)
 {
     int i,j,k,m;
     u32 a[8],b[8],*x,*y,*t;

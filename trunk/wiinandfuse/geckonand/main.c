@@ -91,6 +91,7 @@ int main(void)
 	int i;
 	int val;
 	unsigned char temp[4];
+	char str[16];
 	unsigned int *tempu32 = (unsigned int*)temp;
 	exception_init();
 	dsp_reset();
@@ -129,8 +130,8 @@ int main(void)
 	while(1)
 	{
 		val = gecko_recvbuffer_safe(&temp[4 - len], len);
-		len-= len-val;
-		if(val!=0)continue;
+		len-= val;
+		if(len>0)continue;
 
 		print_str_noscroll(112, 115, "Got command\n");
 		if(strncmp(temp, "STOP", 4)==0)
@@ -148,24 +149,24 @@ int main(void)
 						print_str_noscroll(112, 120, "KEYS\n");
 						len = 4;
 						val = 1;
-						while(val!=0)
+						while(len>0)
 						{
 							val = gecko_sendbuffer_safe(&temp[4 - len], len);
-							len-= len-val;
+							len-= val;
 						}
 						len = 16;
 						val = 1;
-						while(val!=0)
+						while(len>0)
 						{
 							val = gecko_sendbuffer_safe(&otp.nand_key[16 - len], len);
-							len-= len-val;
+							len-= val;
 						}
 						len = 20;
 						val = 1;
-						while(val!=0)
+						while(len>0)
 						{
 							val = gecko_sendbuffer_safe(&otp.nand_hmac[20 - len], len);
-							len-= len-val;
+							len-= val;
 						}
 					break;
 
@@ -173,18 +174,18 @@ int main(void)
 						print_str_noscroll(112, 130, "READ\n");
 						len = 4;
 						val = 1;
-						while(val!=0)
+						while(len>0)
 						{
 							val = gecko_recvbuffer_safe(&temp[4 - len], len);
-							len-= len-val;
+							len-= val;
 						}
 						nand_read(*tempu32, pagebuf, &pagebuf[0x800]);
 						len = 0x840;
 						val = 1;
-						while(val!=0)
+						while(len>0)
 						{
 							val = gecko_sendbuffer_safe(&pagebuf[0x840 - len], len);
-							len-= len-val;
+							len-= val;
 						}
 					break;
 
@@ -192,17 +193,17 @@ int main(void)
 						len = 4;
 						val = 1;
 						print_str_noscroll(112, 130, "WRTE\n");
-						while(val!=0)
+						while(len>0)
 						{
 							val = gecko_recvbuffer_safe(&temp[4 - len], len);
-							len-= len-val;
+							len-= val;
 						}
 						len = 0x840;
 						val = 1;
-						while(val!=0)
+						while(len>0)
 						{
 							val = gecko_recvbuffer_safe(&pagebuf[0x840 - len], len);
-							len-= len-val;
+							len-= val;
 						}
 						nand_write(*tempu32, pagebuf, &pagebuf[0x800]);
 					break;

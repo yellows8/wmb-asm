@@ -201,22 +201,27 @@ int nand_read_sector(int sector, int num_sectors, unsigned char *buffer, unsigne
 				return -1;
 			}
 			syslog(0, "Sent READ command.");
+			printf("Sent READ command %x.\n", sector);
 			sect = be32(sector);
 			if(gecko_write(&sect, 4)!=0)
 			{
 				syslog(0, "Gecko write failed.\n");
+				printf("gecko write fail\n");
 				return -1;
 			}
 			syslog(0, "Sent sector number.");
+			printf("Sent sector number.\n");
 			if(gecko_read(buf, 0x840)!=0)
 			{
 				syslog(0, "Gecko read failed.\n");
+				printf("gecko read fail\n");
 				return -1;
 			}
 			char str[256];
 			memset(str, 0, 256);
 			sprintf(str, "Read page: %x %x", buffer, buf);
 			syslog(0, str);
+			printf("read page\n");
 			memcpy(buffer, buf, 0x800);
 			syslog(0, "Copied page.");
 			if(has_ecc && ecc)memcpy(ecc, &buf[0x800], 0x40);
