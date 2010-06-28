@@ -724,7 +724,9 @@ int main(int argc, char **argv) {
 		if ( pressed & WPAD_BUTTON_HOME )return 0;
 		if(shutdown)
 		{
-			/*StateFlags *state = memalign(32, sizeof(StateFlags));
+			WPAD_Shutdown();
+			#ifndef WIILAUNCHMOD
+			StateFlags *state = memalign(32, sizeof(StateFlags));
 			s32 fd = ISFS_Open("/title/00000001/00000002/data/state.dat", ISFS_OPEN_RW);
 			if(fd<0)
 			{
@@ -738,12 +740,11 @@ int main(int argc, char **argv) {
 				state->checksum = __CalcChecksum(state, sizeof(StateFlags));
 				ISFS_Write(fd, state, sizeof(StateFlags));
 				ISFS_Close(fd);
-			}*/
-			//*((u32*)0x80003130) = 0;//Clear the GC shutdown flag so MINI doesn't bypass and load sysmenu.
-			//DCFlushRange((void*)0x80003130, 4);
-			WPAD_Shutdown();
-			//SYS_ResetSystem(SYS_POWEROFF, 0, 0);
+			}
+			SYS_ResetSystem(SYS_POWEROFF, 0, 0);
+			#else
 			WII_Shutdown();
+			#endif
 		}
 
 		// Wait for the next frame
