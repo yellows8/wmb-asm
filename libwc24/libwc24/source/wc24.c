@@ -443,7 +443,7 @@ s32 WC24_DeleteRecord(u32 index)
 	return 0;
 }
 
-s32 WC24_CreateWC24DlVFF(u32 filesize)
+s32 WC24_MntCreateDataDirVFF(char *path, u32 filesize)
 {
 	s32 retval = 0;
 	char *filename = (char*)memalign(32, 256);
@@ -457,32 +457,34 @@ s32 WC24_CreateWC24DlVFF(u32 filesize)
 	}
 	#endif
 
-	strcat(filename, "/wc24dl.vff");
+	strcat(filename, "/");
+	strcat(filename, path);
 	#ifdef HW_RVL
-	retval = VFF_CreateVFF(filename, filesize);
+	if(filesize)retval = VFF_CreateVFF(filename, filesize);
 	#endif
+	if(filesize==0)retval = VFF_Mount(filename);
 	free(filename);
 	return retval;
 }
 
+s32 WC24_CreateWC24DlVFF(u32 filesize)
+{
+	return WC24_MntCreateDataDirVFF("wc24dl.vff", filesize);
+}
+
 s32 WC24_MountWC24DlVFF()
 {
-	s32 retval;
-	char *filename = (char*)memalign(32, 256);
-	memset(filename, 0, 256);
-	#ifdef HW_RVL
-	retval = ES_GetDataDir(wc24_titleid, filename);
-	if(retval<0)
-	{
-		free(filename);
-		return retval;
-	}
-	#endif
+	return WC24_MntCreateDataDirVFF("wc24dl.vff", 0);
+}
 
-	strcat(filename, "/wc24dl.vff");
-	retval = VFF_Mount(filename);
-	free(filename);
-	return retval;
+s32 WC24_CreateWC24ScrVFF(u32 filesize)
+{
+	return WC24_MntCreateDataDirVFF("wc24scr.vff", filesize);
+}
+
+s32 WC24_MountWC24ScrVFF()
+{
+	return WC24_MntCreateDataDirVFF("wc24scr.vff", 0);
 }
 
 time_t WC24_TimestampToSeconds(u32 timestamp)

@@ -460,6 +460,13 @@ int main(int argc, char **argv)
 		
 	}*/
 
+	int retval = VFF_Mount(argv[1], 1);
+	if(retval<0)
+	{
+		printf("VFF mount failed: %d\n", retval);
+		return retval;
+	}
+
 	fuse_opt_add_arg(&args, argv[0]);
 	fuse_opt_add_arg(&args, argv[2]);
 	fuse_opt_add_arg(&args, "-o");

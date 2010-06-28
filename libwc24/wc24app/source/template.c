@@ -38,10 +38,38 @@ char mailurl[256];
 
 void IOSReload_SelectMenu();
 
+typedef struct {
+	u32 checksum;
+	u8 flags;
+	u8 type;
+	u8 discstate;
+	u8 returnto;
+	u32 unknown[6];
+} StateFlags;
+
+#define TYPE_RETURN 3
+#define TYPE_NANDBOOT 4
+#define TYPE_SHUTDOWNSYSTEM 5
+#define RETURN_TO_MENU 0
+#define RETURN_TO_SETTINGS 1
+#define RETURN_TO_ARGS 2
+
+static u32 __CalcChecksum(u32 *buf, int len)
+{
+	u32 sum = 0;
+	int i;
+	len = (len/4);
+
+	for(i=1; i<len; i++)
+		sum += buf[i];
+
+	return sum;
+}
+
 void DoStuff(char *url)
 {
 	s32 retval;
-	int which, i;
+	int which, i, enableboot;
 	u32 triggers[2];
 	char titleidlow[5];
 	u64 titleid;
@@ -76,6 +104,7 @@ void DoStuff(char *url)
 	}
 
 	IOSReload_SelectMenu();
+	fatInitDefault();
 
 	printf("Initalizing WC24...\n");
 	retval = WC24_Init(which);
@@ -234,7 +263,7 @@ void DoStuff(char *url)
 		if(usb_isgeckoalive(1))usb_sendbuffer_safe(1, &myent, sizeof(nwc24dl_entry));
 	}
 
-	printf("Set the next time KD calls STM_Wakeup, to the next 5 or 30 minutes?(A = 5 minutes, 1 = 30 minutes, B = no)\n");
+	printf("Set the next time KD calls STM_Wakeup, to the next 5, 30, or 2 minutes?(A = 5 minutes, 1 = 30 minutes,  2 = 2 minutes, B = no)\n");
 	which = -1;
 	WPAD_ScanPads();
 	while(1)
@@ -243,15 +272,86 @@ void DoStuff(char *url)
 		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_B)which = 0;
 		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_A)which = 5;
 		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_1)which = 30;
+		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_2)which = 2;
+		if(which>-1)break;
+		VIDEO_WaitVSync();
+	}
+
+	enableboot = !which;
+	if(which)
+	{
+		retval = KD_SetNextWakeup(which * 60);
+		if(retval<0)printf("KD_SetNextWakeup returned %d\n", retval);
+	}
+
+	printf("Write a test WC24 NANDBOOTINFO to NAND?(A = yes, B = no)\n");
+	which = -1;
+	WPAD_ScanPads();
+	while(1)
+	{
+		WPAD_ScanPads();
+		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_B)which = 0;
+		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_A)which = 1;
 		if(which>-1)break;
 		VIDEO_WaitVSync();
 	}
 
 	if(which)
 	{
-		retval = KD_SetNextWakeup(which * 60);
-		if(retval<0)printf("KD_SetNextWakeup returned %d\n", retval);
+		/*u8 *nandinfobuf;
+		FILE *finfo;
+		printf("Opening NANDBOOTINFO in NAND...\n");
+		s32 infofd = ISFS_Open("/shared2/sys/NANDBOOTINFO", ISFS_OPEN_RW);
+		if(infofd<0)
+		{
+			printf("Failed to open NANDBOOTINFO in NAND.\n");
+		}
+		else
+		{
+			printf("Opening /NANDBOOTINFO on SD...\n");
+			finfo = fopen("/NANDBOOTINFO", "r");
+			if(finfo==NULL)
+			{
+				printf("Failed to open /NANDBOOTINFO on SD.\n");
+			}
+			else
+			{
+				printf("Allocating buffer...\n");
+				nandinfobuf = (u8*)memalign(32, 0x1020);
+				if(nandinfobuf)
+				{
+					printf("Reading from SD...\n");
+					fread(nandinfobuf, 1, 0x1020, finfo);
+					printf("Writing to NAND...\n");
+					ISFS_Write(infofd, nandinfobuf, 0x1020);
+					free(nandinfobuf);
+				}
+				else
+				{
+					printf("Failed to allocate buffer.\n");
+				}
+				fclose(finfo);
+				
+			}
+			ISFS_Close(infofd);
+		}*/
+		retval = WII_LaunchTitleWithArgsWC24(0x000100014a4f4449, enableboot, 0);
+		if(retval<0)printf("WII_LaunchTitleWithArgsWC24 returned %d\n", retval);
 	}
+
+	printf("Write a test system update NANDBOOTINFO to NAND?(A = yes, B = no)\n");
+	which = -1;
+	WPAD_ScanPads();
+	while(1)
+	{
+		WPAD_ScanPads();
+		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_B)which = 0;
+		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_A)which = 1;
+		if(which>-1)break;
+		VIDEO_WaitVSync();
+	}
+
+	if(which)WII_ReturnToSettingsPage(SETTINGS_UPDATE);
 
 	printf("Get time triggers?(A = yes, B = no)\n");
 	which = -1;
@@ -310,6 +410,18 @@ void DoStuff(char *url)
 			retval = KD_Download(KD_DOWNLOADFLAGS_MANUAL, (u16)retval, 0x0);
 			printf("KD_Download returned %d\n", retval);
 		}
+
+		/*retval = WC24_FindEntry(0x524d4345, "https://mariokartwii.race.gs.nintendowifi.net/raceservice/messagedl_us_en.ashx", &myent);
+		if(retval<0)
+		{
+			printf("Failed to find MK WC24 mail entry.\n");
+		}
+		else
+		{
+			printf("Downloading MK mail...\n");
+			retval = KD_Download(KD_DOWNLOADFLAGS_MANUAL, (u16)retval, 0x0);
+			printf("KD_Download returned %d\n", retval);
+		}*/
 	}
 
 	printf("Check WC24 entries for WC24 error, and dump timestamps?(A = yes, B = no)\n");
@@ -535,10 +647,16 @@ void IOSReload_SelectMenu()
 	free(ios);
 }
 
+int shutdown = 0;
+void shutdown_callback(u32 chan)
+{
+	shutdown = 1;
+}
+
 //---------------------------------------------------------------------------------
 int main(int argc, char **argv) {
 //---------------------------------------------------------------------------------
-	char *url = (char*)"http://members.iglide.net/ticeandsons/yellowstar/wc24test";
+	char *url = (char*)"http://members.iglide.net/ticeandsons/yellowstar/wc24testboot";
 	// Initialise the video system
 	VIDEO_Init();
 	
@@ -573,7 +691,7 @@ int main(int argc, char **argv) {
 	//DEBUG_Init(GDBSTUB_DEVICE_USB, 1);
 	if(usb_isgeckoalive(1))CON_EnableGecko(1, 1);
 
-	fatInitDefault();
+	WPAD_SetPowerButtonCallback((WPADShutdownCallback)&shutdown_callback);
 
 	printf("\nUse a Internet server URL(Button A) or a LAN server URL?(Button B)\n");
 	WPAD_ScanPads();	
@@ -583,7 +701,7 @@ int main(int argc, char **argv) {
 		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_A)break;
 		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_B)
 		{
-			url = (char*)"http://yellzone.en/wc24test";//This is a LAN only server, this domain name isn't registered.
+			url = (char*)"http://192.168.1.200/wc24test";//This is a LAN only server, this domain name isn't registered.
 			break;
 		}
 		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_HOME)return 0;
@@ -604,6 +722,29 @@ int main(int argc, char **argv) {
 
 		// We return to the launcher application via exit
 		if ( pressed & WPAD_BUTTON_HOME )return 0;
+		if(shutdown)
+		{
+			/*StateFlags *state = memalign(32, sizeof(StateFlags));
+			s32 fd = ISFS_Open("/title/00000001/00000002/data/state.dat", ISFS_OPEN_RW);
+			if(fd<0)
+			{
+				printf("Failed to open sysmenu state.dat.\n");
+			}
+			else
+			{
+				ISFS_Read(fd, state, sizeof(StateFlags));
+				ISFS_Seek(fd, 0, SEEK_SET);
+				state->type = TYPE_NANDBOOT;
+				state->checksum = __CalcChecksum(state, sizeof(StateFlags));
+				ISFS_Write(fd, state, sizeof(StateFlags));
+				ISFS_Close(fd);
+			}*/
+			//*((u32*)0x80003130) = 0;//Clear the GC shutdown flag so MINI doesn't bypass and load sysmenu.
+			//DCFlushRange((void*)0x80003130, 4);
+			WPAD_Shutdown();
+			//SYS_ResetSystem(SYS_POWEROFF, 0, 0);
+			WII_Shutdown();
+		}
 
 		// Wait for the next frame
 		VIDEO_WaitVSync();
