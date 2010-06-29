@@ -60,7 +60,7 @@ static u32 __CalcChecksum(u32 *buf, int len)
 	int i;
 	len = (len/4);
 
-	for(i=1; i<len; i++)
+	for(i=0; i<len; i++)
 		sum += buf[i];
 
 	return sum;
@@ -76,7 +76,7 @@ void DoStuff(char *url)
 	memset(mailurl, 0, 256);
 	strncpy(mailurl, url, 255);
 
-	printf("Use normal mail URL, or boot mail URL? Don't use the boot mail right now, it's being tested and there has been no success with it yet.(A = normal mail, B = boot mail)\n");
+	printf("Use normal mail URL, or boot mail URL? Boot mail will wake up the Wii from idle mode to boot HBC, if you use(d) the option to enable WC24 title booting. When the Wii wakes up you need to reboot the Wii with a normal shutdown for sysmenu to boot the title.(A = normal mail, B = boot mail)\n");
 	which = -1;
 	WPAD_ScanPads();
 	while(1)
@@ -284,6 +284,53 @@ void DoStuff(char *url)
 		if(retval<0)printf("KD_SetNextWakeup returned %d\n", retval);
 	}
 
+	printf("Set the flag which enables WC24 title booting?(A = yes, B = no)\n");
+	which = -1;
+	WPAD_ScanPads();
+	while(1)
+	{
+		WPAD_ScanPads();
+		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_B)which = 0;
+		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_A)which = 1;
+		if(which>-1)break;
+		VIDEO_WaitVSync();
+	}
+
+	if(which)
+	{
+		u32 *buf = memalign(32, 0x400);
+		s32 fd = ISFS_Open("/shared2/wc24/nwc24msg.cbk", ISFS_OPEN_RW);
+		if(fd<0)
+		{
+			printf("Failed to open /shared2/wc24/nwc24msg.cbk\n");
+		}
+		else
+		{
+			ISFS_Read(fd, buf, 0x400);
+			ISFS_Seek(fd, 0, SEEK_SET);
+			buf[0xfe] = 1;
+			buf[0xff] = __CalcChecksum(buf, 0x3fc);
+			ISFS_Write(fd, buf, 0x400);
+			ISFS_Close(fd);
+		}
+
+		fd = ISFS_Open("/shared2/wc24/nwc24msg.cfg", ISFS_OPEN_RW);
+		if(fd<0)
+		{
+			printf("Failed to open /shared2/wc24/nwc24msg.cfg\n");
+		}
+		else
+		{
+			ISFS_Read(fd, buf, 0x400);
+			ISFS_Seek(fd, 0, SEEK_SET);
+			buf[0xfe] = 1;
+			buf[0xff] = __CalcChecksum(buf, 0x3fc);
+			ISFS_Write(fd, buf, 0x400);
+			ISFS_Close(fd);
+		}
+		free(buf);
+	}
+
 	printf("Write a test WC24 NANDBOOTINFO to NAND?(A = yes, B = no)\n");
 	which = -1;
 	WPAD_ScanPads();
@@ -335,7 +382,7 @@ void DoStuff(char *url)
 			}
 			ISFS_Close(infofd);
 		}*/
-		retval = WII_LaunchTitleWithArgsWC24(0x000100014a4f4449, enableboot, 0);
+		retval = WII_LaunchTitleWithArgsWC24(0x000100014a4f4449LL, enableboot, 0);
 		if(retval<0)printf("WII_LaunchTitleWithArgsWC24 returned %d\n", retval);
 	}
 
@@ -725,6 +772,7 @@ int main(int argc, char **argv) {
 		if(shutdown)
 		{
 			WPAD_Shutdown();
+			//#define WIILAUNCHMOD
 			#ifndef WIILAUNCHMOD
 			StateFlags *state = memalign(32, sizeof(StateFlags));
 			s32 fd = ISFS_Open("/title/00000001/00000002/data/state.dat", ISFS_OPEN_RW);
@@ -737,7 +785,7 @@ int main(int argc, char **argv) {
 				ISFS_Read(fd, state, sizeof(StateFlags));
 				ISFS_Seek(fd, 0, SEEK_SET);
 				state->type = TYPE_NANDBOOT;
-				state->checksum = __CalcChecksum(state, sizeof(StateFlags));
+				state->checksum = __CalcChecksum((void*)((int)state + 4), sizeof(StateFlags));
 				ISFS_Write(fd, state, sizeof(StateFlags));
 				ISFS_Close(fd);
 			}
