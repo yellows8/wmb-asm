@@ -284,7 +284,7 @@ void DoStuff(char *url)
 		if(retval<0)printf("KD_SetNextWakeup returned %d\n", retval);
 	}
 
-	printf("Set the flag which enables WC24 title booting?(A = yes, B = no)\n");
+	printf("Set the flag which enables WC24 title booting?(A = yes, B = no, 1 = clear flag)\n");
 	which = -1;
 	WPAD_ScanPads();
 	while(1)
@@ -292,6 +292,7 @@ void DoStuff(char *url)
 		WPAD_ScanPads();
 		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_B)which = 0;
 		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_A)which = 1;
+		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_1)which = 2;
 		if(which>-1)break;
 		VIDEO_WaitVSync();
 	}
@@ -308,7 +309,8 @@ void DoStuff(char *url)
 		{
 			ISFS_Read(fd, buf, 0x400);
 			ISFS_Seek(fd, 0, SEEK_SET);
-			buf[0xfe] = 1;
+			if(which==1)buf[0xfe] = 1;
+			if(which==2)buf[0xfe] = 0;
 			buf[0xff] = __CalcChecksum(buf, 0x3fc);
 			ISFS_Write(fd, buf, 0x400);
 			ISFS_Close(fd);
@@ -323,7 +325,8 @@ void DoStuff(char *url)
 		{
 			ISFS_Read(fd, buf, 0x400);
 			ISFS_Seek(fd, 0, SEEK_SET);
-			buf[0xfe] = 1;
+			if(which==1)buf[0xfe] = 1;
+			if(which==2)buf[0xfe] = 0;
 			buf[0xff] = __CalcChecksum(buf, 0x3fc);
 			ISFS_Write(fd, buf, 0x400);
 			ISFS_Close(fd);
