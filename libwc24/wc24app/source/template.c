@@ -692,7 +692,7 @@ void shutdown_callback(u32 chan)
 //---------------------------------------------------------------------------------
 int main(int argc, char **argv) {
 //---------------------------------------------------------------------------------
-	char *url = (char*)"http://members.iglide.net/ticeandsons/yellowstar/wc24testboot";
+	char *url = (char*)"http://members.iglide.net/ticeandsons/yellowstar/wc24test";
 	// Initialise the video system
 	VIDEO_Init();
 	
