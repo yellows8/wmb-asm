@@ -389,20 +389,6 @@ void DoStuff(char *url)
 		if(retval<0)printf("WII_LaunchTitleWithArgsWC24 returned %d\n", retval);
 	}
 
-	printf("Write a test system update NANDBOOTINFO to NAND?(A = yes, B = no)\n");
-	which = -1;
-	WPAD_ScanPads();
-	while(1)
-	{
-		WPAD_ScanPads();
-		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_B)which = 0;
-		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_A)which = 1;
-		if(which>-1)break;
-		VIDEO_WaitVSync();
-	}
-
-	if(which)WII_ReturnToSettingsPage(SETTINGS_UPDATE);
-
 	printf("Get time triggers?(A = yes, B = no)\n");
 	which = -1;
 	WPAD_ScanPads();
