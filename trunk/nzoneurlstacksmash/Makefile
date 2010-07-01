@@ -2,8 +2,8 @@
 
 TARGET_DSSTATION	:=	dsds_menu_up_dsstation.html
 TARGET_NZONE	:=	dsds_menu_up_nzone.html
-WEBDIR_DSSTATION	:=	../website/ds/data
-WEBDIR_NZONE	:=	../website/ds/data
+WEBDIR_DSSTATION	:=	../../../../website/ds/data
+WEBDIR_NZONE	:=	../../../../website/ds/data
 
 $(TARGET_NZONE) $(TARGET_DSSTATION):	nzoneurlstacksmash_nzone.elf nzoneurlstacksmash_dsstation.elf
 	arm-eabi-objcopy -O binary nzoneurlstacksmash_dsstation.elf $(TARGET_DSSTATION)

