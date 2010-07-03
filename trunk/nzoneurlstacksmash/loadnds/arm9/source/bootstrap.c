@@ -31,6 +31,12 @@ int main( int argc, char **argv) {
 	consoleDemoInit();
 	printf("Initializing FAT...\n");
 	if (fatInitDefault()) {
+		/*printf("Dumping arm7...\n");
+		FILE *f = fopen("arm7dump.bin", "w");
+		if(f)fwrite((void*)__NDSHeader->arm9destination, 1, __NDSHeader->arm9binarySize, f);
+		if(f)fclose(f);
+		printf("Dump done.\n");
+		while(1);*/
 		printf("Booting...\n");
 		runNdsFile("/_BOOT_DS.NDS", 0, NULL);
 	} else {
