@@ -68,7 +68,17 @@ DEALINGS IN THE SOFTWARE.
 
 _start:
 .arm
-sub r7, pc, #8
+@sub r7, pc, #8
+adrl r7, _start
+bl DC_FlushAll
+bl IC_InvalidateAll
+mov r0, #0
+mcr 15, 0, r0, cr7, cr10, 4
+mcr 15, 0, r0, c7, c5, 0
+mcr 15, 0, r0, c7, c6, 0
+mrc 15, 0, r0, cr1, cr0, 0
+bic r0, r0, #1
+mcr 15, 0, r0, cr1, cr0, 0
 ldr r0, =0x8278
 sub r7, r7, r0
 @ r7 = address of this exploit payload. When accessing data in this payload, the addr of the label is loaded, and is then added with r7. The constant r7 is subtracted by is the offset of the payload in the html. RAM addresses in this exploit are currently for the DS Station binary.(With gcc, the code is based at 0x8000, not 0x0 like as.)
@@ -136,17 +146,28 @@ bl sendipcmsg
 cmp r0, #0
 blt bootstrapArm7_sendipcmsg
 
-ldr r0, =0x023710a8
+@ldr r0, =0x023710a8
 @ldr r0, =0x04000184
 @ldr r1, =0x04100000
-ipcreplywait:
-ldrh r1, [r0]
-cmp r1, #1
+@ipcreplywait:
+@ldrh r1, [r0]
+@cmp r1, #1
 @mov r3, #0x10
 @lsl r3, r3, #4
 @ldrh r2, [r0]
 @tst r2, r3
-bne ipcreplywait
+@bne ipcreplywait
+
+ldr r0, =0x04000006
+ipcreplywait_vcountwait1:
+ldrh r1, [r0]
+cmp r1, #192
+bne ipcreplywait_vcountwait1
+
+ipcreplywait_vcountwait2:
+ldrh r1, [r0]
+cmp r1, #192
+beq ipcreplywait_vcountwait2
 
 @ldr r2, [r1]
 @ldr r3, =0x4000c
@@ -327,6 +348,7 @@ mov r1, r4
 @mov lr, pc
 @bx ip
 bl swiDecompressLZSSVram
+@blx DC_FlushAll
 
 @ndsloadstub_skipdecom:
 
@@ -432,10 +454,44 @@ mov r0, #0
 mcr 15, 0, r0, cr7, cr6
 bx lr
 
+#define ICACHE_SIZE	0x2000
+#define DCACHE_SIZE	0x1000
+#define CACHE_LINE_SIZE	32
+#define ICACHE_SIZE	0x2000
+#define DCACHE_SIZE	0x1000
+#define CACHE_LINE_SIZE	32
+
+DC_FlushAll: @ From libnds.
+/*---------------------------------------------------------------------------------
+	Clean and invalidate entire data cache
+---------------------------------------------------------------------------------*/
+	mov	r1, #0
+outer_loop:
+	mov	r0, #0
+inner_loop:
+	orr	r2, r1, r0			@ generate segment and line address
+	mcr	p15, 0, r2, c7, c14, 2		@ clean and flush the line
+	add	r0, r0, #CACHE_LINE_SIZE
+	cmp	r0, #DCACHE_SIZE/4
+	bne	inner_loop
+	add	r1, r1, #0x40000000
+	cmp	r1, #0
+	bne	outer_loop
+	bx	lr
+
+IC_InvalidateAll: @ From libnds.
+/*---------------------------------------------------------------------------------
+	Clean and invalidate entire data cache
+---------------------------------------------------------------------------------*/
+	mov	r0, #0
+	mcr	p15, 0, r0, c7, c5, 0
+	bx	lr
+
 ndsloadstub_arm7:
 mov r0, pc
 add r0, r0, #5
 bx r0
+
 
 .thumb
 @push {r5}
@@ -530,6 +586,10 @@ mov r1, #1
 str r1, [r2] @ REG_POWCNT = 1;
 */
 
+ldr r3, =0x04000180
+mov r2, #0x5
+lsl r2, r2, #8
+strh r2, [r3]
 
 ldr r3, =0x02300000
 ldr r0, [r3, #0x30]
