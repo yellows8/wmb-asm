@@ -220,8 +220,6 @@ ldr r2, =0x02800000
 ldr r1, =0x02ffff9c
 ldr r2, =0x03000000
 #endif
-@add r1, r1, r5
-@add r2, r2, r5
 clearlp3:
 str r0, [r1]
 add r1, r1, #4
@@ -307,8 +305,15 @@ ldr r0, =ndsloader
 ldr r4, =0x02300000
 add r0, r0, r7
 mov r1, r4
+bl swiDecompressLZSSVram
+bl DC_FlushAll
 
-ldr r0, =BOOTSIGNAL
+#if defined(DS_STATION)
+ldr r0, =0x027ffdff
+#endif
+#if defined(NZONE)
+ldr r0, =0x02fffdff
+#endif
 mov r1, #0
 strb r1, [r0]
 
@@ -414,8 +419,12 @@ bx r0
 
 
 .thumb
-
-ldr r4, =BOOTSIGNAL
+#if defined(DS_STATION)
+ldr r4, =0x027ffdff
+#endif
+#if defined(NZONE)
+ldr r4, =0x02fffdff
+#endif
 
 ndsloadstub_arm7_waitlp:
 ldrb r1, [r4]
@@ -496,6 +505,7 @@ ldr r3, =0x02300000
 ldr r0, [r3, #0x30]
 add r0, r0, r3 @ Src Arm7 bin
 ldr r1, [r3, #0x38] @ Dest/Load Arm7 addr
+@ldr r1, =0x03000000
 ldr r2, [r3, #0x3c] @ Arm7 bin size
 
 ndsloadstub_arm7cpylp:
@@ -522,13 +532,13 @@ cmp r1, #192
 beq ndsloadstub_arm7_vcountwait2
 strb r2, [r4]
 
+@pop {r5}
 #if defined(DS_STATION)
 ldr r3, =0x027ffe34
 #endif
 #if defined(NZONE)
 ldr r3, =0x02fffe34
 #endif
-@add r0, r0, r5
 ldr r0, [r3]
 mov lr, r0
 @mov r1, #0
@@ -543,6 +553,7 @@ mov lr, r0
 @mov sl, r1
 @mov ip, r1
 bx r0
+@svc 0
 
 @.thumb
 .pool
@@ -615,6 +626,18 @@ b arm9stub_forever
 .align 2
 
 ndsloadstub_headerarm7cpy:
+@mov r5, #0
+@ldr r0, =0x04004000
+@ldrb r0, [r0]
+@and r0, r0, #3
+@cmp r0, #1
+@moveq r5, #0x800000
+
+@ldr r0, =0x027ffdff
+@ndsloadstub_headerarm7cpy_arm7stubwait:
+@ldrb r1, [r0]
+@cmp r1, #1
+@bne ndsloadstub_headerarm7cpy_arm7stubwait
 
 ldr r0, =0x02300000
 #if defined(DS_STATION)
@@ -635,10 +658,17 @@ add r1, r1, #4
 sub r2, r2, #4
 bgt ndsloadstub_hdrcpylp
 
-ldr r0, =BOOTSIGNAL
+#if defined(DS_STATION)
+ldr r0, =0x027ffdff
+#endif
+#if defined(NZONE)
+ldr r0, =0x02fffdff
+#endif
 mov r1, #1
 strb r1, [r0]
+@add r0, r0, r5
 
+@ldr r0, =0x027ffdff
 ndsloadstub_arm7wait:
 ldrb r1, [r0]
 cmp r1, #2
