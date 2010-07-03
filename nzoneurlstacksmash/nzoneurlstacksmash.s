@@ -146,18 +146,6 @@ bl sendipcmsg
 cmp r0, #0
 blt bootstrapArm7_sendipcmsg
 
-@ldr r0, =0x023710a8
-@ldr r0, =0x04000184
-@ldr r1, =0x04100000
-@ipcreplywait:
-@ldrh r1, [r0]
-@cmp r1, #1
-@mov r3, #0x10
-@lsl r3, r3, #4
-@ldrh r2, [r0]
-@tst r2, r3
-@bne ipcreplywait
-
 ldr r0, =0x04000006
 ipcreplywait_vcountwait1:
 ldrh r1, [r0]
@@ -169,12 +157,6 @@ ldrh r1, [r0]
 cmp r1, #192
 beq ipcreplywait_vcountwait2
 
-@ldr r2, [r1]
-@ldr r3, =0x4000c
-@cmp r2, r3
-@bne ipcreplywait
-@bl swiWaitForVBlank
-
 mov r0, r8
 mov r1, #0
 str r1, [r0] @ REG_IME = 0;
@@ -184,12 +166,6 @@ ldr r0, =0x027e3ffc
 #if defined(NZONE)
 ldr r0, =0x02fe3ffc
 #endif
-@sub r0, r0, r6
-@cmp r5, #0
-@beq bootstrapArm7_irqclear_dsmode
-@nop
-@ldr r0, =0x02200000
-@nop
 
 bootstrapArm7_irqclear_dsmode:
 str r1, [r0]
@@ -209,15 +185,12 @@ strh r1, [r0]
 mov r0, #0
 #if defined(DS_STATION)
 ldr r1, =0x027ffd80 @ Not sure if this clearing code is really needed, Nintendo clears this memory when bootstrapping.
-@ldr r2, =0x027ffd9c
 ldr r2, =0x027ffe00
 #endif
 #if defined(NZONE)
 ldr r1, =0x02fffd80
 ldr r2, =0x02fffe00
 #endif
-@add r1, r1, r5
-@add r2, r2, r5
 clearlp1:
 str r0, [r1]
 add r1, r1, #4
@@ -232,8 +205,6 @@ ldr r2, =0x027fff98
 ldr r1, =0x02ffff80
 ldr r2, =0x02ffff98
 #endif
-@add r1, r1, r5
-@add r2, r2, r5
 clearlp2:
 str r0, [r1]
 add r1, r1, #4
@@ -332,63 +303,12 @@ bx lr
 ndsloadstub:
 push {r4, r5, lr}
 
-@ldr r4, =ndsloader
-@add r4, r4, r7
-@ldrb r0, [r4]
-@cmp r0, #0x10
-@bne ndsloadstub_skipdecom
-
 ldr r0, =ndsloader
 ldr r4, =0x02300000
 add r0, r0, r7
 mov r1, r4
-@ldr ip, =swiDecompressLZSSVram
-@add ip, ip, r7
-@orr ip, ip, #1
-@mov lr, pc
-@bx ip
-bl swiDecompressLZSSVram
-@blx DC_FlushAll
 
-@ndsloadstub_skipdecom:
-
-@ldr r0, [r4, #0x20]
-@add r0, r0, r4 @ Src Arm9 bin
-@ldr r1, [r4, #0x28] @ Dest/Load Arm9 addr
-@ldr r2, [r4, #0x2c] @ Arm9 bin size
-
-@ndsloadstub_arm9cpylp:
-@ldr r3, [r0]
-@str r3, [r1]
-@add r0, r0, #4
-@add r1, r1, #4
-@sub r2, r2, #4
-@cmp r2, #0
-@bgt ndsloadstub_arm9cpylp
-
-@blx DC_InvalidateAll
-
-@mov r5, #0
-@ldr r1, =0x04004000
-@ldr r0, =0x027ffdff
-@ldrb r1, [r1]
-@mov r2, #3
-@and r1, r1, r2
-@cmp r1, #1
-@bne ndsloadstub_dsmode
-@mov r5, #0x80
-@lsl r5, r5, #16
-@ldr r0, =0x02fffdff
-
-@ndsloadstub_dsmode:
-@ldr r5, [sp, #4]
-#if defined(DS_STATION)
-ldr r0, =0x027ffdff
-#endif
-#if defined(NZONE)
-ldr r0, =0x02fffdff
-#endif
-@add r0, r0, r5
+ldr r0, =BOOTSIGNAL
 mov r1, #0
 strb r1, [r0]
 
@@ -494,27 +414,8 @@ bx r0
 
 
 .thumb
-@push {r5}
-@mov r2, #0
-@ldr r0, =0x04004000
-@ldrb r0, [r0]
-@mov r1, #1
-@and r0, r0, r1
-@cmp r0, #1
-@bne ndsloadstub_arm7_dsmode
-@mov r5, #0x80
-@lsl r5, r5, #16
 
-@ndsloadstub_arm7_dsmode:
-#if defined(DS_STATION)
-ldr r4, =0x027ffdff
-#endif
-#if defined(NZONE)
-ldr r4, =0x02fffdff
-#endif
-@add r4, r4, r5
-@mov r1, #1
-@strb r1, [r4]
+ldr r4, =BOOTSIGNAL
 
 ndsloadstub_arm7_waitlp:
 ldrb r1, [r4]
@@ -595,7 +496,6 @@ ldr r3, =0x02300000
 ldr r0, [r3, #0x30]
 add r0, r0, r3 @ Src Arm7 bin
 ldr r1, [r3, #0x38] @ Dest/Load Arm7 addr
-@ldr r1, =0x03000000
 ldr r2, [r3, #0x3c] @ Arm7 bin size
 
 ndsloadstub_arm7cpylp:
@@ -622,7 +522,6 @@ cmp r1, #192
 beq ndsloadstub_arm7_vcountwait2
 strb r2, [r4]
 
-@pop {r5}
 #if defined(DS_STATION)
 ldr r3, =0x027ffe34
 #endif
@@ -716,18 +615,6 @@ b arm9stub_forever
 .align 2
 
 ndsloadstub_headerarm7cpy:
-@mov r5, #0
-@ldr r0, =0x04004000
-@ldrb r0, [r0]
-@and r0, r0, #3
-@cmp r0, #1
-@moveq r5, #0x800000
-
-@ldr r0, =0x027ffdff
-@ndsloadstub_headerarm7cpy_arm7stubwait:
-@ldrb r1, [r0]
-@cmp r1, #1
-@bne ndsloadstub_headerarm7cpy_arm7stubwait
 
 ldr r0, =0x02300000
 #if defined(DS_STATION)
@@ -748,17 +635,10 @@ add r1, r1, #4
 sub r2, r2, #4
 bgt ndsloadstub_hdrcpylp
 
-#if defined(DS_STATION)
-ldr r0, =0x027ffdff
-#endif
-#if defined(NZONE)
-ldr r0, =0x02fffdff
-#endif
+ldr r0, =BOOTSIGNAL
 mov r1, #1
 strb r1, [r0]
-@add r0, r0, r5
 
-@ldr r0, =0x027ffdff
 ndsloadstub_arm7wait:
 ldrb r1, [r0]
 cmp r1, #2
@@ -793,8 +673,8 @@ mov lr, r0
 @ldr fp, =0x027fff80
 @ldm fp, {r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, sl}
 @mov fp, #0
-bx r0
-@svc 0
+@bx r0
+svc 0
 
 bx lr
 
