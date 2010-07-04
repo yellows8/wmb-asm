@@ -10,5 +10,5 @@ This exploit works with any html sent over http. With Nintendo's server, this is
 
 Credits:
 WinterMute and chishm for bootloader and BootStrap, loadnds is BootStrap with a different Makefile(s).
-Twiizers for tips on cache for Arm7 bootstrap fix
+Team Twiizers for tips on cache for Arm7 bootstrap fix
 
