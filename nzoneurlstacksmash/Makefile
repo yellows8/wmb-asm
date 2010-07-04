@@ -8,6 +8,8 @@ WEBDIR_NZONE	:=	../../../../website/ds/data
 $(TARGET_NZONE) $(TARGET_DSSTATION):	nzoneurlstacksmash_nzone.elf nzoneurlstacksmash_dsstation.elf
 	arm-eabi-objcopy -O binary nzoneurlstacksmash_dsstation.elf $(TARGET_DSSTATION)
 	arm-eabi-objcopy -O binary nzoneurlstacksmash_nzone.elf $(TARGET_NZONE)
+	cp $(TARGET_DSSTATION) $(WEBDIR_DSSTATION)
+	cp $(TARGET_NZONE) $(WEBDIR_NZONE)
 
 nzoneurlstacksmash_dsstation.elf nzoneurlstacksmash_nzone.elf:	nzoneurlstacksmash.s
 	arm-eabi-gcc -x assembler-with-cpp -DDS_STATION -nostartfiles -nostdlib $< -o nzoneurlstacksmash_dsstation.elf

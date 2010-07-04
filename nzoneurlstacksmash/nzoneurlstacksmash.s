@@ -68,31 +68,22 @@ DEALINGS IN THE SOFTWARE.
 
 _start:
 .arm
-@sub r7, pc, #8
 adrl r7, _start
 bl DC_FlushAll
 bl IC_InvalidateAll
 mov r0, #0
-mcr 15, 0, r0, cr7, cr10, 4
-mcr 15, 0, r0, c7, c5, 0
-mcr 15, 0, r0, c7, c6, 0
-mrc 15, 0, r0, cr1, cr0, 0
-bic r0, r0, #1
-mcr 15, 0, r0, cr1, cr0, 0
+mcr 15, 0, r0, cr7, cr10, 4 @ Drain write buffer.
 ldr r0, =0x8278
 sub r7, r7, r0
 @ r7 = address of this exploit payload. When accessing data in this payload, the addr of the label is loaded, and is then added with r7. The constant r7 is subtracted by is the offset of the payload in the html. RAM addresses in this exploit are currently for the DS Station binary.(With gcc, the code is based at 0x8000, not 0x0 like as.)
 mov r0, #0
 ldr r8, =0x04000208
 str r0, [r8]	@ REG_IME = 0;
-mov r0, pc
-add r0, r0, #13
-bx r0
+@mov r0, pc
+@add r0, r0, #13
+@bx r0
 
-.pool
-.align 2
-
-.thumb
+@.thumb
 bl bootstrap
 
 mov r1, r8
@@ -109,8 +100,6 @@ bootstrap:
 push {lr}
 bl resetArm9
 bl bootstrapArm7
-bl ndsloadstub_headerarm7cpy
-
 pop {pc}
 
 .pool
@@ -305,8 +294,10 @@ ldr r0, =ndsloader
 ldr r4, =0x02300000
 add r0, r0, r7
 mov r1, r4
-bl swiDecompressLZSSVram
+blx swiDecompressLZSSVram
 bl DC_FlushAll
+mov r0, #0
+mcr 15, 0, r0, cr7, cr10, 4 @ Drain write buffer.
 
 #if defined(DS_STATION)
 ldr r0, =0x027ffdff
@@ -363,8 +354,8 @@ cmp r0, r1
 blt ndsloadstub_arm9stubcpy
 
 ldr r0, =0x023fe000
-mov r1, #1
-orr r0, r0, r1
+@mov r1, #1
+@orr r0, r0, r1
 bx r0
 
 ndsloadstub_end:
@@ -373,52 +364,13 @@ pop {r4, r5, pc}
 .align 2
 .pool
 
-DC_InvalidateAll:
-.arm
-mov r0, #0
-mcr 15, 0, r0, cr7, cr6
-bx lr
-
-#define ICACHE_SIZE	0x2000
-#define DCACHE_SIZE	0x1000
-#define CACHE_LINE_SIZE	32
-#define ICACHE_SIZE	0x2000
-#define DCACHE_SIZE	0x1000
-#define CACHE_LINE_SIZE	32
-
-DC_FlushAll: @ From libnds.
-/*---------------------------------------------------------------------------------
-	Clean and invalidate entire data cache
----------------------------------------------------------------------------------*/
-	mov	r1, #0
-outer_loop:
-	mov	r0, #0
-inner_loop:
-	orr	r2, r1, r0			@ generate segment and line address
-	mcr	p15, 0, r2, c7, c14, 2		@ clean and flush the line
-	add	r0, r0, #CACHE_LINE_SIZE
-	cmp	r0, #DCACHE_SIZE/4
-	bne	inner_loop
-	add	r1, r1, #0x40000000
-	cmp	r1, #0
-	bne	outer_loop
-	bx	lr
-
-IC_InvalidateAll: @ From libnds.
-/*---------------------------------------------------------------------------------
-	Clean and invalidate entire data cache
----------------------------------------------------------------------------------*/
-	mov	r0, #0
-	mcr	p15, 0, r0, c7, c5, 0
-	bx	lr
-
 ndsloadstub_arm7:
-mov r0, pc
-add r0, r0, #5
-bx r0
+@mov r0, pc
+@add r0, r0, #5
+@bx r0
 
 
-.thumb
+@.thumb
 #if defined(DS_STATION)
 ldr r4, =0x027ffdff
 #endif
@@ -431,7 +383,7 @@ ldrb r1, [r4]
 cmp r1, #1
 bne ndsloadstub_arm7_waitlp
 
-/*
+
 mov r0, #0
 mov r2, r0
 mov r0, r0
@@ -494,7 +446,7 @@ str r1, [r2, #4]
 ldr r2, =0x04000304
 mov r1, #1
 str r1, [r2] @ REG_POWCNT = 1;
-*/
+
 
 ldr r3, =0x04000180
 mov r2, #0x5
@@ -513,7 +465,7 @@ ldr r3, [r0]
 str r3, [r1]
 add r0, r0, #4
 add r1, r1, #4
-sub r2, r2, #4
+subs r2, r2, #4
 bgt ndsloadstub_arm7cpylp
 
 mov r1, #2
@@ -606,6 +558,7 @@ add r1, r1, #4
 sub r2, r2, #4
 cmp r2, #0
 bgt ndsloadstub_arm9cpylp
+bl DC_FlushAll
 
 ldr r0, =0x04000180
 mov r2, #0xf
@@ -656,6 +609,7 @@ str r3, [r1]
 add r0, r0, #4
 add r1, r1, #4
 sub r2, r2, #4
+cmp r2, #0
 bgt ndsloadstub_hdrcpylp
 
 #if defined(DS_STATION)
@@ -703,8 +657,8 @@ mov lr, r0
 @ldr fp, =0x027fff80
 @ldm fp, {r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, sl}
 @mov fp, #0
-@bx r0
-svc 0
+bx r0
+@svc 0
 
 bx lr
 
@@ -784,6 +738,7 @@ resetArm9_paletteclear:
 str r0, [r1]
 add r1, r1, #4
 sub r2, r2, #4
+cmp r2, #0
 bgt resetArm9_paletteclear
 
 ldr r1, =0x07000000
@@ -794,6 +749,7 @@ resetArm9_oamclear:
 str r0, [r1]
 add r1, r1, #4
 sub r2, r2, #4
+cmp r2, #0
 bgt resetArm9_oamclear
 
 ldr r2, =0x04000304
@@ -808,6 +764,46 @@ bx lr
 
 .pool
 .align 2
+
+DC_InvalidateAll:
+.arm
+mov r0, #0
+mcr 15, 0, r0, cr7, cr6
+bx lr
+
+#define ICACHE_SIZE	0x2000
+#define DCACHE_SIZE	0x1000
+#define CACHE_LINE_SIZE	32
+#define ICACHE_SIZE	0x2000
+#define DCACHE_SIZE	0x1000
+#define CACHE_LINE_SIZE	32
+
+DC_FlushAll: @ From libnds.
+/*---------------------------------------------------------------------------------
+	Clean and invalidate entire data cache
+---------------------------------------------------------------------------------*/
+	mov	r1, #0
+outer_loop:
+	mov	r0, #0
+inner_loop:
+	orr	r2, r1, r0			@ generate segment and line address
+	mcr	p15, 0, r2, c7, c14, 2		@ clean and flush the line
+	add	r0, r0, #CACHE_LINE_SIZE
+	cmp	r0, #DCACHE_SIZE/4
+	bne	inner_loop
+	add	r1, r1, #0x40000000
+	cmp	r1, #0
+	bne	outer_loop
+	bx	lr
+
+IC_InvalidateAll: @ From libnds.
+/*---------------------------------------------------------------------------------
+	Clean and invalidate entire data cache
+---------------------------------------------------------------------------------*/
+	mov	r0, #0
+	mcr	p15, 0, r0, c7, c5, 0
+	bx	lr
+
 arm9stub_poolend:
 
 /*
@@ -1053,13 +1049,13 @@ bx ip
 */
 
 swiDecompressLZSSVram:
-@.thumb
-@.thumb_func
+.thumb
+.thumb_func
 svc 0x11
 bx lr
 
 swiWaitForVBlank:
-@.thumb_func
+.thumb_func
 svc 0x05
 bx lr
 
