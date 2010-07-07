@@ -73,7 +73,10 @@ void DoStuff(char *url)
 	u32 triggers[2];
 	char titleidlow[5];
 	u64 titleid;
-	u64 homebrewtitleid = 0x0001000148424D4CLL;//TitleID for wiibrew+hackmii mail: 00010001-HBML.
+	u64 homebrewtitleid = 0x0001000848424D4CLL;//TitleID for wiibrew+hackmii mail: 00010008-HBML.
+	char *hackmii_url = "http://192.168.1.33/hackmii/index.php";
+	char *wiibrewnews_url = "http://192.168.1.33/wiibrew/releases/index.php";
+	char *wiibrewreleases_url = "http://192.168.1.33/wiibrew/news/index.php";
 	memset(mailurl, 0, 256);
 	strncpy(mailurl, url, 255);
 
@@ -294,22 +297,24 @@ void DoStuff(char *url)
 
 	if(which)
 	{
-		printf("Creating record+entry...\n");
-		retval = WC24_CreateRecord(&myrec, &myent, (u32)titleid, titleid, 0x4842, WC24_TYPE_MSGBOARD, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_RSA_VERIFY_DISABLE, which, 0x5a0, "http://192.168.1.33/hackmii/index.php", NULL);
+		printf("Creating record+entry(hackmii)...\n");
+		retval = WC24_CreateRecord(&myrec, &myent, (u32)homebrewtitleid, homebrewtitleid, 0x4842, WC24_TYPE_MSGBOARD, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_RSA_VERIFY_DISABLE, which, 0x5a0, hackmii_url, NULL);
 		if(retval<0)
 		{
 			printf("WC24_CreateRecord returned %d\n", retval);
 			return;
 		}
 
-		retval = WC24_CreateRecord(&myrec, &myent, (u32)titleid, titleid, 0x4842, WC24_TYPE_MSGBOARD, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_RSA_VERIFY_DISABLE, which, 0x5a0, "http://192.168.1.33/wiibrew/releases/index.php", NULL);
+		printf("Creating record+entry(wiibrew releases)...\n");
+		retval = WC24_CreateRecord(&myrec, &myent, (u32)homebrewtitleid, homebrewtitleid, 0x4842, WC24_TYPE_MSGBOARD, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_RSA_VERIFY_DISABLE, which, 0x5a0, wiibrewnews_url, NULL);
 		if(retval<0)
 		{
 			printf("WC24_CreateRecord returned %d\n", retval);
 			return;
 		}
 
-		retval = WC24_CreateRecord(&myrec, &myent, (u32)titleid, titleid, 0x4842, WC24_TYPE_MSGBOARD, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_RSA_VERIFY_DISABLE, which, 0x5a0, "http://192.168.1.33/wiibrew/news/index.php", NULL);
+		printf("Creating record+entry(wiibrew news)...\n");
+		retval = WC24_CreateRecord(&myrec, &myent, (u32)homebrewtitleid, homebrewtitleid, 0x4842, WC24_TYPE_MSGBOARD, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_RSA_VERIFY_DISABLE, which, 0x5a0, wiibrewreleases_url, NULL);
 		if(retval<0)
 		{
 			printf("WC24_CreateRecord returned %d\n", retval);
@@ -501,7 +506,31 @@ void DoStuff(char *url)
 			printf("KD_Download returned %d\n", retval);
 		}
 
-		/*retval = WC24_FindEntry(0x524d4345, "https://mariokartwii.race.gs.nintendowifi.net/raceservice/messagedl_us_en.ashx", &myent);
+		retval = WC24_FindEntry((u32)homebrewtitleid, hackmii_url, &myent);
+		if(retval>=0)
+		{
+			printf("Downloading hackmii mail...\n");
+			retval = KD_Download(KD_DOWNLOADFLAGS_MANUAL, (u16)retval, 0x0);
+			printf("KD_Download returned %d\n", retval);
+		}
+
+		retval = WC24_FindEntry((u32)homebrewtitleid, wiibrewnews_url, &myent);
+		if(retval>=0)
+		{
+			printf("Downloading wiibrew news mail...\n");
+			retval = KD_Download(KD_DOWNLOADFLAGS_MANUAL, (u16)retval, 0x0);
+			printf("KD_Download returned %d\n", retval);
+		}
+
+		retval = WC24_FindEntry((u32)homebrewtitleid, wiibrewreleases_url, &myent);
+		if(retval>=0)
+		{
+			printf("Downloading wiibrew releases mail...\n");
+			retval = KD_Download(KD_DOWNLOADFLAGS_MANUAL, (u16)retval, 0x0);
+			printf("KD_Download returned %d\n", retval);
+		}
+
+		/*retval = WC24_FindEntry(0x524d4345, "https://mariokartwii.race.gs.nintendowifi.net/raceservice/messagedl_us_en.ashx", &myent);//This was used to rip the raw mail content from MK, from /shared2/wc24/mobx/dlcnt.bin.
 		if(retval<0)
 		{
 			printf("Failed to find MK WC24 mail entry.\n");
