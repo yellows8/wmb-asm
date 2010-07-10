@@ -33,6 +33,7 @@ DEALINGS IN THE SOFTWARE.
 .eabi_attribute 18, 4
 
 .global _start
+.section .init
 
 #define	REG_BASE	0x04000000
 
@@ -41,7 +42,7 @@ DEALINGS IN THE SOFTWARE.
 .incbin "urloverflow"
 #endif
 #if defined(NZONE)
-.incbin "urloverflownzone"
+.incbin "urloverflow_nzone"
 #endif
 
 @ The below are the addresses of the 'bx r0' instruction in the IRQ handler. This is the address that overwrites LR on the stack.

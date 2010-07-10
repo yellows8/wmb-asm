@@ -1,7 +1,7 @@
-# The assembled html is written to dsds_menu_up_x.html by default, where x is dsstation or nzone for the DS Station and Nintendo Zone builds.
+# The assembled html is written to htmlhaxx_x.html by default, where x is dsstation or nzone for the DS Station and Nintendo Zone builds.
 
-TARGET_DSSTATION	:=	dsds_menu_up_dsstation.html
-TARGET_NZONE	:=	dsds_menu_up_nzone.html
+TARGET_DSSTATION	:=	htmlhaxx_dsstation.html
+TARGET_NZONE	:=	htmlhaxx_nzone.html
 WEBDIR_DSSTATION	:=	../../../../website/ds/data
 WEBDIR_NZONE	:=	../../../../website/ds/data
 
