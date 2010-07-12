@@ -84,45 +84,6 @@ str r0, [r8]	@ REG_IME = 0;
 @add r0, r0, #13
 @bx r0
 
-/*
-@ This GOT and BSS code is from MINI elfloader start.s.
-@ relocate the GOT entries
-	ldr	r1, =__got_start
-	add	r1, r4
-	ldr	r2, =__got_end
-	add	r2, r4
-got_loop:
-	@ check for the end
-	cmp	r1, r2
-	beq	done_got
-	@ read the GOT entry
-	ldr	r3, [r1]
-	@ add our base address
-	add	r3, r4
-	str	r3, [r1]
-	@ move on
-	add	r1, r1, #4
-	b	got_loop
-
-done_got:
-	@ clear BSS
-	ldr	r1, =__bss_start
-	add	r1, r4
-	ldr	r2, =__bss_end
-	add	r2, r4
-	mov	r3, #0
-bss_loop:
-	@ check for the end
-	cmp	r1, r2
-	beq	done_bss
-	@ clear the word and move on
-	str	r3, [r1]
-	add	r1, r1, #4
-	b	bss_loop
-
-done_bss:
-*/
-
 @.thumb
 bl bootstrap
 
