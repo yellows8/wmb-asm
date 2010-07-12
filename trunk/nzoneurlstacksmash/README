@@ -7,4 +7,5 @@ This exploit works with any html sent over http. With Nintendo's DS Station serv
 Credits:
 WinterMute and chishm for bootloader and BootStrap, loadnds is BootStrap with a different Makefile(s). The exploit arm9/arm7 reset code is based on the bootloader reset code.
 Team Twiizers for tips on cache for Arm7 bootstrap fix
+Team Twiizers for MINI elfloader linker script and start.S
 
