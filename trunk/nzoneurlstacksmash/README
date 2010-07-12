@@ -5,6 +5,6 @@ In order to use this exploit, a Linux/hostapd compatible box with a wireless NIC
 This exploit works with any html sent over http. With Nintendo's DS Station server, this is mostly the *_up.html files, which are used for the main screen. With third-party companies, which have a link to their site on the Nintendo Zone index html, all html is sent over http as Nintendo won't sign third-party server certs with Nintendo's server CA. Third-party content is stored on third-party servers. It's unknown if there's still vulnerable html transferred with HTTP with the NZone server, the main screen index html now uses the same CGI HTTPS-only system as the sub-screen html. By default, this exploit generates htmlhaxx_x.html,(x is dsstation/nzone) which should replace the target html, for example dsds_menu_up.html retrieved by the client.(With a web server, the htmlhaxx html can be linked to from the target html, like dsds_menu_up.html.)
 
 Credits:
-WinterMute and chishm for bootloader and BootStrap, loadnds is BootStrap with a different Makefile(s).
+WinterMute and chishm for bootloader and BootStrap, loadnds is BootStrap with a different Makefile(s). The exploit arm9/arm7 reset code is based on the bootloader reset code.
 Team Twiizers for tips on cache for Arm7 bootstrap fix
 

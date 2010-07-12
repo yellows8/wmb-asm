@@ -84,6 +84,45 @@ str r0, [r8]	@ REG_IME = 0;
 @add r0, r0, #13
 @bx r0
 
+/*
+@ This GOT and BSS code is from MINI elfloader start.s.
+@ relocate the GOT entries
+	ldr	r1, =__got_start
+	add	r1, r4
+	ldr	r2, =__got_end
+	add	r2, r4
+got_loop:
+	@ check for the end
+	cmp	r1, r2
+	beq	done_got
+	@ read the GOT entry
+	ldr	r3, [r1]
+	@ add our base address
+	add	r3, r4
+	str	r3, [r1]
+	@ move on
+	add	r1, r1, #4
+	b	got_loop
+
+done_got:
+	@ clear BSS
+	ldr	r1, =__bss_start
+	add	r1, r4
+	ldr	r2, =__bss_end
+	add	r2, r4
+	mov	r3, #0
+bss_loop:
+	@ check for the end
+	cmp	r1, r2
+	beq	done_bss
+	@ clear the word and move on
+	str	r3, [r1]
+	add	r1, r1, #4
+	b	bss_loop
+
+done_bss:
+*/
+
 @.thumb
 bl bootstrap
 
@@ -250,9 +289,9 @@ ldr r0, =0x02fffc24
 add r1, r0, #0x2
 add r2, r0, #0x4
 mov r3, #0x3
-strh r3, [r2]
-ldrh r2, [r0]
-ldrh r3, [r1]
+strh r3, [r2] ; +4
+ldrh r2, [r0] ; +0
+ldrh r3, [r1] ; +2
 
 twl_bootwait0:
 add r2, r2, #1
@@ -261,8 +300,8 @@ ldrh r5, [r1]
 cmp r5, r3
 beq twl_bootwait0
 
-ldrh r2, [r0]
-ldrh r3, [r1]
+ldrh r2, [r0] ; +0
+ldrh r3, [r1] ; +2
 
 twl_bootwait1:
 add r2, r2, #1
@@ -387,7 +426,6 @@ bne ndsloadstub_arm7_waitlp
 
 mov r0, #0
 mov r2, r0
-mov r0, r0
 ldr r1, =0x04000400
 
 ndsloadstub_arm7_soundreset:
@@ -397,7 +435,7 @@ strh r2, [r1, #8]
 str r2, [r1, #0xc]
 add r1, r1, #0x10
 add r0, r0, #1
-cmp r0, #4
+cmp r0, #16
 blt ndsloadstub_arm7_soundreset
 ldr r1, =0x04000500
 strh r2, [r1]
@@ -458,7 +496,6 @@ ldr r3, =0x02300000
 ldr r0, [r3, #0x30]
 add r0, r0, r3 @ Src Arm7 bin
 ldr r1, [r3, #0x38] @ Dest/Load Arm7 addr
-@ldr r1, =0x03000000
 ldr r2, [r3, #0x3c] @ Arm7 bin size
 
 ndsloadstub_arm7cpylp:
@@ -471,7 +508,6 @@ bgt ndsloadstub_arm7cpylp
 
 mov r1, #2
 strb r1, [r4]
-mov r2, #3
 
 ldr r0, =0x04000006
 ndsloadstub_arm7_vcountwait1:
@@ -1066,11 +1102,11 @@ bx lr
 
 
 params: @ This string is not used, it's for old haxx to dl a bin from a server. Dummy authenication params for download function. Not used by the real server, but the client sends it.
-.string "dsmac=something&apmac=appy&apnum=yeah&token=tok"
+.string "dsmac=something&apmac=mac&apnum=numbersjunk&token=tok"
 
 url:
 .string "https://yellzone.en/ds/trial/9R3viUq2/1116984960.srl"
-@ This URL isn't used, it's for old haxx attempting to get the client to dl a bin from a server with the client sig check patched out.
+@ This URL isn't used, it's for old haxx attempting to get the client to dl a bin from a server with the client sig check patched out. yellzone.en is a LAN-only server, it's not a Internet registered domain name.
 @ The client doesn't download the above URL directly. It downloads url.header,(replace url with the content of the above url string) and url.signature. Then, it calcuates the number of split files that need downloaded: arm9/7 binary (size / 0x3200) + 1.(200KB for each split file.)
 @ For downloaded binaries, DS Station uses the above system, but NZone may download the SRL directly to RAM without any splitting system?
 
@@ -1128,7 +1164,7 @@ map:
 map_end:
 */
 
-.align 2
+.align 2 @ old not used anymore.
 original_arm7execute_addr:
 .word 0
 
@@ -1163,17 +1199,17 @@ ndsloader:
 ndsloader_end:
 
 original_imgsrc:
-.ascii "src="
+.ascii "src=" @ Not really needed, but...(This was mainly for haxx attempting to return the software, that didn't work well.)
 .byte 0x22
 .ascii "http://yellzone.en/ds/data/dsds_logo.ntfa"
 .byte 0x22
 @.align 2
 
 imgtag_end:
-.byte 0x3e
+.byte 0x3et
 end:
 .byte 0x0a
-.ascii "</body>"
+.ascii "</body>" @ NetFront will refuse to parse the image tag etc when the </body> and </html> tags are missing.
 .byte 0x0a
 .ascii "</html>"
 .byte 0x0a
