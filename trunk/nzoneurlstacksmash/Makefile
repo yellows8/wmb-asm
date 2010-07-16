@@ -1,5 +1,10 @@
 # The assembled html is written to htmlhaxx_x.html by default, where x is dsstation or nzone for the DS Station and Nintendo Zone builds.
 
+SOURCE	:=	nzoneurlstacksmash.s
+ifeq ($(ASM_EXPLOIT),1)
+SOURCE	:=	old_exploit.s
+endif
+
 TARGET_DSSTATION	:=	htmlhaxx_dsstation.html
 TARGET_NZONE	:=	htmlhaxx_nzone.html
 WEBDIR_DSSTATION	:=	../../../../website/ds/data
@@ -11,7 +16,7 @@ $(TARGET_NZONE) $(TARGET_DSSTATION):	nzoneurlstacksmash_nzone.elf nzoneurlstacks
 	cp $(TARGET_DSSTATION) $(WEBDIR_DSSTATION)
 	cp $(TARGET_NZONE) $(WEBDIR_NZONE)
 
-nzoneurlstacksmash_dsstation.elf nzoneurlstacksmash_nzone.elf:	nzoneurlstacksmash.s
+nzoneurlstacksmash_dsstation.elf nzoneurlstacksmash_nzone.elf:	$(SOURCE)
 	arm-eabi-gcc -x assembler-with-cpp -DDS_STATION -nostartfiles -nostdlib $< -o nzoneurlstacksmash_dsstation.elf
 	arm-eabi-gcc -x assembler-with-cpp -DNZONE -nostartfiles -nostdlib $< -o nzoneurlstacksmash_nzone.elf
 
