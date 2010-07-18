@@ -23,6 +23,7 @@ DEALINGS IN THE SOFTWARE.
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+#include <endian.h>
 #include <iconv.h>
 
 typedef unsigned char u8;
@@ -330,50 +331,6 @@ typedef struct _DLlist_header_wrapper_v4
 	DLlist_detailed_rating_entry_v4 *detailed_ratings;
 } __attribute((packed)) DLlist_header_wrapper_v4;
 
-inline u32 be32(u32 x)//From update_download by SquidMan.
-{
-    #if BYTE_ORDER==BIG_ENDIAN
-    return x;
-    #else
-    return (x>>24) |
-        ((x<<8) & 0x00FF0000) |
-        ((x>>8) & 0x0000FF00) |
-        (x<<24);
-    #endif
-}
-
-inline u32 le32(u32 x)//From update_download by SquidMan.
-{
-    #if BYTE_ORDER == LITTLE_ENDIAN
-    return x;
-    #else
-    return (x>>24) |
-        ((x<<8) & 0x00FF0000) |
-        ((x>>8) & 0x0000FF00) |
-        (x<<24);
-    #endif
-}
-
-inline u16 be16(u16 x)//From update_download by SquidMan.
-{
-    #if BYTE_ORDER==BIG_ENDIAN
-    return x;
-    #else
-    return (x>>8) |
-        (x<<8);
-    #endif
-}
-
-inline u16 le16(u16 x)//From update_download by SquidMan.
-{
-    #if BYTE_ORDER == LITTLE_ENDIAN
-    return x;
-    #else
-    return (x>>8) |
-        (x<<8);
-    #endif
-}
-
 DLlist_title_entry *LookupTitle(u32 ID, DLlist_header_wrapper *header)
 {
     u32 i;
@@ -450,7 +407,7 @@ char GetRegionCode(u32 code)
 void GetTimestamp(u32 input, DLlist_timestamp *timestamp)
 {
     memcpy(timestamp, &input, 4);
-    timestamp->year = be16(timestamp->year);
+    timestamp->year = be16toh(timestamp->year);
 }
 
 void ConvertUTF16ToUTF8(u16 *utf16, char *out)
@@ -621,7 +578,7 @@ int main(int argc, char **argv)
             fseek(f, 0xc, SEEK_SET);
             fread(&DlListID, 1, 4, f);
             fclose(f);
-            DlListID = be32(DlListID);
+            DlListID = be32toh(DlListID);
             sprintf(str, "curl -k --output %u.LZ https://ent%cs.wapp.wii.com/%s/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/list/%s/%s/%u.LZ", (unsigned int)DlListID, argv[3][0], argv[4], argv[1], argv[2], (unsigned int)DlListID);
             printf("%s\n", str);
             if(system(str)!=0)return -5;
@@ -636,7 +593,7 @@ int main(int argc, char **argv)
         u32 datasize;
         if(is_csdata)memcpy(&datasize, &buffer[0x49c], 4);
         if(!is_csdata)memcpy(&datasize, &buffer[0x209c], 4);
-        datasize = le32(datasize);
+        datasize = le32toh(datasize);
         memset(str, 0, 256);
         sprintf(str, "%s", is_csdata==0?"WC24Data.bin":"CSData.bin");
 
@@ -727,13 +684,13 @@ int main(int argc, char **argv)
 
 	if(version<4)
 	{
-        header->country_code = be32(header->country_code);
-        header->language_code = be32(header->language_code);
+        header->country_code = be32toh(header->country_code);
+        header->language_code = be32toh(header->language_code);
 	}
 	else
 	{
-	    header_v4->country_code = be32(header_v4->country_code);
-        header_v4->language_code = be32(header_v4->language_code);
+	    header_v4->country_code = be32toh(header_v4->country_code);
+        header_v4->language_code = be32toh(header_v4->language_code);
 	}
 
    	if(version<4)
@@ -792,10 +749,10 @@ int main(int argc, char **argv)
         fclose(fil);
         return 0;
     }
-	fprintf(fil, "Dl list ID: %u\r\nCountry code: %s\r\nLanguage code: %s\r\nRegion code: %c\r\n", be32(*((u32*)&buffer[0xc])), country_code, language_code, region_code);
-	printf("Dl list ID: %u\nCountry code: %s\nLanguage code: %s\nRegion code: %c\n", be32(*((u32*)&buffer[0xc])), country_code, language_code, region_code);
+	fprintf(fil, "Dl list ID: %u\r\nCountry code: %s\r\nLanguage code: %s\r\nRegion code: %c\r\n", be32toh(*((u32*)&buffer[0xc])), country_code, language_code, region_code);
+	printf("Dl list ID: %u\nCountry code: %s\nLanguage code: %s\nRegion code: %c\n", be32toh(*((u32*)&buffer[0xc])), country_code, language_code, region_code);
 	
-	fprintf(fil, "Video thumbnails URL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/thumbnail/%s/%s/%u-%03u.thumb\r\n\r\n", region_code, (int)version, country_code, language_code, (unsigned int)be32(*((u32*)&buffer[0xc])), (unsigned int)be32(*((u32*)&buffer[0x10])));
+	fprintf(fil, "Video thumbnails URL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/thumbnail/%s/%s/%u-%03u.thumb\r\n\r\n", region_code, (int)version, country_code, language_code, (unsigned int)be32toh(*((u32*)&buffer[0xc])), (unsigned int)be32toh(*((u32*)&buffer[0x10])));
 
     u16 utf_temp;
     u32 i, texti, ratingi;
@@ -803,51 +760,51 @@ int main(int argc, char **argv)
 
     if(version<4)
     {
-        header->ratings = (DLlist_rating_entry*)(be32((u32)header->ratings) + (u32)buffer);
-        header->main_title_types = (DLlist_title_type_entry*)(be32((u32)header->main_title_types) + (u32)buffer);
-        header->companies = (DLlist_company_entry*)(be32((u32)header->companies) + (u32)buffer);
-        header->sub_title_types = (DLlist_title_entry*)(be32((u32)header->sub_title_types) + (u32)buffer);
-        header->titles = (DLlist_title_entry*)(be32((u32)header->titles) + (u32)buffer);
-        header->unk_data = (u32*)(be32((u32)header->unk_data) + (u32)buffer);
-        header->videos = (DLlist_video_entry*)(be32((u32)header->videos) + (u32)buffer);
-        header->demos = (DLlist_demo_entry*)(be32((u32)header->demos) + (u32)buffer);
-        header->wc24msg_opt = (u16*)(be32((u32)header->wc24msg_opt) + (u32)buffer);
+        header->ratings = (DLlist_rating_entry*)(be32toh((u32)header->ratings) + (u32)buffer);
+        header->main_title_types = (DLlist_title_type_entry*)(be32toh((u32)header->main_title_types) + (u32)buffer);
+        header->companies = (DLlist_company_entry*)(be32toh((u32)header->companies) + (u32)buffer);
+        header->sub_title_types = (DLlist_title_entry*)(be32toh((u32)header->sub_title_types) + (u32)buffer);
+        header->titles = (DLlist_title_entry*)(be32toh((u32)header->titles) + (u32)buffer);
+        header->unk_data = (u32*)(be32toh((u32)header->unk_data) + (u32)buffer);
+        header->videos = (DLlist_video_entry*)(be32toh((u32)header->videos) + (u32)buffer);
+        header->demos = (DLlist_demo_entry*)(be32toh((u32)header->demos) + (u32)buffer);
+        header->wc24msg_opt = (u16*)(be32toh((u32)header->wc24msg_opt) + (u32)buffer);
     }
     else
     {
-        header_v4->ratings = (DLlist_rating_entry_v4*)(be32((u32)header_v4->ratings) + (u32)buffer);
-        header_v4->title_types = (DLlist_title_type_entry_v4*)(be32((u32)header_v4->title_types) + (u32)buffer);
-        header_v4->companies = (DLlist_company_entry*)(be32((u32)header_v4->companies) + (u32)buffer);
-        header_v4->titles = (DLlist_title_entry_v4*)(be32((u32)header_v4->titles) + (u32)buffer);
-        header_v4->demos = (DLlist_demo_entry_v4*)(be32((u32)header_v4->demos) + (u32)buffer);
-        header_v4->videos0 = (DLlist_video_entry_v4*)(be32((u32)header_v4->videos0) + (u32)buffer);
-        header_v4->videos1 = (DLlist_video2_entry_v4*)(be32((u32)header_v4->videos1) + (u32)buffer);
-        header_v4->detailed_ratings = (DLlist_detailed_rating_entry_v4*)(be32((u32)header_v4->detailed_ratings) + (u32)buffer);
+        header_v4->ratings = (DLlist_rating_entry_v4*)(be32toh((u32)header_v4->ratings) + (u32)buffer);
+        header_v4->title_types = (DLlist_title_type_entry_v4*)(be32toh((u32)header_v4->title_types) + (u32)buffer);
+        header_v4->companies = (DLlist_company_entry*)(be32toh((u32)header_v4->companies) + (u32)buffer);
+        header_v4->titles = (DLlist_title_entry_v4*)(be32toh((u32)header_v4->titles) + (u32)buffer);
+        header_v4->demos = (DLlist_demo_entry_v4*)(be32toh((u32)header_v4->demos) + (u32)buffer);
+        header_v4->videos0 = (DLlist_video_entry_v4*)(be32toh((u32)header_v4->videos0) + (u32)buffer);
+        header_v4->videos1 = (DLlist_video2_entry_v4*)(be32toh((u32)header_v4->videos1) + (u32)buffer);
+        header_v4->detailed_ratings = (DLlist_detailed_rating_entry_v4*)(be32toh((u32)header_v4->detailed_ratings) + (u32)buffer);
     }
 
     if(version<4)
     {
-        header->ratings_total = be32(header->ratings_total);
-        header->total_title_types = be32(header->total_title_types);
-        header->companies_total = be32(header->companies_total);
-        header->unk_title = be32(header->unk_title);
-        header->videos_total = be32(header->videos_total);
-        header->demos_total = be32(header->demos_total);
+        header->ratings_total = be32toh(header->ratings_total);
+        header->total_title_types = be32toh(header->total_title_types);
+        header->companies_total = be32toh(header->companies_total);
+        header->unk_title = be32toh(header->unk_title);
+        header->videos_total = be32toh(header->videos_total);
+        header->demos_total = be32toh(header->demos_total);
         total_demos = header->demos_total;
         total_videos = header->videos_total;
     }
     else
     {
-        header_v4->ratings_total = be32(header_v4->ratings_total);
-        header_v4->total_title_types = be32(header_v4->total_title_types);
-        header_v4->companies_total = be32(header_v4->companies_total);
-        header_v4->demos_total = be32(header_v4->demos_total);
-        header_v4->videos0_total = be32(header_v4->videos0_total);
-        header_v4->videos1_total = be32(header_v4->videos1_total);
-        header_v4->total_detailed_ratings = be32(header_v4->total_detailed_ratings);
+        header_v4->ratings_total = be32toh(header_v4->ratings_total);
+        header_v4->total_title_types = be32toh(header_v4->total_title_types);
+        header_v4->companies_total = be32toh(header_v4->companies_total);
+        header_v4->demos_total = be32toh(header_v4->demos_total);
+        header_v4->videos0_total = be32toh(header_v4->videos0_total);
+        header_v4->videos1_total = be32toh(header_v4->videos1_total);
+        header_v4->total_detailed_ratings = be32toh(header_v4->total_detailed_ratings);
         total_demos = header_v4->demos_total;
         total_videos = header_v4->videos0_total;
-	header_v4->total_titles = be32(header_v4->total_titles);
+	header_v4->total_titles = be32toh(header_v4->total_titles);
     }
 
     fprintf(fil, "Demos:\r\n");
@@ -881,8 +838,8 @@ int main(int argc, char **argv)
         }
 
         u32 demo_ID = 0;
-        if(version<4)demo_ID = be32(header->demos[i].ID);
-        if(version>=4)demo_ID = be32(header_v4->demos[i].ID);
+        if(version<4)demo_ID = be32toh(header->demos[i].ID);
+        if(version>=4)demo_ID = be32toh(header_v4->demos[i].ID);
         fprintf(fil, "ID: %u\r\n", (unsigned int)demo_ID);
 
         u32 ratingID = 0;
@@ -928,8 +885,8 @@ int main(int argc, char **argv)
         fprintf(fil, "\r\n");
 
         DLlist_company_entry *comp = NULL;
-        if(version<4 && title_ptr)comp = (DLlist_company_entry*)((u32)buffer + (u32)be16(title_ptr->company_offset));
-        if(version>=4)comp = (DLlist_company_entry*)((u32)buffer + (u32)be32(header_v4->demos[i].company_offset));
+        if(version<4 && title_ptr)comp = (DLlist_company_entry*)((u32)buffer + (u32)be16toh(title_ptr->company_offset));
+        if(version>=4)comp = (DLlist_company_entry*)((u32)buffer + (u32)be32toh(header_v4->demos[i].company_offset));
         if(comp)
         {
 	    memset(str, 0, 256);
@@ -987,20 +944,20 @@ int main(int argc, char **argv)
 	    if(version<4)
 	    {
 		tid = title_ptr->titleID;
-	    	titleid = be32(title_ptr->ID);
+	    	titleid = be32toh(title_ptr->ID);
 	    }
 	    if(version>=4)
 	    {		
 		tid = title_ptr_v4->titleID;
-		titleid = be32(title_ptr_v4->ID);
+		titleid = be32toh(title_ptr_v4->ID);
 	    }	    
 
 	    fprintf(fil, "Title ID: %c%c%c%c\r\nTitle entry ID: %u\r\n", (char)tid, (char)(tid>>8), (char)(tid>>16), (char)(tid>>24), titleid);
 
 	int ti;
 	u32 tt_num;
-	if(version<4)tt_num = be32(header->total_title_types);
-	if(version>=4)tt_num = be32(header_v4->total_title_types);
+	if(version<4)tt_num = be32toh(header->total_title_types);
+	if(version>=4)tt_num = be32toh(header_v4->total_title_types);
 	for(ti = 0; ti<tt_num; ti++)
 				{
 				    if(version<4)
@@ -1058,8 +1015,8 @@ int main(int argc, char **argv)
         }
 
         u16 time_length;
-        if(version<4)time_length = be16(header->videos[i].time_length);
-        if(version>=4)time_length = be16(header_v4->videos0[i].time_length);
+        if(version<4)time_length = be16toh(header->videos[i].time_length);
+        if(version>=4)time_length = be16toh(header_v4->videos0[i].time_length);
         fprintf(fil, "Time length %02d:%02d\r\n", time_length / 60, time_length % 60);
 
 	if(version<4)
@@ -1099,11 +1056,11 @@ int main(int argc, char **argv)
 	}
 
         u32 video_ID, video_titleid, video1_ID = 0;
-        if(version<4)video_ID = be32(header->videos[i].ID);
+        if(version<4)video_ID = be32toh(header->videos[i].ID);
         if(version>=4)
         {
-            video_ID = be32(header_v4->videos0[i].ID);
-            video1_ID = be32(header_v4->videos1[i].ID);
+            video_ID = be32toh(header_v4->videos0[i].ID);
+            video1_ID = be32toh(header_v4->videos1[i].ID);
         }
         if(version<4)
         {
@@ -1162,8 +1119,8 @@ int main(int argc, char **argv)
             fprintf(fil, "\r\n");
 
             DLlist_company_entry *comp = NULL;
-            if(version<4 && title_ptr)comp = (DLlist_company_entry*)((u32)buffer + (u32)be16(title_ptr->company_offset));
-            if(version>=4 && title_ptr_v4)comp = (DLlist_company_entry*)((u32)buffer + (u32)be16(title_ptr_v4->company_offset));
+            if(version<4 && title_ptr)comp = (DLlist_company_entry*)((u32)buffer + (u32)be16toh(title_ptr->company_offset));
+            if(version>=4 && title_ptr_v4)comp = (DLlist_company_entry*)((u32)buffer + (u32)be16toh(title_ptr_v4->company_offset));
             if(title_ptr || title_ptr_v4)
             {
 		memset(str, 0, 256);
@@ -1208,20 +1165,20 @@ int main(int argc, char **argv)
 	    if(version<4)
 	    {
 		tid = title_ptr->titleID;
-	    	titleid = be32(title_ptr->ID);
+	    	titleid = be32toh(title_ptr->ID);
 	    }
 	    if(version>=4)
 	    {		
 		tid = title_ptr_v4->titleID;
-		titleid = be32(title_ptr_v4->ID);
+		titleid = be32toh(title_ptr_v4->ID);
 	    }	    
 
 	    fprintf(fil, "Title ID: %c%c%c%c\r\nTitle entry ID: %u\r\n", (char)tid, (char)(tid>>8), (char)(tid>>16), (char)(tid>>24), titleid);
 
 	int ti;
 	u32 tt_num;
-	if(version<4)tt_num = be32(header->total_title_types);
-	if(version>=4)tt_num = be32(header_v4->total_title_types);
+	if(version<4)tt_num = be32toh(header->total_title_types);
+	if(version>=4)tt_num = be32toh(header_v4->total_title_types);
 	for(ti = 0; ti<tt_num; ti++)
 				{
 				    if(version<4)
@@ -1464,8 +1421,8 @@ int main(int argc, char **argv)
 			}
 
             DLlist_company_entry *comp = NULL;
-            if(version<4 && title_ptr)comp = (DLlist_company_entry*)((u32)buffer + (u32)be16(title_ptr->company_offset));
-            if(version>=4 && title_ptr_v4)comp = (DLlist_company_entry*)((u32)buffer + (u32)be16(title_ptr_v4->company_offset));
+            if(version<4 && title_ptr)comp = (DLlist_company_entry*)((u32)buffer + (u32)be16toh(title_ptr->company_offset));
+            if(version>=4 && title_ptr_v4)comp = (DLlist_company_entry*)((u32)buffer + (u32)be16toh(title_ptr_v4->company_offset));
             if(comp)
             {
 		memset(str, 0, 256);
@@ -1537,8 +1494,8 @@ int main(int argc, char **argv)
             }
 
             fprintf(fil, "\r\n");
-            if(version<4)fprintf(fil, "ID: %u\r\n", (unsigned int)be32(title_ptr->ID));
-            if(version>=4)fprintf(fil, "ID: %u\r\n", (unsigned int)be32(title_ptr_v4->ID));
+            if(version<4)fprintf(fil, "ID: %u\r\n", (unsigned int)be32toh(title_ptr->ID));
+            if(version>=4)fprintf(fil, "ID: %u\r\n", (unsigned int)be32toh(title_ptr_v4->ID));
 
             u32 titleid;
             if(version<4)titleid = title_ptr->titleID;
@@ -1547,9 +1504,9 @@ int main(int argc, char **argv)
             fputs(str, fil);
 			fprintf(fil, "\n");
 
-	if(version<4)fprintf(fil, "Title info URL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/soft/%s/%s/%u.info\r\n\r\n", region_code, (int)version, country_code, language_code, (unsigned int)be32(title_ptr->ID));
+	if(version<4)fprintf(fil, "Title info URL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/soft/%s/%s/%u.info\r\n\r\n", region_code, (int)version, country_code, language_code, (unsigned int)be32toh(title_ptr->ID));
 
-	if(version>=4)fprintf(fil, "Title info URL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/soft/%s/%s/%u.info\r\n\r\n", region_code, (int)version, country_code, language_code, (unsigned int)be32(title_ptr_v4->ID));
+	if(version>=4)fprintf(fil, "Title info URL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/soft/%s/%s/%u.info\r\n\r\n", region_code, (int)version, country_code, language_code, (unsigned int)be32toh(title_ptr_v4->ID));
 
 		}
 		fclose(fil);
