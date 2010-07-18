@@ -269,9 +269,9 @@ typedef struct _DLlist_header_v4
 	u8 version;
 	u8 unkb_region;//? NinCh v3: 0, NinCh v4 JP: 0x39
 	u32 filesize;//filesize of dl list.
-	u32 unk8;
+	u32 crc32;//This is standard CRC32 over the whole file, with this field set to zero when calculating the checksum.
 	u32 DlListID;
-	u32 unk_region;
+	u32 thumbnail_id;//ID of the thumbnail: dddd-ttt.thumb in the thumbnail URL, where dddd is the decimal DlListID and ttt is the decimal thumbnail_id.
 	u32 country_code;
 	u8 unk18[0x2];
 	u8 language_code;
@@ -303,9 +303,9 @@ typedef struct _DLlist_header_wrapper_v4
 	u8 version;
 	u8 unkb_region;//? NinCh v3: 0, NinCh v4 JP: 0x39
 	u32 filesize;//filesize of dl list.
-	u32 unk8;
+	u32 crc32;//This is standard CRC32 over the whole file, with this field set to zero when calculating the checksum.
 	u32 DlListID;
-	u32 unk_region;
+	u32 thumbnail_id;//ID of the thumbnail: dddd-ttt.thumb in the thumbnail URL, where dddd is the decimal DlListID and ttt is the decimal thumbnail_id.
 	u32 country_code;
 	u32 language_code;
 	u8 unk6[0x9];
@@ -792,9 +792,11 @@ int main(int argc, char **argv)
         fclose(fil);
         return 0;
     }
-	fprintf(fil, "Dl list ID: %u\r\nCountry code: %s\r\nLanguage code: %s\r\nRegion code: %c\r\n\r\n", be32(*((u32*)&buffer[0xc])), country_code, language_code, region_code);
+	fprintf(fil, "Dl list ID: %u\r\nCountry code: %s\r\nLanguage code: %s\r\nRegion code: %c\r\n", be32(*((u32*)&buffer[0xc])), country_code, language_code, region_code);
 	printf("Dl list ID: %u\nCountry code: %s\nLanguage code: %s\nRegion code: %c\n", be32(*((u32*)&buffer[0xc])), country_code, language_code, region_code);
 	
+	fprintf(fil, "Video thumbnails URL: https://a248.e.akamai.net/f/248/49125/1h/ent%cs.wapp.wii.com/%d/VHFQ3VjDqKlZDIWAyCY0S38zIoGAoTEqvJjr8OVua0G8UwHqixKklOBAHVw9UaZmTHqOxqSaiDd5bjhSQS6hk6nkYJVdioanD5Lc8mOHkobUkblWf8KxczDUZwY84FIV/thumbnail/%s/%s/%u-%03u.thumb\r\n\r\n", region_code, (int)version, country_code, language_code, (unsigned int)be32(*((u32*)&buffer[0xc])), (unsigned int)be32(*((u32*)&buffer[0x10])));
+
     u16 utf_temp;
     u32 i, texti, ratingi;
     u32 total_demos, total_videos;
@@ -845,7 +847,7 @@ int main(int argc, char **argv)
         header_v4->total_detailed_ratings = be32(header_v4->total_detailed_ratings);
         total_demos = header_v4->demos_total;
         total_videos = header_v4->videos0_total;
-	    header_v4->total_titles = be32(header_v4->total_titles);
+	header_v4->total_titles = be32(header_v4->total_titles);
     }
 
     fprintf(fil, "Demos:\r\n");
