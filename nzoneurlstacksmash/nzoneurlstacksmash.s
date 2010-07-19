@@ -69,11 +69,10 @@ _start:
 .arm
 adrl r7, _start
 bl DC_FlushAll
+bl DC_InvalidateAll
 bl IC_InvalidateAll
 ldr r0, =0x8278
 sub r7, r7, r0
-mov r0, #0
-mcr 15, 0, r0, cr7, cr10, 4 @ Drain write buffer.
 mov r0, #0
 ldr r1, =0x04000208
 str r0, [r1]	@ REG_IME = 0;
@@ -91,6 +90,7 @@ cmp r0, r1
 blt payloadcpy
 
 bl DC_FlushAll
+bl DC_InvalidateAll
 bl IC_InvalidateAll
 
 ldr r0, =0x02200000
