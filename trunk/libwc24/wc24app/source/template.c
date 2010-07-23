@@ -259,14 +259,17 @@ void DoStuff(char *url)
 		}
 	}
 
-	printf("Install WC24 test msg board e-mail dl record+entry?(A = yes, B = no)\n");
+	printf("Install WC24 test msg board e-mail dl record+entry?(A = yes dl hourly, B = no, 1 = dl 30 every minutes, 2 = dl every 15 minutes, + = dl every 5 minutes)\n");
 	which = -1;
 	WPAD_ScanPads();
 	while(1)
 	{
 		WPAD_ScanPads();
 		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_B)which = 0;
-		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_A)which = 1;
+		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_A)which = 60;
+		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_1)which = 30;
+		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_2)which = 15;
+		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_PLUS)which = 5;
 		if(which>-1)break;
 		VIDEO_WaitVSync();
 	}
@@ -274,7 +277,7 @@ void DoStuff(char *url)
 	if(which)
 	{
 		printf("Creating record+entry...\n");
-		retval = WC24_CreateRecord(&myrec, &myent, 0, 0, 0x4842, WC24_TYPE_MSGBOARD, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_RSA_VERIFY_DISABLE, 0x3c, 0x5a0, mailurl, NULL);//Set the dl_freq fields to download hourly and daily.
+		retval = WC24_CreateRecord(&myrec, &myent, 0, 0, 0x4842, WC24_TYPE_MSGBOARD, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_RSA_VERIFY_DISABLE, which, 0x5a0, mailurl, NULL);
 		if(retval<0)
 		{
 			printf("WC24_CreateRecord returned %d\n", retval);
