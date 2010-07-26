@@ -36,6 +36,10 @@ nwc24dl_record myrec;
 nwc24dl_entry myent;
 char mailurl[256];
 
+char hackmii_url[256];
+char wiibrewnews_url[256];
+char wiibrewreleases_url[256];
+
 void IOSReload_SelectMenu();
 
 typedef struct {//From libogc.
@@ -76,9 +80,9 @@ void DoStuff(char *url)
 	char titleidlow[5];
 	u64 titleid;
 	u64 homebrewtitleid = 0x0001000848424D4CLL;//TitleID for wiibrew+hackmii mail: 00010008-HBML.
-	char *hackmii_url = "http://192.168.1.33/hackmii/index.php";
-	char *wiibrewnews_url = "http://192.168.1.33/wiibrew/releases/index.php";
-	char *wiibrewreleases_url = "http://192.168.1.33/wiibrew/news/index.php";
+	hackmii_url, 255, "http://192.168.1.33/hackmii/index.php";
+	wiibrewnews_url, 255, "http://192.168.1.33/wiibrew/releases/index.php";
+	wiibrewreleases_url, 255, "http://192.168.1.33/wiibrew/news/index.php";
 	memset(mailurl, 0, 256);
 	strncpy(mailurl, url, 255);
 
