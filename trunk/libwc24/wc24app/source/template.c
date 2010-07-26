@@ -54,6 +54,8 @@ typedef struct {//From libogc.
 #define RETURN_TO_SETTINGS 1
 #define RETURN_TO_ARGS 2
 
+#define LANSRVR_ADDR "192.168.1.33"
+
 static u32 __CalcChecksum(u32 *buf, int len)//Based on function from libogc.
 {
 	u32 sum = 0;
@@ -847,7 +849,7 @@ int main(int argc, char **argv) {
 		if(shutdown)
 		{
 			WPAD_Shutdown();
-			//#define WIILAUNCHMOD
+			#define WIILAUNCHMOD
 			#ifndef WIILAUNCHMOD
 			StateFlags *state = memalign(32, sizeof(StateFlags));
 			s32 fd = ISFS_Open("/title/00000001/00000002/data/state.dat", ISFS_OPEN_RW);
