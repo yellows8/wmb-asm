@@ -206,7 +206,7 @@ void DoStuff(char *url)
 		fclose(f);
 	}
 
-	printf("Delete WC24 records+entries for the current title(%s)?(A = yes, B = no)\n", titleidlow);
+	printf("Delete WC24 records+entries for the current title?(A = yes, B = no)\n");
 	which = -1;
 	WPAD_ScanPads();
 	while(1)
@@ -495,7 +495,7 @@ void DoStuff(char *url)
 
 	if(which)
 	{
-		retval = WC24_FindEntry(0x4a4f4449, url, &myent);
+		retval = WC24_FindEntry((u32)titleid, url, &myent);
 		if(retval<0)
 		{
 			printf("Failed to find WC24 title data entry.\n");
@@ -507,7 +507,7 @@ void DoStuff(char *url)
 			printf("KD_Download returned %d\n", retval);
 		}
 
-		retval = WC24_FindEntry(0x4a4f4449, mailurl, &myent);
+		retval = WC24_FindEntry((u32)titleid, mailurl, &myent);
 		if(retval<0)
 		{
 			printf("Failed to find WC24 mail entry.\n");
