@@ -48,7 +48,7 @@ s32 WC24_Init(int id)
 	#ifdef HW_RVL
 	if(id)
 	{
-		retval = identify_title("00010001", "4a4f4449");
+		retval = identify_title("00010001", "af1bf516");
 		if(retval<0)return retval;
 	}
 	#endif
