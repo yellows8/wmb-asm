@@ -80,9 +80,13 @@ void DoStuff(char *url)
 	char titleidlow[5];
 	u64 titleid;
 	u64 homebrewtitleid = 0x0001000848424D4CLL;//TitleID for wiibrew+hackmii mail: 00010008-HBML.
-	hackmii_url, 255, "http://192.168.1.33/hackmii/index.php";
-	wiibrewnews_url, 255, "http://192.168.1.33/wiibrew/releases/index.php";
-	wiibrewreleases_url, 255, "http://192.168.1.33/wiibrew/news/index.php";
+
+	memset(hackmii_url, 0, 256);
+	memset(wiibrewnews_url, 0, 256);
+	memset(wiibrewreleases_url, 0, 256);	
+	snprintf(hackmii_url, 255, "http://%s/hackmii/index.php", LANSRVR_ADDR);
+	snprintf(wiibrewnews_url, 255, "http://%s/wiibrew/releases/index.php", LANSRVR_ADDR);
+	snprintf(wiibrewreleases_url, 255, "http://%s/wiibrew/news/index.php", LANSRVR_ADDR);
 	memset(mailurl, 0, 256);
 	strncpy(mailurl, url, 255);
 
