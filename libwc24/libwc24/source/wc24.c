@@ -34,7 +34,7 @@ DEALINGS IN THE SOFTWARE.
 u32 wc24_did_init = 0;
 s32 nwc24dlbin_fd = 0;
 nwc24dl_header *NWC24DL_Header;
-u64 wc24_titleid = 0x000100014a4f4449LL;
+u64 wc24_titleid = 0x00010001af1bf516LL;
 
 s32 WC24_Init(int id)
 {
@@ -382,7 +382,7 @@ s32 WC24_CreateRecord(nwc24dl_record *rec, nwc24dl_entry *ent, u32 id, u64 title
 {
 	s32 retval = -1;
 	u32 index;
-	if(id==0 && titleid==0)retval = WC24_FindEntry(id, url, ent);
+	retval = WC24_FindEntry(id, url, ent);
 	if(retval<0)
 	{
 		if(retval==LIBWC24_ENOENT)
