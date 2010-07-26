@@ -39,6 +39,8 @@ u64 wc24_titleid = 0x00010001af1bf516LL;
 s32 WC24_Init(int id)
 {
 	s32 retval;
+	char id0[5];
+	char id1[5];
 	if(wc24_did_init)return LIBWC24_EINIT;
 	#ifdef HW_RVL
 	retval = ISFS_Initialize();
@@ -46,9 +48,22 @@ s32 WC24_Init(int id)
 	#endif
 
 	#ifdef HW_RVL
+	retval = ES_GetTitleID(&wc24_titleid);
+	if(retval<0)
+	{
+		printf("ES_GetTitleID returned %d\n", retval);
+		//return retval;
+	}
+	#endif
+
+	#ifdef HW_RVL
 	if(id)
 	{
-		retval = identify_title("00010001", "af1bf516");
+		memset(id0, 0, 5);
+		memset(id1, 0, 5);
+		snprintf(id0, 4, "%08x", (u32)(wc24_titleid>>32));
+		snprintf(id1, 4, "%08x", (u32)(wc24_titleid));
+		retval = identify_title(id0, id1);
 		if(retval<0)return retval;
 	}
 	#endif
@@ -85,14 +100,6 @@ s32 WC24_Init(int id)
 	#endif
 
 	wc24_did_init = 1;
-	#ifdef HW_RVL
-	retval = ES_GetTitleID(&wc24_titleid);
-	if(retval<0)
-	{
-		printf("ES_GetTitleID returned %d\n", retval);
-		//return retval;
-	}
-	#endif
 
 	return WC24_CloseNWC4DLBin();
 }
@@ -414,8 +421,8 @@ s32 WC24_CreateRecord(nwc24dl_record *rec, nwc24dl_entry *ent, u32 id, u64 title
 	ent->titleid = titleid;
 	ent->group_id = group_id;
 	ent->unk18 = 0x17;//Varies, from HATE.
-	ent->dl_freq_perday = dl_freq_perday;//Download hourly.
-	ent->dl_freq_days = dl_freq_days;//Download daily.
+	ent->dl_freq_perday = dl_freq_perday;
+	ent->dl_freq_days = dl_freq_days;
 	strncpy(ent->url, url, 0xec);
 	if(type==WC24_TYPE_TITLEDATA)strncpy(ent->filename, filename, 0x40);
 
