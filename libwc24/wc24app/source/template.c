@@ -54,7 +54,7 @@ typedef struct {//From libogc.
 #define RETURN_TO_SETTINGS 1
 #define RETURN_TO_ARGS 2
 
-#define LANSRVR_ADDR "192.168.1.33"
+#define LANSRVR_ADDR "192.168.1.200"
 
 static u32 __CalcChecksum(u32 *buf, int len)//Based on function from libogc.
 {
@@ -398,7 +398,7 @@ void DoStuff(char *url)
 		free(buf);
 	}
 
-	printf("Write a test WC24 NANDBOOTINFO to NAND?(A = yes, B = no)\n");
+	/*printf("Write a test WC24 NANDBOOTINFO to NAND?(A = yes, B = no)\n");
 	which = -1;
 	WPAD_ScanPads();
 	while(1)
@@ -411,7 +411,7 @@ void DoStuff(char *url)
 	}
 
 	if(which)
-	{
+	{*/
 		/*u8 *nandinfobuf;
 		FILE *finfo;
 		printf("Opening NANDBOOTINFO in NAND...\n");
@@ -449,9 +449,9 @@ void DoStuff(char *url)
 			}
 			ISFS_Close(infofd);
 		}*/
-		retval = WII_LaunchTitleWithArgsWC24(0x000100014a4f4449LL, enableboot, 0);
+		/*retval = WII_LaunchTitleWithArgsWC24(0x000100014a4f4449LL, enableboot, 0);
 		if(retval<0)printf("WII_LaunchTitleWithArgsWC24 returned %d\n", retval);
-	}
+	}*/
 
 	printf("Get time triggers?(A = yes, B = no)\n");
 	which = -1;
@@ -565,7 +565,7 @@ void DoStuff(char *url)
 		struct tm *time;
 		time_t dltime;
 		char *dlbuf = NULL;
-		retval = WC24_FindEntry(0x4a4f4449, url, &myent);
+		retval = WC24_FindEntry((u32)titleid, url, &myent);
 		if(retval<0)
 		{
 			printf("Failed to find WC24 title data entry.\n");
@@ -665,7 +665,7 @@ void DoStuff(char *url)
 			}
 		}
 
-		retval = WC24_FindEntry(0x4a4f4449, mailurl, &myent);
+		retval = WC24_FindEntry((u32)titleid, mailurl, &myent);
 		if(retval<0)
 		{
 			printf("Failed to find WC24 mail entry.\n");
@@ -780,7 +780,7 @@ void shutdown_callback(u32 chan)
 //---------------------------------------------------------------------------------
 int main(int argc, char **argv) {
 //---------------------------------------------------------------------------------
-	char *url = (char*)"http://members.iglide.net/ticeandsons/yellowstar/wc24test";
+	char url[256];
 	// Initialise the video system
 	VIDEO_Init();
 	
@@ -817,6 +817,8 @@ int main(int argc, char **argv) {
 
 	WPAD_SetPowerButtonCallback((WPADShutdownCallback)&shutdown_callback);
 
+	memset(url, 0, 256);
+	strncpy(url, "http://members.iglide.net/ticeandsons/yellowstar/wc24test", 255);
 	printf("\nUse a Internet server URL(Button A) or a LAN server URL?(Button B)\n");
 	WPAD_ScanPads();	
 	while(1)
@@ -825,7 +827,7 @@ int main(int argc, char **argv) {
 		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_A)break;
 		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_B)
 		{
-			url = (char*)"http://192.168.1.33/wc24test";
+			snprintf(url, 255, "http://%s/wc24test", LANSRVR_ADDR);
 			break;
 		}
 		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_HOME)return 0;
