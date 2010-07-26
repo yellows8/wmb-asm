@@ -29,9 +29,9 @@ The libwc24 v1.0 source tarball(not the pre-compiled library and dol) had a ISFS
 Added support for KD_SetNextWakeup and KD_GetTimeTriggers.
 Added support for KD_Download flag sync UTC time.
 KD_Open and KD_Close are now called by WC24_Init and WC24_Shutdown.
-VFF files can be read and written with libff, but only MS-DOS 8.3 can be used still since LFN needs a Unicode library.
 Fixed typo for the WC24_EHTTP304 define value. In libwc24 v1.0 this caused wc24app to skip VFF reading since wc24app/libwc24 didn't recognize the error from ent.error_code.
 VFF files are now read and written with libff, with long filenames support. VFF files can be mounted, and can be used with a devoptab VFF device.
+Added support for HBC 1.0.7 titleID. Wc24app uses the default titleID from libwc24, which is the titleID of the current title.
 
 v1.0:
 Initial release.
