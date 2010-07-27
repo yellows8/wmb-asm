@@ -7,7 +7,7 @@ These are the Internet server URLs that wc24app can install: http://members.igli
 The former is the title data URL, the latter is the message board mail URL.
 Refrence the Wiibrew WC24_Content page for info on the required WC24 header when content length is less than 0x140 bytes. Also see the above URLs installed by wc24app for template WC24 content. The title data file is supposed to only contain the payload text when written to wc24dl.vff, however the whole file is written there. The cause of this is currently unknown, but the all-zero 0x140 bytes-long header isn't needed when the actual content length is larger than 0x140 bytes.
 
-Features and limitations:
+Features:
 VFF files can be read and written, with LFN support.(Long filenames)
 The download frequency is specified in minutes, see: http://wiibrew.org/wiki//shared2/wc24/nwc24dl.bin
 RSA signature verification for content can be disabled.
@@ -21,7 +21,7 @@ Get and set the KD UTC time.
 Known bugs:
 Bugs not listed here can be reported at: http://code.google.com/p/wmb-asm/issues/list
 
-1) With wc24app when you reload IOS when your system has IOS updated since the 3.4 update, ES_GetTitleID fails after the reload. This seems to be a libogc bug, ES_GetTitleID works fine when IOS isn't reloaded. libwc24 uses the HBC JODI titleid as default when ES_GetTitleID fails, so this error isn't a problem unless you reload from another title. After an IOS reload, the current identification is reset, which breaks HBC data dir access. On pre-3.4 IOS, you can identify as HBC to work around that issue, but that won't work on 3.4+ IOS.
+1) With wc24app when you reload IOS when your system has IOS updated since the 3.4 update, ES_GetTitleID fails after the reload. This seems to be a libogc bug, ES_GetTitleID works fine when IOS isn't reloaded. libwc24 uses the HBC 1.0.7 titleid as default when ES_GetTitleID fails, so this error isn't a problem unless you reload from another title. After an IOS reload, the current identification is reset, which breaks HBC data dir access.
 
 Changelog:
 v1.1:
