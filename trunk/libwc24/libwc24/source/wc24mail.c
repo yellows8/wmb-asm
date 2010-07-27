@@ -37,12 +37,13 @@ s32 __WC24Mail_CfgUpdate(int which);
 
 u32 CalcMailCfgChecksum(void* buffer, u32 length)
 {
-	u32 *buf;
+	u32 *buf = (u32*)buffer;
 	u32 sum = 0;
-	for(; length>=0; length-=4)
+	while(length>0)
 	{
 		sum+=*buf;
 		buf++;
+		length-=4;
 	}
 	return sum;
 }
