@@ -21,8 +21,6 @@ With wc24app, a WC24 title boot mail entry can be installed. You need to use the
 Known bugs:
 Bugs not listed here can be reported at: http://code.google.com/p/wmb-asm/issues/list
 
-1) With wc24app when you reload IOS when your system has IOS updated since the 3.4 update, ES_GetTitleID fails after the reload. This seems to be a libogc bug, ES_GetTitleID works fine when IOS isn't reloaded. libwc24 uses the HBC 1.0.7 titleid as default when ES_GetTitleID fails, so this error isn't a problem unless you reload from another title. After an IOS reload, the current identification is reset, which breaks HBC data dir access.
-
 Changelog:
 v1.1:
 The libwc24 v1.0 source tarball(not the pre-compiled library and dol) had a ISFS heap buffer overflow bug. Only 0x10 bytes for the size of a record is allocated for reading and writing records, but ISFS always reads/writes at least 0x20 bytes. This was fixed in libwc24 v1.1.
@@ -34,12 +32,14 @@ VFF files are now read and written with libff, with long filenames support. VFF 
 Added support for HBC 1.0.7 titleID. Wc24app uses the default titleID from libwc24, which is the titleID of the current title.
 Added feature in wc24app to install a WC24 title boot mail entry, see features section.
 Added libwc24 support for KD_SaveMail. Wc24app now calls this after downloading each mail entry, so that the following mail downloaded immediately doesn't overwrite the unsaved dlcnt.bin mail content.
+Removed IOS reload code from wc24app, removed HBC identification code from libwc24 and wc24app.
+Added support for KD_SaveMail, this is now called each time wc24app downloads mail immediately.
+Added wc24mail code, for handling reading/writing nwc24msg config files, handling other mail stuff etc.
 
 v1.0:
 Initial release.
 
 Credits:
-Raven's id.c from fs_browser for identifying as HBC
 Bushing for VFF FAT size code: http://wiibrew.org/wiki/VFF
 Elm Chan FatFs. libff ff.c, ff.h, option/syscall.c, and option/ccsbcs.c were modified to redefine f_* functions as fvff_* functions.
 
