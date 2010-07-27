@@ -28,6 +28,9 @@ DEALINGS IN THE SOFTWARE.
    extern "C" {
 #endif
 
+#define WC24MAIL_EINVALSUM -0x3001//Returned when config file(s) read by WC24Mail_Init or WC24Mail_Read have an invalid checksum.
+#define WC24MAIL_EMISMATCHSUM -0x3002//Returned by WC24Mail_Init when the two config files' checksums don't match.
+
 typedef struct _sNWC24MsgCfg//See also: http://wiibrew.org/wiki//shared2/wc24/nwc24msg.cfg#File_structure
 {
 	u32 magic;
@@ -43,9 +46,12 @@ typedef struct _sNWC24MsgCfg//See also: http://wiibrew.org/wiki//shared2/wc24/nw
 	u32 wc24titleboot_enableflag;//Normally set to zero when sysmenu creates the config files. Enables WC24 title booting when non-zero, see: http://wiibrew.org/wiki/WiiConnect24#WC24_title_booting
 	u32 checksum;
 } NWC24MsgCfg;
+extern NWC24MsgCfg *wc24mail_nwc24msgcfg;
 
 s32 WC24Mail_Init();
 void WC24Mail_Shutdown();
+s32 WC24Mail_CfgRead();//Reads/updates the nwc24msg.cfg buffer in RAM.
+s32 WC24Mail_CfgUpdate();//Updates/writes the NAND config files.
 
 #ifdef __cplusplus
    }
