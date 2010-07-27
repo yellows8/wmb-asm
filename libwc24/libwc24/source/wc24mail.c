@@ -32,22 +32,45 @@ DEALINGS IN THE SOFTWARE.
 
 NWC24MsgCfg *wc24mail_nwc24msgcfg;
 
-u32 CalcMailCfgChecksum(u32 *buffer, u32 length)
+s32 __WC24Mail_CfgRead(int which);
+s32 __WC24Mail_CfgUpdate(int which);
+
+u32 CalcMailCfgChecksum(void* buffer, u32 length)
 {
+	u32 *buf;
 	u32 sum = 0;
 	for(; length>=0; length-=4)
 	{
-		sum+=*buffer;
-		buffer++;
+		sum+=*buf;
+		buf++;
 	}
 	return sum;
 }
 
 s32 WC24Mail_Init()
 {
+	s32 retval;
+	u32 cbk_checksum;
 	wc24mail_nwc24msgcfg = memalign(32, sizeof(NWC24MsgCfg));
 	if(wc24mail_nwc24msgcfg==NULL)return ENOMEM;
 	memset(wc24mail_nwc24msgcfg, 0, sizeof(NWC24MsgCfg));
+
+	retval = __WC24Mail_CfgRead(0);
+	if(retval<0)
+	{
+		WC24Mail_Shutdown();
+		return retval;
+	}
+	cbk_checksum = wc24mail_nwc24msgcfg->checksum;
+	
+	retval = __WC24Mail_CfgRead(1);
+	if(retval<0)
+	{
+		WC24Mail_Shutdown();
+		return retval;
+	}
+
+	if(cbk_checksum!=wc24mail_nwc24msgcfg->checksum)return WC24MAIL_EMISMATCHSUM;
 
 	return 0;
 }
@@ -55,6 +78,48 @@ s32 WC24Mail_Init()
 void WC24Mail_Shutdown()
 {
 	if(wc24mail_nwc24msgcfg)free(wc24mail_nwc24msgcfg);
+}
+
+s32 __WC24Mail_CfgRead(int which)
+{
+	s32 fd;
+	if(which==0)fd = ISFS_Open("/shared2/wc24/nwc24msg.cbk", ISFS_OPEN_RW);
+	if(which==1)fd = ISFS_Open("/shared2/wc24/nwc24msg.cfg", ISFS_OPEN_RW);
+	if(fd<0)return fd;
+
+	ISFS_Read(fd, wc24mail_nwc24msgcfg, sizeof(NWC24MsgCfg));
+	ISFS_Close(fd);
+
+	if(CalcMailCfgChecksum(wc24mail_nwc24msgcfg, sizeof(NWC24MsgCfg)-4)!=wc24mail_nwc24msgcfg->checksum)return WC24MAIL_EINVALSUM;
+	return 0;
+}
+
+s32 __WC24Mail_CfgUpdate(int which)
+{
+	s32 fd;
+	if(which==0)fd = ISFS_Open("/shared2/wc24/nwc24msg.cbk", ISFS_OPEN_RW);
+	if(which==1)fd = ISFS_Open("/shared2/wc24/nwc24msg.cfg", ISFS_OPEN_RW);
+	if(fd<0)return fd;
+
+	wc24mail_nwc24msgcfg->checksum = CalcMailCfgChecksum(wc24mail_nwc24msgcfg, sizeof(NWC24MsgCfg)-4);
+	ISFS_Write(fd, wc24mail_nwc24msgcfg, sizeof(NWC24MsgCfg));
+	ISFS_Close(fd);
+
+	return 0;
+}
+
+s32 WC24Mail_CfgRead()
+{
+	return __WC24Mail_CfgRead(1);
+}
+
+s32 WC24Mail_CfgUpdate()
+{
+	s32 retval;
+	retval = __WC24Mail_CfgUpdate(0);
+	if(retval<0)return retval;
+	retval = __WC24Mail_CfgUpdate(1);
+	return retval;
 }
 
 #endif

@@ -365,39 +365,10 @@ void DoStuff(char *url)
 
 	if(which)
 	{
-		u32 *buf = memalign(32, 0x400);
-		s32 fd = ISFS_Open("/shared2/wc24/nwc24msg.cbk", ISFS_OPEN_RW);
-		if(fd<0)
-		{
-			printf("Failed to open /shared2/wc24/nwc24msg.cbk\n");
-		}
-		else
-		{
-			ISFS_Read(fd, buf, 0x400);
-			ISFS_Seek(fd, 0, SEEK_SET);
-			if(which==1)buf[0xfe] = 1;
-			if(which==2)buf[0xfe] = 0;
-			buf[0xff] = __CalcChecksum(buf, 0x3fc);
-			ISFS_Write(fd, buf, 0x400);
-			ISFS_Close(fd);
-		}
-
-		fd = ISFS_Open("/shared2/wc24/nwc24msg.cfg", ISFS_OPEN_RW);
-		if(fd<0)
-		{
-			printf("Failed to open /shared2/wc24/nwc24msg.cfg\n");
-		}
-		else
-		{
-			ISFS_Read(fd, buf, 0x400);
-			ISFS_Seek(fd, 0, SEEK_SET);
-			if(which==1)buf[0xfe] = 1;
-			if(which==2)buf[0xfe] = 0;
-			buf[0xff] = __CalcChecksum(buf, 0x3fc);
-			ISFS_Write(fd, buf, 0x400);
-			ISFS_Close(fd);
-		}
-		free(buf);
+		if(which==1)wc24mail_nwc24msgcfg->wc24titleboot_enableflag = 1;
+		if(which==2)wc24mail_nwc24msgcfg->wc24titleboot_enableflag = 0;
+		retval = WC24Mail_CfgUpdate();
+		if(retval<0)printf("WC24Mail_Update returned %d\n", retval);
 	}
 
 	/*printf("Write a test WC24 NANDBOOTINFO to NAND?(A = yes, B = no)\n");
