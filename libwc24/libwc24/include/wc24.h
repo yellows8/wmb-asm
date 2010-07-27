@@ -62,7 +62,7 @@ DEALINGS IN THE SOFTWARE.
 #define WC24_ESIGFAIL -107245//RSA signature verification failed. Or KD_CreateRSA failed.
 #define WC24_EHTTP304 -107304//HTTP 304.
 #define WC24_EHTTP404 -117404//HTTP 404. Errors in the -117xxx range seem to be HTTP errors, where xxx is the HTTP error/status code.
-#define WC24_ENOAP -51030//Access point not in range. With Nintendo's errors, there's several errors meaning "no ap in range". Errors with 5-digits are usually general Wifi/Internet errors, which can be looked up with Nintendo's tool: http://www.nintendo.com/consumer/systems/wii/en_na/errors/index.jsp
+// Errors with 5-digits are usually general Wifi/Internet errors, which can be looked up with Nintendo's tool: http://www.nintendo.com/consumer/systems/wii/en_na/errors/index.jsp
 
 typedef struct _nwc24dl_header
 {
