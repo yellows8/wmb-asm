@@ -442,7 +442,8 @@ s32 WC24_CreateRecord(nwc24dl_record *rec, nwc24dl_entry *ent, u32 id, u64 title
 	ent->ID = id;
 	ent->titleid = titleid;
 	ent->group_id = group_id;
-	ent->unk18 = 0x17;//Varies, from HATE.
+	if(type==WC24_TYPE_TITLEDATA)ent->unk18 = 0x17;//Varies, from HATE.
+	if(type!=WC24_TYPE_TITLEDATA)ent->unk18 = 0x64;//Usually 0x64 msg board entries for channels?
 	ent->dl_freq_perday = dl_freq_perday;
 	ent->dl_freq_days = dl_freq_days;
 	strncpy(ent->url, url, 0xec);
