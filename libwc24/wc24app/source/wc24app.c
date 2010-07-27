@@ -104,7 +104,7 @@ void DoStuff(char *url)
 	if(which)strncat(mailurl, "mail", 255);
 	if(!which)strncat(mailurl, "boot", 255);
 
-	printf("Identify as HBC? This is only needed when using test WC24 title data with HBC versions older than 1.0.7.(A = yes, B = no)\n");
+	/*printf("Identify as HBC? This is only needed when using test WC24 title data with HBC versions older than 1.0.7.(A = yes, B = no)\n");
 	which = -1;
 	WPAD_ScanPads();
 	while(1)
@@ -114,9 +114,9 @@ void DoStuff(char *url)
 		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_A)which = 1;
 		if(which>-1)break;
 		VIDEO_WaitVSync();
-	}
+	}*/
 
-	IOSReload_SelectMenu();
+	//IOSReload_SelectMenu();
 	fatInitDefault();
 
 	printf("Initializing WC24...\n");
@@ -371,7 +371,7 @@ void DoStuff(char *url)
 		if(retval<0)printf("WC24Mail_Update returned %d\n", retval);
 	}
 
-	/*printf("Write a test WC24 NANDBOOTINFO to NAND?(A = yes, B = no)\n");
+	printf("Write a test WC24 NANDBOOTINFO to NAND?(A = yes, B = no)\n");
 	which = -1;
 	WPAD_ScanPads();
 	while(1)
@@ -384,11 +384,11 @@ void DoStuff(char *url)
 	}
 
 	if(which)
-	{*/
-		/*u8 *nandinfobuf;
-		FILE *finfo;
-		printf("Opening NANDBOOTINFO in NAND...\n");
-		s32 infofd = ISFS_Open("/shared2/sys/NANDBOOTINFO", ISFS_OPEN_RW);
+	{
+		//u8 *nandinfobuf;
+		//FILE *finfo;
+		//printf("Opening NANDBOOTINFO in NAND...\n");
+		/*s32 infofd = ISFS_Open("/shared2/sys/NANDBOOTINFO", ISFS_OPEN_RW);
 		if(infofd<0)
 		{
 			printf("Failed to open NANDBOOTINFO in NAND.\n");
@@ -422,9 +422,9 @@ void DoStuff(char *url)
 			}
 			ISFS_Close(infofd);
 		}*/
-		/*retval = WII_LaunchTitleWithArgsWC24(0x000100014a4f4449LL, enableboot, 0);
+		retval = WII_LaunchTitleWithArgsWC24(0x0001000148415445LL, 0, 0);
 		if(retval<0)printf("WII_LaunchTitleWithArgsWC24 returned %d\n", retval);
-	}*/
+	}
 
 	printf("Get time triggers?(A = yes, B = no)\n");
 	which = -1;
@@ -675,7 +675,7 @@ void DoStuff(char *url)
 	printf("Done.\n");
 }
 
-void IOSReload_SelectMenu()
+/*void IOSReload_SelectMenu()
 {
 	s32 retval;
 	u32 numtitles = 0;
@@ -758,7 +758,7 @@ void IOSReload_SelectMenu()
 	}
 	free(titles);
 	free(ios);
-}
+}*/
 
 int shutdown = 0;
 void shutdown_callback(u32 chan)
