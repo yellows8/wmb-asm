@@ -75,9 +75,8 @@ static u32 __CalcChecksum(u32 *buf, int len)//Based on function from libogc.
 void DoStuff(char *url)
 {
 	s32 retval;
-	int which, i, enableboot;
+	int which, i; //, enableboot;
 	u32 triggers[2];
-	char titleidlow[5];
 	u64 titleid;
 	u64 homebrewtitleid = 0x0001000848424D4CLL;//TitleID for wiibrew+hackmii mail: 00010008-HBML.
 
@@ -105,7 +104,7 @@ void DoStuff(char *url)
 	if(which)strncat(mailurl, "mail", 255);
 	if(!which)strncat(mailurl, "boot", 255);
 
-	printf("Identify as HBC?(A = yes, B = no)\n");
+	printf("Identify as HBC? This is only needed when using test WC24 title data with HBC versions older than 1.0.7.(A = yes, B = no)\n");
 	which = -1;
 	WPAD_ScanPads();
 	while(1)
@@ -128,11 +127,6 @@ void DoStuff(char *url)
 		return;
 	}
 	titleid = WC24_GetTitleID();
-	titleidlow[0] = (char)(titleid >> 24);
-	titleidlow[1] = (char)(titleid >> 16);
-	titleidlow[2] = (char)(titleid >> 8);
-	titleidlow[3] = (char)(titleid);
-	titleidlow[4] = 0;
 
 	printf("Create wc24dl.vff?(A = yes, B = no)\n");
 	which = -1;
@@ -157,7 +151,7 @@ void DoStuff(char *url)
 		}
 	}
 
-	printf("Overwrite WC24 entries+records on NAND for the current title(%s) with the nwc24dlbak.bin entries from SD?(A = yes, B = no)\n", titleidlow);
+	printf("Overwrite WC24 entries+records on NAND for the current title with the nwc24dlbak.bin entries from SD?(A = yes, B = no)\n");
 	which = -1;
 	WPAD_ScanPads();
 	while(1)
@@ -226,7 +220,7 @@ void DoStuff(char *url)
 		}
 	}
 
-	printf("Delete WC24 records+entries for wiibrew+hackmii?(A = yes, B = no)\n");
+	printf("Delete WC24 msg board mail records+entries for wiibrew+hackmii news/releases feed mail? This is LAN testing only.(A = yes, B = no)\n");
 	which = -1;
 	WPAD_ScanPads();
 	while(1)
@@ -295,7 +289,7 @@ void DoStuff(char *url)
 		}
 	}
 
-	printf("Install WC24 msg board mail record+entry for wiibrew+hackmii?(A = yes download hourly, 1 = yes download daily, B = no)\n");
+	printf("Install WC24 msg board mail records+entries for wiibrew+hackmii news/releases feed mail? This is LAN testing only.(A = yes download hourly, 1 = yes download daily, B = no)\n");
 	which = -1;
 	WPAD_ScanPads();
 	while(1)
@@ -335,7 +329,7 @@ void DoStuff(char *url)
 		}
 	}
 
-	printf("Set the next time KD calls STM_Wakeup, to the next 5, 30, or 2 minutes? This is only needed when using the following write test NANDBOOTINFO option.(A = 5 minutes, 1 = 30 minutes,  2 = 2 minutes, B = no)\n");
+	/*printf("Set the next time KD calls STM_Wakeup, to the next 5, 30, or 2 minutes? This is only needed when using the following write test NANDBOOTINFO option.(A = 5 minutes, 1 = 30 minutes,  2 = 2 minutes, B = no)\n");
 	which = -1;
 	WPAD_ScanPads();
 	while(1)
@@ -354,7 +348,7 @@ void DoStuff(char *url)
 	{
 		retval = KD_SetNextWakeup(which * 60);
 		if(retval<0)printf("KD_SetNextWakeup returned %d\n", retval);
-	}
+	}*/
 
 	printf("Set the flag which enables WC24 title booting?(A = yes, B = no, 1 = clear flag)\n");
 	which = -1;
@@ -481,66 +475,74 @@ void DoStuff(char *url)
 		printf("KD_Download trigger: %d KD_CheckMail: %d\n", triggers[0], triggers[1]);
 	}
 
-	printf("Download entries immediately?(A = yes, B = no)\n");
+	printf("Download entries immediately?(A = yes all, B = no, 1 = only test entries, 2 = only hackmii+wiibrew mail)\n");
 	which = -1;
 	WPAD_ScanPads();
 	while(1)
 	{
 		WPAD_ScanPads();
 		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_B)which = 0;
-		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_A)which = 1;
+		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_A)which = 3;
+		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_1)which = BIT(0);
+		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_2)which = BIT(1);
 		if(which>-1)break;
 		VIDEO_WaitVSync();
 	}
 
 	if(which)
 	{
-		retval = WC24_FindEntry((u32)titleid, url, &myent);
-		if(retval<0)
+		if(which & BIT(0))
 		{
-			printf("Failed to find WC24 title data entry.\n");
-		}
-		else
-		{
-			printf("Downloading title data...\n");
-			retval = KD_Download(KD_DOWNLOADFLAGS_MANUAL, (u16)retval, 0x0);
-			printf("KD_Download returned %d\n", retval);
+			retval = WC24_FindEntry((u32)titleid, url, &myent);
+			if(retval<0)
+			{
+				printf("Failed to find WC24 title data entry.\n");
+			}
+			else
+			{
+				printf("Downloading title data...\n");
+				retval = KD_Download(KD_DOWNLOADFLAGS_MANUAL, (u16)retval, 0x0);
+				printf("KD_Download returned %d\n", retval);
+			}
+
+			retval = WC24_FindEntry((u32)titleid, mailurl, &myent);
+			if(retval<0)
+			{
+				printf("Failed to find WC24 mail entry.\n");
+			}
+			else
+			{
+				printf("Downloading mail...\n");
+				retval = KD_Download(KD_DOWNLOADFLAGS_MANUAL, (u16)retval, 0x0);
+				printf("KD_Download returned %d\n", retval);
+			}
 		}
 
-		retval = WC24_FindEntry((u32)titleid, mailurl, &myent);
-		if(retval<0)
+		if(which & BIT(1))
 		{
-			printf("Failed to find WC24 mail entry.\n");
-		}
-		else
-		{
-			printf("Downloading mail...\n");
-			retval = KD_Download(KD_DOWNLOADFLAGS_MANUAL, (u16)retval, 0x0);
-			printf("KD_Download returned %d\n", retval);
-		}
+			retval = WC24_FindEntry((u32)homebrewtitleid, hackmii_url, &myent);
+			if(retval>=0)
+			{
+				printf("Downloading hackmii mail...\n");
+				retval = KD_Download(KD_DOWNLOADFLAGS_MANUAL, (u16)retval, 0x0);
+				printf("KD_Download returned %d\n", retval);
+			}
 
-		retval = WC24_FindEntry((u32)homebrewtitleid, hackmii_url, &myent);
-		if(retval>=0)
-		{
-			printf("Downloading hackmii mail...\n");
-			retval = KD_Download(KD_DOWNLOADFLAGS_MANUAL, (u16)retval, 0x0);
-			printf("KD_Download returned %d\n", retval);
-		}
+			retval = WC24_FindEntry((u32)homebrewtitleid, wiibrewnews_url, &myent);
+			if(retval>=0)
+			{
+				printf("Downloading wiibrew news mail...\n");
+				retval = KD_Download(KD_DOWNLOADFLAGS_MANUAL, (u16)retval, 0x0);
+				printf("KD_Download returned %d\n", retval);
+			}
 
-		retval = WC24_FindEntry((u32)homebrewtitleid, wiibrewnews_url, &myent);
-		if(retval>=0)
-		{
-			printf("Downloading wiibrew news mail...\n");
-			retval = KD_Download(KD_DOWNLOADFLAGS_MANUAL, (u16)retval, 0x0);
-			printf("KD_Download returned %d\n", retval);
-		}
-
-		retval = WC24_FindEntry((u32)homebrewtitleid, wiibrewreleases_url, &myent);
-		if(retval>=0)
-		{
-			printf("Downloading wiibrew releases mail...\n");
-			retval = KD_Download(KD_DOWNLOADFLAGS_MANUAL, (u16)retval, 0x0);
-			printf("KD_Download returned %d\n", retval);
+			retval = WC24_FindEntry((u32)homebrewtitleid, wiibrewreleases_url, &myent);
+			if(retval>=0)
+			{
+				printf("Downloading wiibrew releases mail...\n");
+				retval = KD_Download(KD_DOWNLOADFLAGS_MANUAL, (u16)retval, 0x0);
+				printf("KD_Download returned %d\n", retval);
+			}
 		}
 
 		/*retval = WC24_FindEntry(0x524d4345, "https://mariokartwii.race.gs.nintendowifi.net/raceservice/messagedl_us_en.ashx", &myent);//This was used to rip the raw mail content from MK, from /shared2/wc24/mobx/dlcnt.bin.
