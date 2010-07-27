@@ -36,6 +36,7 @@ s32 __kdtime_fd, __kdreq_fd;
 #define IOCTL_KD_CORRECTRTC 0x17
 
 #define IOCTL_KD_GETTIMETRIGGERS 0x4
+#define IOCTL_KD_SAVEMAIL 0xd
 #define IOCTL_KD_DOWNLOAD 0xe
 #define IOCTL_KD_SETNEXTWAKEUP 0x21
 
@@ -97,6 +98,21 @@ s32 KD_CorrectRTC(u64 diff)
 }
 
 // -- /dev/net/kd/request --
+
+s32 KD_SaveMail()
+{
+	s32 retval;
+	u32 outbuf[1];
+	
+        if(__kdreq_fd==0)return LIBWC24_EINIT;
+	memset(outbuf, 0, 4);
+	DCFlushRange(outbuf, 4);
+
+	retval = IOS_Ioctl(__kdreq_fd,IOCTL_KD_SAVEMAIL,NULL,0,outbuf,4);
+	DCInvalidateRange(outbuf, 4);
+	if(retval==0)retval = outbuf[0];
+	return retval;
+}
 
 s32 KD_Download(s32 flags, u16 index, u32 subTaskBitmap)
 {

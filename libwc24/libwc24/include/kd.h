@@ -53,6 +53,7 @@ s32 KD_GetUTCTime(kd_timebuf *time);//If KD_Open wasn't called when any of these
 s32 KD_SetUTCTime(kd_timebuf *time);
 s32 KD_CorrectRTC(u64 diff);
 
+s32 KD_SaveMail();//Should be called after downloading mail immediately. This saves the dlcnt.bin mail content to nwc24recv.mbx, if more mail would be downloaded immediately dlcnt.bin mail content would be overwritten without saving it.
 s32 KD_Download(s32 flags, u16 index, u32 subTaskBitmap);//flags is the KD_DOWNLOADFLAG defines, index is nwc24dl_entry index, subTaskBitmap is a bitmap of subTasks to download starting at bit zero for subTask zero when flags KD_DOWNLOADFLAGS_SUBTASKS is set.
 s32 KD_SetNextWakeup(u32 seconds);//Sets the next time STM_Wakeup is called by KD relative to the current UTC time.
 s32 KD_GetTimeTriggers(u32 *triggers);//Input should be a buffer 8 bytes long. Gets the minutes of the hour for when KD_Download and KD_CheckMail is automatically triggered.
