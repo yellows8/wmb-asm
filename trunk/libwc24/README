@@ -12,11 +12,11 @@ VFF files can be read and written, with LFN support.(Long filenames)
 The download frequency is specified in minutes, see: http://wiibrew.org/wiki//shared2/wc24/nwc24dl.bin
 RSA signature verification for content can be disabled.
 Content can optionally be downloaded only in idle/"standby" mode with a flag bit.
-WC24 can download subTasks, where multiple URLs are downloaded with one task, but libwc24 can't use this.
 Download content to a file in wc24dl.vff under HBC data dir.
 Download message board mail "annoucements", like Nintendo's system update messages and channel messages.
 Download content immediately.
 Get and set the KD UTC time.
+With wc24app, a WC24 title boot mail entry can be installed. You need to use the WC24 title boot flag enable option in wc24app, to enable and use WC24 title booting. For the initial entry install, download immediately, then shutdown via wiimote when wc24app displays "Done". Sysmenu must not run before KD properly processes the mail in idle mode, because sysmenu would break the boot mail by moving it to cdb.vff. Once KD processes the mail in idle mode, KD would write the NANDBOOTINFO attachment to NAND, then wakeup the Wii so sysmenu boots the title specified in NANDBOOTINFO. The boot mail on the Internet server currently only works with HBC 1.0.6, the boot mail currently only uses the old JODI titleID and the updated test boot mail for HBC 1.0.7 doesn't work, KD rejects the mail unknown why. WC24 title booting can be used to fix some bricks, see: http://wiibrew.org/wiki/Brick#WC24_title_booting
 
 Known bugs:
 Bugs not listed here can be reported at: http://code.google.com/p/wmb-asm/issues/list
@@ -32,6 +32,7 @@ KD_Open and KD_Close are now called by WC24_Init and WC24_Shutdown.
 Fixed typo for the WC24_EHTTP304 define value. In libwc24 v1.0 this caused wc24app to skip VFF reading since wc24app/libwc24 didn't recognize the error from ent.error_code.
 VFF files are now read and written with libff, with long filenames support. VFF files can be mounted, and can be used with a devoptab VFF device.
 Added support for HBC 1.0.7 titleID. Wc24app uses the default titleID from libwc24, which is the titleID of the current title.
+Added feature in wc24app to install a WC24 title boot mail entry, see features section.
 
 v1.0:
 Initial release.
