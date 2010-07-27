@@ -485,7 +485,9 @@ void DoStuff(char *url)
 			{
 				printf("Downloading mail...\n");
 				retval = KD_Download(KD_DOWNLOADFLAGS_MANUAL, (u16)retval, 0x0);
-				printf("KD_Download returned %d\n", retval);
+				if(retval<0)printf("KD_Download returned %d\n", retval);
+				retval = KD_SaveMail();
+				if(retval<0)printf("KD_SaveMail returned %d\n", retval);
 			}
 		}
 
@@ -496,7 +498,9 @@ void DoStuff(char *url)
 			{
 				printf("Downloading hackmii mail...\n");
 				retval = KD_Download(KD_DOWNLOADFLAGS_MANUAL, (u16)retval, 0x0);
-				printf("KD_Download returned %d\n", retval);
+				if(retval<0)printf("KD_Download returned %d\n", retval);
+				retval = KD_SaveMail();
+				if(retval<0)printf("KD_SaveMail returned %d\n", retval);
 			}
 
 			retval = WC24_FindEntry((u32)homebrewtitleid, wiibrewnews_url, &myent);
@@ -504,7 +508,9 @@ void DoStuff(char *url)
 			{
 				printf("Downloading wiibrew news mail...\n");
 				retval = KD_Download(KD_DOWNLOADFLAGS_MANUAL, (u16)retval, 0x0);
-				printf("KD_Download returned %d\n", retval);
+				if(retval<0)printf("KD_Download returned %d\n", retval);
+				retval = KD_SaveMail();
+				if(retval<0)printf("KD_SaveMail returned %d\n", retval);
 			}
 
 			retval = WC24_FindEntry((u32)homebrewtitleid, wiibrewreleases_url, &myent);
@@ -512,7 +518,9 @@ void DoStuff(char *url)
 			{
 				printf("Downloading wiibrew releases mail...\n");
 				retval = KD_Download(KD_DOWNLOADFLAGS_MANUAL, (u16)retval, 0x0);
-				printf("KD_Download returned %d\n", retval);
+				if(retval<0)printf("KD_Download returned %d\n", retval);
+				retval = KD_SaveMail();
+				if(retval<0)printf("KD_SaveMail returned %d\n", retval);
 			}
 		}
 

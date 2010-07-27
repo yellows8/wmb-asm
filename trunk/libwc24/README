@@ -14,7 +14,7 @@ RSA signature verification for content can be disabled.
 Content can optionally be downloaded only in idle/"standby" mode with a flag bit.
 Download content to a file in wc24dl.vff under HBC data dir.
 Download message board mail "annoucements", like Nintendo's system update messages and channel messages.
-Download content immediately.
+Download content immediately. KD_SaveMail can be executed, to save mail immediately without being overwritten by other  mail downloaded immediately.
 Get and set the KD UTC time.
 With wc24app, a WC24 title boot mail entry can be installed. You need to use the WC24 title boot flag enable option in wc24app, to enable and use WC24 title booting. For the initial entry install, download immediately, then shutdown via wiimote when wc24app displays "Done". Sysmenu must not run before KD properly processes the mail in idle mode, because sysmenu would break the boot mail by moving it to cdb.vff. Once KD processes the mail in idle mode, KD would write the NANDBOOTINFO attachment to NAND, then wakeup the Wii so sysmenu boots the title specified in NANDBOOTINFO. The boot mail on the Internet server currently only works with HBC 1.0.6, the boot mail currently only uses the old JODI titleID and the updated test boot mail for HBC 1.0.7 doesn't work, KD rejects the mail unknown why. WC24 title booting can be used to fix some bricks, see: http://wiibrew.org/wiki/Brick#WC24_title_booting
 
@@ -33,6 +33,7 @@ Fixed typo for the WC24_EHTTP304 define value. In libwc24 v1.0 this caused wc24a
 VFF files are now read and written with libff, with long filenames support. VFF files can be mounted, and can be used with a devoptab VFF device.
 Added support for HBC 1.0.7 titleID. Wc24app uses the default titleID from libwc24, which is the titleID of the current title.
 Added feature in wc24app to install a WC24 title boot mail entry, see features section.
+Added libwc24 support for KD_SaveMail. Wc24app now calls this after downloading each mail entry, so that the following mail downloaded immediately doesn't overwrite the unsaved dlcnt.bin mail content.
 
 v1.0:
 Initial release.
