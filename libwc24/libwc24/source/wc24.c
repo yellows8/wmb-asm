@@ -84,9 +84,19 @@ s32 WC24_Init(int id)
 
 	#ifdef HW_RVL
 	retval = ISFS_Seek(nwc24dlbin_fd, 0, SEEK_SET);
-	if(retval<0)return retval;
+	if(retval<0)
+	{
+		free(NWC24DL_Header);
+		WC24_CloseNWC4DLBin();
+		return retval;
+	}
 	retval = ISFS_Read(nwc24dlbin_fd, NWC24DL_Header, sizeof(nwc24dl_header));
-	if(retval<0)return retval;
+	if(retval<0)
+	{
+		free(NWC24DL_Header);
+		WC24_CloseNWC4DLBin();
+		return retval;
+	}
 	#endif
 
 	#ifdef HW_RVL
@@ -94,6 +104,18 @@ s32 WC24_Init(int id)
 	if(retval<0)
 	{
 		printf("KD_Open failed %d\n", retval);
+		free(NWC24DL_Header);
+		WC24_CloseNWC4DLBin();
+		return retval;
+	}
+	#endif
+
+	#ifdef HW_RVL
+	retval = WC24Mail_Init();
+	if(retval<0)
+	{
+		printf("WC24Mail_Init failed %d\n", retval);
+		free(NWC24DL_Header);
 		WC24_CloseNWC4DLBin();
 		return retval;
 	}

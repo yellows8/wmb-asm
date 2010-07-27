@@ -26,6 +26,7 @@ DEALINGS IN THE SOFTWARE.
 
 #include "kd.h"
 #include "vff.h"
+#include "wc24mail.h"
 
 #ifdef __cplusplus
    extern "C" {
