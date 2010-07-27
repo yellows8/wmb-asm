@@ -486,7 +486,7 @@ void DoStuff(char *url)
 				printf("Downloading mail...\n");
 				retval = KD_Download(KD_DOWNLOADFLAGS_MANUAL, (u16)retval, 0x0);
 				if(retval<0)printf("KD_Download returned %d\n", retval);
-				retval = KD_SaveMail();
+				retval = KD_SaveMail();//This is called so that the unsaved dlcnt.bin mail content isn't overwritten when following mail is downloaded immediately. This should always be called after downloading mail immediately.
 				if(retval<0)printf("KD_SaveMail returned %d\n", retval);
 			}
 		}
