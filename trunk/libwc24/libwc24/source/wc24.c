@@ -26,7 +26,6 @@ DEALINGS IN THE SOFTWARE.
 
 #ifdef HW_RVL
 #include <gccore.h>
-#include "id.h"
 #endif
 
 #include "wc24.h"
@@ -36,11 +35,9 @@ s32 nwc24dlbin_fd = 0;
 nwc24dl_header *NWC24DL_Header;
 u64 wc24_titleid = 0x00010001af1bf516LL;
 
-s32 WC24_Init(int id)
+s32 WC24_Init()
 {
 	s32 retval;
-	char id0[5];
-	char id1[5];
 	if(wc24_did_init)return LIBWC24_EINIT;
 	#ifdef HW_RVL
 	retval = ISFS_Initialize();
@@ -53,18 +50,6 @@ s32 WC24_Init(int id)
 	{
 		printf("ES_GetTitleID returned %d\n", retval);
 		//return retval;
-	}
-	#endif
-
-	#ifdef HW_RVL
-	if(id)
-	{
-		memset(id0, 0, 5);
-		memset(id1, 0, 5);
-		snprintf(id0, 4, "%08x", (u32)(wc24_titleid>>32));
-		snprintf(id1, 4, "%08x", (u32)(wc24_titleid));
-		retval = identify_title(id0, id1);
-		if(retval<0)return retval;
 	}
 	#endif
 

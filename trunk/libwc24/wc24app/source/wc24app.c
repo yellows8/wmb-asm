@@ -89,7 +89,7 @@ void DoStuff(char *url)
 	memset(mailurl, 0, 256);
 	strncpy(mailurl, url, 255);
 
-	printf("Use normal mail URL, or boot mail URL? Boot mail will wake up the Wii from idle mode to boot HBC, if you use(d) the option to enable WC24 title booting. When the Wii wakes up you need to reboot the Wii with a normal shutdown for sysmenu to boot the title.(A = normal mail, B = boot mail)\n");
+	printf("Use normal mail URL, or boot mail URL? Boot mail will wake up the Wii from idle mode to boot HBC, if you use(d) the option to enable WC24 title booting. Once the entry is installed with WC24 title booting enabled, you must either shutdown with the wiimote when \"Done\" is displayed, or with official software, in order for title booting to work.(A = normal mail, B = boot mail)\n");
 	which = -1;
 	WPAD_ScanPads();
 	while(1)
@@ -104,23 +104,10 @@ void DoStuff(char *url)
 	if(which)strncat(mailurl, "mail", 255);
 	if(!which)strncat(mailurl, "boot", 255);
 
-	/*printf("Identify as HBC? This is only needed when using test WC24 title data with HBC versions older than 1.0.7.(A = yes, B = no)\n");
-	which = -1;
-	WPAD_ScanPads();
-	while(1)
-	{
-		WPAD_ScanPads();
-		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_B)which = 0;
-		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_A)which = 1;
-		if(which>-1)break;
-		VIDEO_WaitVSync();
-	}*/
-
-	//IOSReload_SelectMenu();
 	fatInitDefault();
 
 	printf("Initializing WC24...\n");
-	retval = WC24_Init(which);
+	retval = WC24_Init();
 	if(retval<0)
 	{
 		printf("WC24_Init returned %d\n", retval);
@@ -329,27 +316,6 @@ void DoStuff(char *url)
 		}
 	}
 
-	/*printf("Set the next time KD calls STM_Wakeup, to the next 5, 30, or 2 minutes? This is only needed when using the following write test NANDBOOTINFO option.(A = 5 minutes, 1 = 30 minutes,  2 = 2 minutes, B = no)\n");
-	which = -1;
-	WPAD_ScanPads();
-	while(1)
-	{
-		WPAD_ScanPads();
-		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_B)which = 0;
-		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_A)which = 5;
-		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_1)which = 30;
-		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_2)which = 2;
-		if(which>-1)break;
-		VIDEO_WaitVSync();
-	}
-
-	enableboot = !which;
-	if(which)
-	{
-		retval = KD_SetNextWakeup(which * 60);
-		if(retval<0)printf("KD_SetNextWakeup returned %d\n", retval);
-	}*/
-
 	printf("Set the flag which enables WC24 title booting?(A = yes, B = no, 1 = clear flag)\n");
 	which = -1;
 	WPAD_ScanPads();
@@ -371,7 +337,7 @@ void DoStuff(char *url)
 		if(retval<0)printf("WC24Mail_Update returned %d\n", retval);
 	}
 
-	printf("Write a test WC24 NANDBOOTINFO to NAND?(A = yes, B = no)\n");
+	/*printf("Write a test WC24 NANDBOOTINFO to NAND?(A = yes, B = no)\n");
 	which = -1;
 	WPAD_ScanPads();
 	while(1)
@@ -388,7 +354,7 @@ void DoStuff(char *url)
 		//u8 *nandinfobuf;
 		//FILE *finfo;
 		//printf("Opening NANDBOOTINFO in NAND...\n");
-		/*s32 infofd = ISFS_Open("/shared2/sys/NANDBOOTINFO", ISFS_OPEN_RW);
+		s32 infofd = ISFS_Open("/shared2/sys/NANDBOOTINFO", ISFS_OPEN_RW);
 		if(infofd<0)
 		{
 			printf("Failed to open NANDBOOTINFO in NAND.\n");
@@ -421,10 +387,10 @@ void DoStuff(char *url)
 				
 			}
 			ISFS_Close(infofd);
-		}*/
+		}
 		retval = WII_LaunchTitleWithArgsWC24(0x0001000148415445LL, 0, 0);
 		if(retval<0)printf("WII_LaunchTitleWithArgsWC24 returned %d\n", retval);
-	}
+	}*/
 
 	printf("Get time triggers?(A = yes, B = no)\n");
 	which = -1;
@@ -674,91 +640,6 @@ void DoStuff(char *url)
 	}
 	printf("Done.\n");
 }
-
-/*void IOSReload_SelectMenu()
-{
-	s32 retval;
-	u32 numtitles = 0;
-	u32 numios = 0;
-	u64 *titles, *ios;
-	int i, iosi, noreload;
-	retval = ES_GetNumTitles(&numtitles);
-	if(retval<0)
-	{
-		printf("ES_GetNumTitles returned %d\n", retval);
-		return;
-	}
-	titles = (u64*)memalign(32, numtitles * 8);
-	memset(titles, 0, numtitles * 8);
-	retval = ES_GetTitles(titles, numtitles);
-	if(retval<0)
-	{
-		printf("ES_GetTitles returned %d\n", retval);
-		free(titles);
-		return;
-	}
-
-	for(i=0; i<numtitles; i++)
-	{
-		if((titles[i]>>32)==1)
-		{
-			if(((u32)titles[i])>0x02 && ((u32)titles[i])<0x100)
-			{
-				numios++;
-			}
-		}
-	}
-	ios = (u64*)memalign(32, numios * 8);
-	memset(ios, 0, numios * 8);
-
-	iosi = 0;
-	for(i=0; i<numtitles; i++)
-	{
-		if((titles[i]>>32)==1)
-		{
-			if(((u32)titles[i])>0x02 && ((u32)titles[i])<0x100)
-			{
-				ios[iosi] = titles[i];
-				iosi++;
-			}
-		}
-	}
-
-	iosi = 0;
-	noreload = 0;
-	printf("\x1b[2J");//Clear screen, so that gecko output is displayed correctly.
-	printf("\x1b[1;0HSelect a IOS to reload. Press B to skip IOS reload.\n");
-	WPAD_ScanPads();
-	while(1)
-	{
-		WPAD_ScanPads();
-		printf("\x1b[2;0HIOS     ");
-		printf("\x1b[2;0HIOS%d", (int)ios[iosi]);
-		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_A)break;
-		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_B)
-		{
-			noreload = 1;
-			break;
-		}
-		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_RIGHT)iosi++;
-		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_LEFT)iosi--;
-		if(iosi>=(int)numios)iosi = 0;
-		if(iosi<0)iosi = numios-1;
-		VIDEO_WaitVSync();
-	}	
-
-	printf("\n");
-	if(!noreload)
-	{
-		printf("Reloading IOS%d...\n", (int)ios[iosi]);
-		WPAD_Shutdown();
-		retval = IOS_ReloadIOS((u32)ios[iosi]);
-		WPAD_Init();
-		if(retval<0)printf("IOS_ReloadIOS returned %d\n", retval);
-	}
-	free(titles);
-	free(ios);
-}*/
 
 int shutdown = 0;
 void shutdown_callback(u32 chan)
