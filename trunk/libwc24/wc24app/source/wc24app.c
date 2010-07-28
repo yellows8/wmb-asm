@@ -78,7 +78,7 @@ void DoStuff(char *url)
 	int which, i; //, enableboot;
 	u32 triggers[2];
 	u64 titleid;
-	u64 homebrewtitleid = 0x0001000848424D4CLL;//TitleID for wiibrew+hackmii mail: 00010008-HBML.
+	u64 homebrewtitleid = 0x0001000848424D4CLL;//TitleID for wiibrew+hackmii mail: 00010008-HBML. This is only an ID used for WC24, it's not a real NAND title.
 
 	memset(hackmii_url, 0, 256);
 	memset(wiibrewnews_url, 0, 256);

@@ -31,9 +31,14 @@ DEALINGS IN THE SOFTWARE.
 #include "wc24.h"
 
 NWC24MsgCfg *wc24mail_nwc24msgcfg;
+NWC24FlHeader *wc24mail_nwc24fl_hdr;
+NWC24Fl_FC *wc24mail_nwc24fl_fc;
+NWC24Fl_Entry *wc24mail_nwc24fl_entries;
 
 s32 __WC24Mail_CfgRead(int which);
 s32 __WC24Mail_CfgUpdate(int which);
+s32 __WC24Mail_FlInit();
+void __WC24Mail_FlShutdown();
 
 u32 CalcMailCfgChecksum(void* buffer, u32 length)
 {
@@ -72,6 +77,8 @@ s32 WC24Mail_Init()
 	}
 
 	if(cbk_checksum!=wc24mail_nwc24msgcfg->checksum)return WC24MAIL_EMISMATCHSUM;
+	retval = __WC24Mail_FlInit();
+	if(retval<0)return retval;
 
 	return 0;
 }
@@ -79,13 +86,15 @@ s32 WC24Mail_Init()
 void WC24Mail_Shutdown()
 {
 	if(wc24mail_nwc24msgcfg)free(wc24mail_nwc24msgcfg);
+	wc24mail_nwc24msgcfg = NULL;
+	__WC24Mail_FlShutdown();
 }
 
 s32 __WC24Mail_CfgRead(int which)
 {
-	s32 fd;
+	s32 fd = 0;
 	if(which==0)fd = ISFS_Open("/shared2/wc24/nwc24msg.cbk", ISFS_OPEN_RW);
-	if(which==1)fd = ISFS_Open("/shared2/wc24/nwc24msg.cfg", ISFS_OPEN_RW);
+	if(which)fd = ISFS_Open("/shared2/wc24/nwc24msg.cfg", ISFS_OPEN_RW);
 	if(fd<0)return fd;
 
 	ISFS_Read(fd, wc24mail_nwc24msgcfg, sizeof(NWC24MsgCfg));
@@ -97,9 +106,9 @@ s32 __WC24Mail_CfgRead(int which)
 
 s32 __WC24Mail_CfgUpdate(int which)
 {
-	s32 fd;
+	s32 fd = 0;
 	if(which==0)fd = ISFS_Open("/shared2/wc24/nwc24msg.cbk", ISFS_OPEN_RW);
-	if(which==1)fd = ISFS_Open("/shared2/wc24/nwc24msg.cfg", ISFS_OPEN_RW);
+	if(which)fd = ISFS_Open("/shared2/wc24/nwc24msg.cfg", ISFS_OPEN_RW);
 	if(fd<0)return fd;
 
 	wc24mail_nwc24msgcfg->checksum = CalcMailCfgChecksum(wc24mail_nwc24msgcfg, sizeof(NWC24MsgCfg)-4);
@@ -145,7 +154,61 @@ s32 WC24Mail_WC24SendCreate(u32 filesize)
 	return VFF_CreateVFF("/shared2/wc24/mbox/wc24recv.mbx", filesize);
 }
 
+s32 __WC24Mail_FlInit()
+{
+	s32 fd;
+	wc24mail_nwc24fl_hdr = (NWC24FlHeader*)memalign(32, sizeof(NWC24FlHeader));
+	if(wc24mail_nwc24fl_hdr==NULL)return ENOMEM;
+	memset(wc24mail_nwc24fl_hdr, 0, sizeof(NWC24FlHeader));
 
+	fd = ISFS_Open("/shared2/wc24/nwc24fl.bin", ISFS_OPEN_RW);
+	if(fd<0)return fd;
+
+	ISFS_Read(fd, wc24mail_nwc24fl_hdr, sizeof(NWC24FlHeader));
+
+	wc24mail_nwc24fl_fc = (NWC24Fl_FC*)memalign(32, sizeof(NWC24Fl_FC) * wc24mail_nwc24fl_hdr->max_entries);
+	wc24mail_nwc24fl_entries = (NWC24Fl_Entry*)memalign(32, sizeof(NWC24Fl_Entry) * wc24mail_nwc24fl_hdr->max_entries);
+	if(wc24mail_nwc24fl_fc==NULL || wc24mail_nwc24fl_entries==NULL)
+	{
+		ISFS_Close(fd);
+		__WC24Mail_FlShutdown();
+		return ENOMEM;
+	}
+	memset(wc24mail_nwc24fl_fc, 0, sizeof(NWC24Fl_FC) * wc24mail_nwc24fl_hdr->max_entries);
+	memset(wc24mail_nwc24fl_entries, 0, sizeof(NWC24Fl_Entry) * wc24mail_nwc24fl_hdr->max_entries);
+
+	ISFS_Read(fd, wc24mail_nwc24fl_fc, sizeof(NWC24Fl_FC) * wc24mail_nwc24fl_hdr->max_entries);
+	ISFS_Read(fd, wc24mail_nwc24fl_entries, sizeof(NWC24Fl_Entry) * wc24mail_nwc24fl_hdr->max_entries);
+	ISFS_Close(fd);
+
+	return 0;
+}
+
+void __WC24Mail_FlShutdown()
+{
+	if(wc24mail_nwc24fl_hdr)free(wc24mail_nwc24fl_hdr);
+	if(wc24mail_nwc24fl_fc)free(wc24mail_nwc24fl_fc);
+	if(wc24mail_nwc24fl_entries)free(wc24mail_nwc24fl_entries);
+	wc24mail_nwc24fl_hdr = NULL;
+	wc24mail_nwc24fl_fc = NULL;
+	wc24mail_nwc24fl_entries = NULL;
+}
+
+s32 WC24Mail_FlUpdate()
+{
+	s32 fd;
+	
+	fd = ISFS_Open("/shared2/wc24/nwc24fl.bin", ISFS_OPEN_RW);
+	if(fd<0)return fd;
+
+	ISFS_Write(fd, wc24mail_nwc24fl_hdr, sizeof(NWC24FlHeader));
+	ISFS_Write(fd, wc24mail_nwc24fl_fc, sizeof(NWC24Fl_FC) * wc24mail_nwc24fl_hdr->max_entries);
+	ISFS_Write(fd, wc24mail_nwc24fl_entries, sizeof(NWC24Fl_Entry) * wc24mail_nwc24fl_hdr->max_entries);
+
+	ISFS_Close(fd);
+	
+	return 0;
+}
 
 #endif
 
