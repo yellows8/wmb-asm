@@ -53,6 +53,11 @@ void WC24Mail_Shutdown();
 s32 WC24Mail_CfgRead();//Reads/updates the nwc24msg.cfg buffer in RAM.
 s32 WC24Mail_CfgUpdate();//Updates/writes the NAND config files.
 
+s32 WC24Mail_WC24RecvMount();//Mounts /shared2/wc24/mbox/wc24recv.mbx, this stores recieved WC24 mail.
+s32 WC24Mail_WC24SendMount();//Mounts /shared2/wc24/mbox/wc24send.mbx, mail that will be sent by KD is stored here.
+s32 WC24Mail_WC24RecvCreate(u32 filesize);//Normally doesn't need to be used, unless you completely replace sysmenu. Filesize is 7MB by default when input filesize is zero.
+s32 WC24Mail_WC24SendCreate(u32 filesize);//Filesize is 2MB by default when input filesize is zero.
+
 #ifdef __cplusplus
    }
 #endif

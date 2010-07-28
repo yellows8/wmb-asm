@@ -123,5 +123,27 @@ s32 WC24Mail_CfgUpdate()
 	return retval;
 }
 
+s32 WC24Mail_WC24RecvMount()
+{
+	return VFF_Mount("/shared2/wc24/mbox/wc24recv.mbx");
+}
+
+s32 WC24Mail_WC24SendMount()
+{
+	return VFF_Mount("/shared2/wc24/mbox/wc24send.mbx");
+}
+
+s32 WC24Mail_WC24RecvCreate(u32 filesize)
+{
+	if(filesize==0)filesize = 0x700000;//7MB
+	return VFF_CreateVFF("/shared2/wc24/mbox/wc24recv.mbx", filesize);
+}
+
+s32 WC24Mail_WC24SendCreate(u32 filesize)
+{
+	if(filesize==0)filesize = 0x200000;//2MB
+	return VFF_CreateVFF("/shared2/wc24/mbox/wc24recv.mbx", filesize);
+}
+
 #endif
 
