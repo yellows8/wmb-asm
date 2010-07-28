@@ -145,5 +145,7 @@ s32 WC24Mail_WC24SendCreate(u32 filesize)
 	return VFF_CreateVFF("/shared2/wc24/mbox/wc24recv.mbx", filesize);
 }
 
+
+
 #endif
 

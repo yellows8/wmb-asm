@@ -31,6 +31,11 @@ DEALINGS IN THE SOFTWARE.
 #define WC24MAIL_EINVALSUM -0x3001//Returned when config file(s) read by WC24Mail_Init or WC24Mail_Read have an invalid checksum.
 #define WC24MAIL_EMISMATCHSUM -0x3002//Returned by WC24Mail_Init when the two config files' checksums don't match.
 
+#define WC24MAIL_FCTYPE_WII 1
+#define WC24MAIL_FCTYPE_EMAIL 2
+#define WC24MAIL_FCUNCONFIRMED 1//The confirm field is always WC24MAIL_FCUNCONFIRMED for type email.
+#define WC24MAIL_FCCONFIRMED 2
+
 typedef struct _sNWC24MsgCfg//See also: http://wiibrew.org/wiki//shared2/wc24/nwc24msg.cfg#File_structure
 {
 	u32 magic;
@@ -47,6 +52,49 @@ typedef struct _sNWC24MsgCfg//See also: http://wiibrew.org/wiki//shared2/wc24/nw
 	u32 checksum;
 } NWC24MsgCfg;
 extern NWC24MsgCfg *wc24mail_nwc24msgcfg;
+
+typedef struct _sNWC24Fl//See also: http://wiibrew.org/wiki//shared2/wc24/nwc24fl.bin
+{
+	u32 magic;//0x5763466C "WcFl"
+	u32 unk4;
+	u32 max_entries;
+	u32 num_entries;
+	u8 pad[0x30];
+} NWC24Fl;
+
+typedef struct _sNWC24Fl_FC
+{
+	union
+	{
+		u64 wii_fc;
+		char partial_email[8];//Contains some of the E-Mail address.
+	};
+} sNWC24Fl_FC;
+
+typedef struct _sNWC24Fl_Entry
+{
+	u32 type;
+	u32 confirmed;
+	u16 nickname[12];
+	u32 mii_id;
+	u32 system_id;
+	u8 unk28[24];
+
+	union
+	{
+		struct
+		{
+			u64 wii_fc;
+			u8 pad[0x58];
+		};
+
+		struct
+		{
+			char email_address[0x60];
+		};
+	};
+	u8 unka0[0xa0];
+} NWC24Fl_Entry;
 
 s32 WC24Mail_Init();
 void WC24Mail_Shutdown();
