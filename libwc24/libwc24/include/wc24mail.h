@@ -51,16 +51,15 @@ typedef struct _sNWC24MsgCfg//See also: http://wiibrew.org/wiki//shared2/wc24/nw
 	u32 wc24titleboot_enableflag;//Normally set to zero when sysmenu creates the config files. Enables WC24 title booting when non-zero, see: http://wiibrew.org/wiki/WiiConnect24#WC24_title_booting
 	u32 checksum;
 } NWC24MsgCfg;
-extern NWC24MsgCfg *wc24mail_nwc24msgcfg;
 
-typedef struct _sNWC24Fl//See also: http://wiibrew.org/wiki//shared2/wc24/nwc24fl.bin
+typedef struct _sNWC24FlHeader//See also: http://wiibrew.org/wiki//shared2/wc24/nwc24fl.bin
 {
 	u32 magic;//0x5763466C "WcFl"
 	u32 unk4;
 	u32 max_entries;
 	u32 num_entries;
 	u8 pad[0x30];
-} NWC24Fl;
+} NWC24FlHeader;
 
 typedef struct _sNWC24Fl_FC
 {
@@ -69,7 +68,7 @@ typedef struct _sNWC24Fl_FC
 		u64 wii_fc;
 		char partial_email[8];//Contains some of the E-Mail address.
 	};
-} sNWC24Fl_FC;
+} NWC24Fl_FC;
 
 typedef struct _sNWC24Fl_Entry
 {
@@ -96,6 +95,11 @@ typedef struct _sNWC24Fl_Entry
 	u8 unka0[0xa0];
 } NWC24Fl_Entry;
 
+extern NWC24MsgCfg *wc24mail_nwc24msgcfg;
+extern NWC24FlHeader *wc24mail_nwc24fl_hdr;
+extern NWC24Fl_FC *wc24mail_nwc24fl_fc;
+extern NWC24Fl_Entry *wc24mail_nwc24fl_entries;
+
 s32 WC24Mail_Init();
 void WC24Mail_Shutdown();
 s32 WC24Mail_CfgRead();//Reads/updates the nwc24msg.cfg buffer in RAM.
@@ -105,6 +109,8 @@ s32 WC24Mail_WC24RecvMount();//Mounts /shared2/wc24/mbox/wc24recv.mbx, this stor
 s32 WC24Mail_WC24SendMount();//Mounts /shared2/wc24/mbox/wc24send.mbx, mail that will be sent by KD is stored here.
 s32 WC24Mail_WC24RecvCreate(u32 filesize);//Normally doesn't need to be used, unless you completely replace sysmenu. Filesize is 7MB by default when input filesize is zero.
 s32 WC24Mail_WC24SendCreate(u32 filesize);//Filesize is 2MB by default when input filesize is zero.
+
+s32 WC24Mail_FlUpdate();//Writes the nwc24fl.bin struct buffers to NAND.
 
 #ifdef __cplusplus
    }

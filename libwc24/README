@@ -17,6 +17,7 @@ Download message board mail "annoucements", like Nintendo's system update messag
 Download content immediately. KD_SaveMail can be executed, to save mail immediately without being overwritten by other  mail downloaded immediately.
 Get and set the KD UTC time. KD automatically gets the current UTC time via a time server.
 With wc24app, a WC24 title boot mail entry can be installed. You need to use the WC24 title boot flag enable option in wc24app, to enable and use WC24 title booting. For the initial entry install, download immediately, then shutdown via wiimote when wc24app displays "Done", or with any official software. Once KD processes the mail in idle mode, KD would write the NANDBOOTINFO attachment to NAND, then wakeup the Wii so sysmenu boots the title specified in NANDBOOTINFO. The boot mail entry NANDBOOTINFO attachment causes sysmenu to boot HBC 1.0.7 once the the mail is processed etc. WC24 title booting can be used to fix some bricks, see: http://wiibrew.org/wiki/Brick#WC24_title_booting
+Read/write nwc24msg config files, and read/write nwc24fl.bin. Wc24recv.mbx and wc24send.mbx can be mounted for reading/writing received mail or mail pending to be sent. Code to move mail elsewhere from wc24recv.mbx or to send mail with via wc24send.mbx and the WC24 mail engine can't be written until the mail ctl files are reverse engineered.
 
 Known bugs:
 Bugs not listed here can be reported at: http://code.google.com/p/wmb-asm/issues/list
@@ -34,7 +35,7 @@ Added feature in wc24app to install a WC24 title boot mail entry, see features s
 Added libwc24 support for KD_SaveMail. Wc24app now calls this after downloading each mail entry, so that the following mail downloaded immediately doesn't overwrite the unsaved dlcnt.bin mail content.
 Removed IOS reload code from wc24app, removed HBC identification code from libwc24 and wc24app.
 Added support for KD_SaveMail, this is now called each time wc24app downloads mail immediately.
-Added wc24mail code, for handling reading/writing nwc24msg config files, handling other mail stuff etc.
+Added wc24mail code, for handling reading/writing nwc24msg config files, handling the msg board friends list, mounting the wc24recv.mbx/wc24send.mbx files, etc. See the features section.
 
 v1.0:
 Initial release.
