@@ -135,12 +135,12 @@ s32 WC24Mail_CfgUpdate()
 
 s32 WC24Mail_WC24RecvMount()
 {
-	return VFF_Mount("/shared2/wc24/mbox/wc24recv.mbx");
+	return VFF_Mount("/shared2/wc24/mbox/wc24recv.mbx", NULL);
 }
 
 s32 WC24Mail_WC24SendMount()
 {
-	return VFF_Mount("/shared2/wc24/mbox/wc24send.mbx");
+	return VFF_Mount("/shared2/wc24/mbox/wc24send.mbx", NULL);
 }
 
 s32 WC24Mail_WC24RecvCreate(u32 filesize)
@@ -207,6 +207,8 @@ s32 WC24Mail_Read()
 	ISFS_Read(fd, wc24mail_nwc24fl_fc, sizeof(NWC24Fl_FC) * wc24mail_nwc24fl_hdr->max_entries);
 	ISFS_Read(fd, wc24mail_nwc24fl_entries, sizeof(NWC24Fl_Entry) * wc24mail_nwc24fl_hdr->max_entries);
 	ISFS_Close(fd);
+
+	return 0;
 }
 
 s32 WC24Mail_FlUpdate()

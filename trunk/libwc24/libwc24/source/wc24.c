@@ -477,7 +477,7 @@ s32 WC24_MntCreateDataDirVFF(char *path, u32 filesize)
 	#ifdef HW_RVL
 	if(filesize)retval = VFF_CreateVFF(filename, filesize);
 	#endif
-	if(filesize==0)retval = VFF_Mount(filename);
+	if(filesize==0)retval = VFF_Mount(filename, NULL);
 	free(filename);
 	return retval;
 }

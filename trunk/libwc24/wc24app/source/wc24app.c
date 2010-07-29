@@ -551,14 +551,14 @@ void DoStuff(char *url)
 					FILE *fdlfile = NULL;
 					struct stat filestats;
 					printf("Opening wc24test file in VFF...\n");
-					fdlfile = fopen("vff:/wc24test", "r");
+					fdlfile = fopen("wc24dl.vff:/wc24test", "r");
 					if(fdlfile==NULL)
 					{
 						printf("Failed to open wc24test in VFF.\n");
 					}
 					else
 					{
-						stat("vff:/wc24test", &filestats);
+						stat("wc24dl.vff:/wc24test", &filestats);
 						printf("Filesize: %x\n", (u32)filestats.st_size);
 						if(filestats.st_size)dlbuf = (char*)malloc((u32)filestats.st_size);
 						if(dlbuf)
@@ -595,7 +595,7 @@ void DoStuff(char *url)
 
 					if(which)
 					{
-						DIR *dir = opendir("vff:/");
+						DIR *dir = opendir("wc24dl.vff:/");
 						struct dirent *dent;
 						if(dir==NULL)
 						{
@@ -614,7 +614,7 @@ void DoStuff(char *url)
 					}
 
 					printf("Unmounting VFF...\n");
-					VFF_Unmount();
+					VFF_Unmount("wc24dl.vff");
 					printf("VFF reading done.\n");
 				}
 			}
