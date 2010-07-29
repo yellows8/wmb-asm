@@ -110,6 +110,7 @@ s32 WC24Mail_WC24SendMount();//Mounts /shared2/wc24/mbox/wc24send.mbx, mail that
 s32 WC24Mail_WC24RecvCreate(u32 filesize);//Normally doesn't need to be used, unless you completely replace sysmenu. Filesize is 7MB by default when input filesize is zero.
 s32 WC24Mail_WC24SendCreate(u32 filesize);//Filesize is 2MB by default when input filesize is zero.
 
+s32 WC24Mail_Read();//Updates the read nwc24fl.bin buffers from NAND.
 s32 WC24Mail_FlUpdate();//Writes the nwc24fl.bin struct buffers to NAND.
 
 #ifdef __cplusplus
