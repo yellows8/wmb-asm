@@ -62,7 +62,9 @@ extern unsigned int vff_types[_DRIVES];
 int vff_totalmountedfs = 0;
 
 FIL *vffoptab_fds[VFF_MAXFDS];
+devoptab_t *vffoptab_dev[VFF_MAXFDS];
 char vffoptab_fd_paths[VFF_MAXFDS][256];
+char vffoptab_devmntname[VFF_MAXFDS][256];
 int vffoptab_total_fds = 0;
 
 int _VFF_open_r (struct _reent *r, void *fileStruct, const char *path, int flags, int mode);
@@ -276,19 +278,31 @@ s32 VFF_CreateVFF(char *path, u32 filesize)
 }
 #endif
 
-s32 VFF_Mount(char *path)
+s32 VFF_Mount(char *path, char *mntname)
 {
+	int i;
 	s32 retval;
 	unsigned int type = 0;
-	char isfspath[256];
-	
-	memset(isfspath, 0, 256);
-	/*#ifdef HW_RVL
-	strncpy(isfspath, "isfs:", 255);
-	#endif*/
-	strncat(isfspath, path, 255);
+	char *mntnamebuf;
+	devoptab_t *dotab;
 
-	printf("Mounting %s\n", isfspath);
+	mntnamebuf = (char*)malloc(256);
+	memset(mntnamebuf, 0, 256);
+	if(mntname==NULL)
+	{
+		for(i=strlen(path)-1; i>0; i--)
+		{
+			if(path[i]=='/')
+			{
+				i++;
+				break;
+			}
+		}
+	}
+	if(mntname==NULL)strncpy(mntnamebuf, &path[i], 255);
+	if(mntname)strncpy(mntnamebuf, mntname, 255);
+
+	printf("Mounting %s\n", path);
 	#ifdef HW_RVL
 	if(strchr(path, ':'))type = 1;
 	#else
@@ -297,41 +311,55 @@ s32 VFF_Mount(char *path)
 	#ifdef HW_RVL
 	if(type==0)
 	{
-		disk_vff_handles[vff_totalmountedfs] = (void*)ISFS_Open(isfspath, ISFS_OPEN_RW);
+		disk_vff_handles[vff_totalmountedfs] = (void*)ISFS_Open(path, ISFS_OPEN_RW);
 		if((s32)disk_vff_handles[vff_totalmountedfs]<0)return (s32)disk_vff_handles[vff_totalmountedfs];
 	}
 	#endif
 	if(type==1)
 	{
-		disk_vff_handles[vff_totalmountedfs] = fopen(isfspath, "r+");
+		disk_vff_handles[vff_totalmountedfs] = fopen(path, "r+");
 		if((FILE*)disk_vff_handles[vff_totalmountedfs]==NULL)return -1;
 	}
-	//if(disk_vff_handles[vff_totalmountedfs]==NULL)return -1;
 	vff_types[vff_totalmountedfs] = type;
 	retval = (s32)fvff_mount((BYTE)vff_totalmountedfs, &vff_filesystems[vff_totalmountedfs]);
 	if(retval!=0)return retval;
+	dotab = (devoptab_t*)malloc(sizeof(devoptab_t));
+	memset(dotab, 0, sizeof(devoptab_t));
+	memcpy(dotab, &dotab_vff, sizeof(devoptab_t));
+	dotab->name = mntnamebuf;
+	memset(vffoptab_devmntname[vff_totalmountedfs], 0, 256);
+	strncpy(vffoptab_devmntname[vff_totalmountedfs], mntnamebuf, 255);
+	AddDevice(dotab);
+	vffoptab_dev[vff_totalmountedfs] = dotab;
 	vff_totalmountedfs++;
+
 	#ifdef HW_RVL
 	if(vff_totalmountedfs==1)
 	{
 		memset(vffoptab_fds, 0, VFF_MAXFDS*4);
-		AddDevice(&dotab_vff);
 	}
 	#endif
 	return 0;
 }
 
-s32 VFF_Unmount()
+s32 VFF_Unmount(char *mntname)
 {
+	int i;
 	unsigned int type;
 	vff_totalmountedfs--;
-	type = vff_types[vff_totalmountedfs];
+	for(i=0; i<=vff_totalmountedfs; i++)
+	{
+		if(strncmp(mntname, vffoptab_devmntname[i], 255)==0)break;
+	}
+	type = vff_types[i];
 	#ifdef HW_RVL	
-	if(type==0)ISFS_Close((s32)disk_vff_handles[vff_totalmountedfs]);
+	if(type==0)ISFS_Close((s32)disk_vff_handles[i]);
 	#endif
-	if(type==1)fclose(disk_vff_handles[vff_totalmountedfs]);
+	if(type==1)fclose(disk_vff_handles[i]);
 	#ifdef HW_RVL
-	if(vff_totalmountedfs==0)RemoveDevice("vff");
+	RemoveDevice(mntname);
+	free((void*)vffoptab_dev[i]->name);
+	free(vffoptab_dev[i]);
 	#endif
 	return 0;
 }

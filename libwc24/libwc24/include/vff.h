@@ -58,8 +58,8 @@ typedef struct _fat_dirent
 } __attribute__((packed)) fat_dirent;
 
 s32 VFF_CreateVFF(char *path, u32 filesize);//Creates VFF at path with ISFS. Returns zero on success, ISFS error otherwise.
-s32 VFF_Mount(char *path);//Opens a VFF, only one VFF can be open at a time.
-s32 VFF_Unmount();
+s32 VFF_Mount(char *path, char *mntname);//Mounts a VFF. mntname is the devoptab device name, when NULL the default is the filename specified in path. With the libwc24 Wii build, to mount VFF files from devoptab devices(SD etc), you must include the full path like "fat:/" etc.
+s32 VFF_Unmount(char *mntname);//Unmount a VFF. mntname is the mntname input used with VFF_Mount, when that was NULL this input should the filename from the path.
 u32 VFF_GetFATSize(u32 filesize);
 u32 VFF_GetFATType(u32 filesize);
 
