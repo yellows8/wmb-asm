@@ -2,6 +2,18 @@
 #include <stdlib.h>
 #include <string.h>
 
+unsigned int CalcSum(unsigned int *buf, unsigned int len)
+{
+	unsigned int temp, cursum = 0;
+	int i;
+	for(i=1; i<len/4; i++)
+	{
+		temp = be32toh(buf[i]);
+		cursum+= temp;
+	}
+	return cursum;
+}
+
 int main(int argc, char **argv)
 {
 	unsigned int *buffer;
@@ -23,18 +35,21 @@ int main(int argc, char **argv)
 	fseek(f, 0, SEEK_END);
 	len = ftell(f);
 	fseek(f, 0, SEEK_SET);
+	if(len!=0x1020)
+	{
+		printf("Invalid NANDBOOTINFO size: %x\n", len);
+		fclose(f);
+		return 0;
+	}
 
 	buffer = (unsigned int*)malloc(len);
 	fread(buffer, 1, len, f);
 	oldsum = be32toh(buffer[i]);
 	printf("Original sum: %x\n", oldsum);
 
-	for(i=1; i<len/4; i++)
-	{
-		temp = be32toh(buffer[i]);
-		cursum+= temp;
-	}
+	
 
+	cursum = CalcSum(buffer, len);
 	printf("Current sum: %x\n", cursum);
 	if(oldsum!=cursum)
 	{
