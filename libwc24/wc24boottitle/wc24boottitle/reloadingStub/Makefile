@@ -53,4 +53,4 @@ crt0.o: %.o: %.s
 FORCE:
 
 clean:
-	rm -rf $(objs) $(targets) $(elfs)
+	rm -rf $(objs) $(targets) $(elfs) ../data/loader.bin

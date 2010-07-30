@@ -4,4 +4,5 @@ This is a simple NAND title for use with WC24 title booting. This is a "hidden" 
 Credits:
 The Loadmii reload stub(which is based on the savezelda reload stub) is used for the boot and reload stub. This stub was modified to load from a path stored in MEM2 set by wc24boottitle. This stub was also modified to disable SD loading, for use with future HTTP loading.
 Marcan's TinyLoad. This was modified to support loading GC disc games via BC, and the HBC titleID was adjusted when loading fails for HBC 1.0.7.
+Bushing's patchmii-core for fakesigning code, title crypto code, etc
 
