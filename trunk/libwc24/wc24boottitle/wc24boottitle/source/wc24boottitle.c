@@ -16,6 +16,7 @@ void ProcessArgs(int argc, char **argv)
 {
 	char *path = (char*)0x900FFF00;
 	void (*entry)() = (void*)0x80001800;
+	printf("Processing args...\n");
 	if(argc)
 	{
 		switch(launchcode)
@@ -93,6 +94,7 @@ int main(int argc, char **argv) {
 	if(rmode->viTVMode&VI_NON_INTERLACE) VIDEO_WaitVSync();
 	if(usb_isgeckoalive(1))CON_EnableGecko(1, 1);
 
+	printf("Reading NANDBOOTINFO argv...\n");
 	argv = WII_GetNANDBootInfoArgv(&argc, &launchcode);
 	/*argc = 1;//Uncomment this to test booting discs.
 	launchcode = 2;*/

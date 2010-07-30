@@ -113,6 +113,11 @@ fatInitDefault();
 		return;
 	}
 	printf("Done.\n");
+
+	printf("Launching title...\n");
+	WPAD_Shutdown();
+	retval = WII_LaunchTitle(0x0001000857434254);
+	if(retval<0)printf("WII_LaunchTitle returned %d\n", retval);
 }
 
 //---------------------------------------------------------------------------------
