@@ -44,7 +44,11 @@ Copyright (C) 2008		Segher Boessenkool <segher@kernel.crashing.org>
 
 
 	.text
+	#if defined(WIILOADAPPDEBUG)
+	.section .realmode,"ax",@progbits
+	#else
 	.section .stub,"ax",@progbits
+	#endif
 	.extern _start
 	.align 2
 	.globl _realmode_vector

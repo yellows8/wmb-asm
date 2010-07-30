@@ -25,9 +25,14 @@ INCLUDES	:=
 # options for code generation
 #---------------------------------------------------------------------------------
 
-CFLAGS	= -g -O2 -Wall $(MACHDEP) $(INCLUDE)
+ifeq ($(WIILOADAPPDEBUG),1)
+DEFINES	:=	-DWIILOADAPPDEBUG
+endif
+
+CFLAGS	= -g -O2 -Wall $(MACHDEP) $(INCLUDE) $(DEFINES)
 CXXFLAGS	=	$(CFLAGS)
 
+ASFLAGS	=	$(DEFINES)
 LDFLAGS	=	-g $(MACHDEP) -Wl,-Map,$(notdir $@).map
 
 #---------------------------------------------------------------------------------

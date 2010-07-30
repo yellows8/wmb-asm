@@ -8,6 +8,11 @@
 #include "loader_bin.h"
 #include "tinyload_dol.h"
 
+//Use WIILOADAPPDEBUG=1 for make input param to test wc24boottitle via wiiload directly. Without that option realmode is enabled for title installation, that doesn't work when attempting to boot via HBC.
+//Uncomment these defines to test wc24boottitle via wiiload, without modifying NANDBOOTINFO.
+//#define WIILOADTEST_BOOTHB "/apps/wc24app/boot.dol"//Uncomment this to test booting homebrew, by default when enabled this boots /apps/wc24app/boot.dol from SD.
+//#define WIILOADTEST_BOOTDISC//Uncomment this to test booting discs.
+
 static void *xfb = NULL;
 static GXRModeObj *rmode = NULL;
 u32 launchcode = 0;
@@ -54,6 +59,7 @@ void ProcessArgs(int argc, char **argv)
 	}
 
 	printf("Invalid launchcode or argc: %x %x\n", launchcode, argc);
+	printf("Shutting down...\n");
 	WII_Shutdown();
 }
 
@@ -94,13 +100,22 @@ int main(int argc, char **argv) {
 	if(rmode->viTVMode&VI_NON_INTERLACE) VIDEO_WaitVSync();
 	if(usb_isgeckoalive(1))CON_EnableGecko(1, 1);
 
-	printf("Reading NANDBOOTINFO argv...\n");
+	printf("Getting NANDBOOTINFO argv...\n");
 	argv = WII_GetNANDBootInfoArgv(&argc, &launchcode);
-	/*argc = 1;//Uncomment this to test booting discs.
-	launchcode = 2;*/
-	/*launchcode = 1;//Uncomment this to test booting /apps/wc24app/boot.dol SD.
-	argc = 2;
-	argv[1] = "/apps/wc24app/boot.dol";*/
+	#ifdef WIILOADAPPDEBUG
+
+		#ifdef WIILOADTEST_BOOTDISC	
+		argc = 1;//Uncomment this to test booting discs.
+		launchcode = 2;
+		#endif
+
+		#ifdef WIILOADTEST_BOOTHB	
+		launchcode = 1;//Uncomment this to test booting /apps/wc24app/boot.dol from SD.
+		argc = 2;
+		argv[1] = ;
+		#endif
+
+	#endif
 	ProcessArgs(argc, argv);
 
 	return 0;
