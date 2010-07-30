@@ -36,6 +36,8 @@ Added libwc24 support for KD_SaveMail. Wc24app now calls this after downloading 
 Removed IOS reload code from wc24app, removed HBC identification code from libwc24 and wc24app.
 Added support for KD_SaveMail, this is now called each time wc24app downloads mail immediately.
 Added wc24mail code, for handling reading/writing nwc24msg config files, handling the msg board friends list, mounting the wc24recv.mbx/wc24send.mbx files, etc. See the features section.
+Added app wc24boottitle, see features section.
+NAND title wc24boottitle can be used with WC24 title booting to boot homebrew and game discs with WC24, see the wc24boottitle README.
 
 v1.0:
 Initial release.
