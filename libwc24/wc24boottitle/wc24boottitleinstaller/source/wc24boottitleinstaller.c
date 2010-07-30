@@ -3,6 +3,7 @@
 #include <gccore.h>
 #include <wiiuse/wpad.h>
 #include <string.h>
+#include <fat.h>
 
 #include "sha1.h"
 
@@ -30,9 +31,10 @@ void Install()
 	u16 ci;
 	s32 retval, cfd;
 	tmd *TitleTMD;
+	u8 *encrypt_content;
 	u8 titlekey[16];
 	u8 iv[16];
-
+fatInitDefault();
 	printf("Installing ticket...\n");
 	forge_tik((signed_blob*)title_tik);
 	retval = ES_AddTicket((signed_blob*)title_tik, STD_SIGNED_TIK_SIZE, (signed_blob*)haxx_certs_bin, haxx_certs_bin_size, NULL, 0);
@@ -42,7 +44,7 @@ void Install()
 		return;
 	}
 
-	TitleTMD = SIGNATURE_PAYLOAD(title_tmd);
+	TitleTMD = (tmd*)SIGNATURE_PAYLOAD((signed_blob*)title_tmd);
 	TitleTMD->contents[0].size = (u64)meta_app_size;
 	SHA1((u8*)meta_app, TitleTMD->contents[0].size, TitleTMD->contents[0].hash);
 	TitleTMD->contents[1].size = (u64)wc24boottitle_dol_size;
@@ -66,11 +68,12 @@ void Install()
 	}
 	aes_set_key(titlekey);
 
-	printf("Installing content...\n");
-	for(ci=0; ci<(int)TitleTMD->num_contents; ci++)
+	printf("Installing content...(total %x)\n", (u32)TitleTMD->num_contents);
+	for(ci=0; ci<TitleTMD->num_contents; ci++)
 	{
 		printf("Installing content %x/%x\n", ci+1, (int)TitleTMD->num_contents);
 		
+		memset(iv, 0, 16);
 		memcpy(iv, &ci, 2);
 		retval = ES_AddContentStart(TitleTMD->title_id, TitleTMD->contents[ci].cid);
 		cfd = retval;
@@ -81,8 +84,10 @@ void Install()
 			return;
 		}
 
-		aes_encrypt(iv, contents[ci], contents[ci], TitleTMD->contents[ci].size);
-		retval = ES_AddContentData(cfd, contents[ci], TitleTMD->contents[ci].size);
+		encrypt_content = (u8*)memalign(32, (u32)TitleTMD->contents[ci].size);
+		aes_encrypt(iv, contents[ci], encrypt_content, TitleTMD->contents[ci].size);
+		retval = ES_AddContentData(cfd, encrypt_content, TitleTMD->contents[ci].size);
+		free(encrypt_content);
 		if(retval<0)
 		{
 			printf("ES_AddContentData returned %d\n", retval);
@@ -152,6 +157,7 @@ int main(int argc, char **argv) {
 	// we can use variables for this with format codes too
 	// e.g. printf ("\x1b[%d;%dH", row, column );
 	printf("\x1b[2;0H");
+	Install();
 
 	printf("Press the home button to exit.\n");
 	while(1) {
