@@ -102,7 +102,7 @@ $(BUILD):
 #---------------------------------------------------------------------------------
 clean:
 	@echo clean ...
-	@rm -fr $(BUILD) $(OUTPUT).elf $(OUTPUT).dol
+	@rm -fr $(BUILD) $(OUTPUT).elf $(OUTPUT).dol ../wc24boottitleinstaller/data/wc24boottitle.dol
 
 #---------------------------------------------------------------------------------
 run:
@@ -117,6 +117,10 @@ DEPENDS	:=	$(OFILES:.o=.d)
 #---------------------------------------------------------------------------------
 # main targets
 #---------------------------------------------------------------------------------
+../../wc24boottitleinstaller/data/wc24boottitle.dol: $(OUTPUT).dol
+	@cp $(OUTPUT).dol ../../wc24boottitleinstaller/data/wc24boottitle.dol
+	@padbin 0x20 ../../wc24boottitleinstaller/data/wc24boottitle.dol
+
 $(OUTPUT).dol: $(OUTPUT).elf
 $(OUTPUT).elf: $(OFILES)
 

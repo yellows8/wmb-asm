@@ -39,5 +39,5 @@ upload: $(TARGET_STRIP)
 clean: myclean
 
 myclean:
-	rm -rf $(TARGET_STRIP)
+	rm -rf $(TARGET_STRIP) ../data/tinyload.dol
 
