@@ -1,0 +1,7 @@
+wc24boottitle v1.0 by yellowstar6
+This is a simple NAND title for use with WC24 title booting. This is a "hidden" 00010008 title, it will not appear in sysmenu. This title can boot software specified via NANDBOOTINFO. Depending on the NANDBOOTINFO parameters, software can be booted from either SD, HTTP(not implemented yet), or official game discs via TinyLoad. NANDBOOTINFO launchcode value 1 is for homebrew booting, the path/URL is specified in NANDBOOTINFO argv[1]. NANDBOOTINFO launchcode value 2 boots the game disc, this takes no NANDBOOTINFO arguments. Before booting, NANDBOOTINFO launchcode is set to zero. When wc24boottitle is launched when NANDBOOTINFO launchcode is zero, or any other launchcode that isn't handled, the Wii is shutdown.
+
+Credits:
+The Loadmii reload stub(which is based on the savezelda reload stub) is used for the boot stub. This stub was modified to load from a path stored in MEM2 set by wc24boottitle. This stub was also modified to disable SD loading, for use with future HTTP loading.
+Marcan's TinyLoad. This was modified to support loading GC disc games via BC, and the HBC titleID was adjusted when loading fails for HBC 1.0.7.
+
