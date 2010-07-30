@@ -111,7 +111,7 @@ int main(int argc, char **argv) {
 		#ifdef WIILOADTEST_BOOTHB	
 		launchcode = 1;
 		argc = 2;
-		argv[1] = ;
+		argv[1] = WIILOADTEST_BOOTHB;
 		#endif
 
 	#endif
