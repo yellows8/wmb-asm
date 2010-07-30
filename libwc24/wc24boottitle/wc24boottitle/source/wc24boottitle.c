@@ -37,7 +37,6 @@ void ProcessArgs(int argc, char **argv)
 				printf("Booting homebrew from: %s\n", path);
 				IOS_ReloadIOS(36);
 				SYS_ResetSystem(SYS_SHUTDOWN, 0, 0);
-				//__lwp_thread_stopmultitasking(entry);
 				entry();
 			break;
 
@@ -105,12 +104,12 @@ int main(int argc, char **argv) {
 	#ifdef WIILOADAPPDEBUG
 
 		#ifdef WIILOADTEST_BOOTDISC	
-		argc = 1;//Uncomment this to test booting discs.
+		argc = 1;
 		launchcode = 2;
 		#endif
 
 		#ifdef WIILOADTEST_BOOTHB	
-		launchcode = 1;//Uncomment this to test booting /apps/wc24app/boot.dol from SD.
+		launchcode = 1;
 		argc = 2;
 		argv[1] = ;
 		#endif
