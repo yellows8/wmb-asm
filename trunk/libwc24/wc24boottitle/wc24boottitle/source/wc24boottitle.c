@@ -4,6 +4,9 @@
 #include <wiiuse/wpad.h>
 #include <string.h>
 #include <ogc/machine/processor.h>
+#include <network.h>
+#include <fat.h>
+#include <yellhttp.h>
 
 #include "loader_bin.h"
 #include "tinyload_dol.h"
@@ -16,11 +19,18 @@
 static void *xfb = NULL;
 static GXRModeObj *rmode = NULL;
 u32 launchcode = 0;
+char errstr[256];
 
 void ProcessArgs(int argc, char **argv)
 {
+	int i;
+	s32 retval;
 	char *path = (char*)0x900FFF00;
 	void (*entry)() = (void*)0x80001800;
+	YellHttp_Ctx *ctx;
+	char localip[16];
+	char gateway[16];
+	char netmask[16];
 	printf("Processing args...\n");
 	if(argc)
 	{
@@ -28,13 +38,54 @@ void ProcessArgs(int argc, char **argv)
 		{
 			case 1://Boot homebrew
 				if(argc<2)break;
+				printf("Booting homebrew from: %s\n", argv[1]);
 				memcpy((void*)0x80001800, loader_bin, loader_bin_size);
 				memset(path, 0, 256);
-				strncpy(path, argv[1], 255);
+				if(strncmp(argv[1], "http", 4)==0)
+				{
+					memset(localip, 0, 16);
+					memset(netmask, 0, 16);
+					memset(gateway, 0, 16);
+					printf("Initializing network...\n");
+					retval = if_config (localip, netmask, gateway, true);
+					if(retval<0)
+					{
+						printf("Network init failed: %d\n", retval);
+						break;
+					}
+					ctx = YellHttp_InitCtx();
+					if(ctx==NULL)
+					{
+						printf("Failed to init/alloc http ctx.\n");
+						break;
+					}
+
+					printf("Downloading %s...\n", argv[1]);
+					retval = YellHttp_ExecRequest(ctx, argv[1]);
+					YellHttp_FreeCtx(ctx);
+
+					if(retval<0)
+					{
+						memset(errstr, 0, 256);
+						YellHttp_GetErrorStr(retval, errstr, 256);
+						printf("retval = %d str: %s", retval, errstr);
+						break;
+					}
+					for(i=strlen(argv[1])-1; i>0; i--)
+					{
+						if(argv[1][i]=='/')break;
+					}
+					i++;
+					strncpy(path, &argv[1][i], 255);
+				}
+				else
+				{
+					strncpy(path, argv[1], 255);
+				}
 				DCFlushRange((void*)0x80001800, loader_bin_size);
 				DCFlushRange(path, 256);
 				WII_SetNANDBootInfoLaunchcode(0);
-				printf("Booting homebrew from: %s\n", path);
+				printf("Booting: %s\n", path);
 				IOS_ReloadIOS(36);
 				SYS_ResetSystem(SYS_SHUTDOWN, 0, 0);
 				entry();
@@ -102,7 +153,6 @@ int main(int argc, char **argv) {
 	printf("Getting NANDBOOTINFO argv...\n");
 	argv = WII_GetNANDBootInfoArgv(&argc, &launchcode);
 	#ifdef WIILOADAPPDEBUG
-
 		#ifdef WIILOADTEST_BOOTDISC	
 		argc = 1;
 		launchcode = 2;
@@ -113,8 +163,8 @@ int main(int argc, char **argv) {
 		argc = 2;
 		argv[1] = WIILOADTEST_BOOTHB;
 		#endif
-
 	#endif
+	if(!fatInitDefault())printf("FAT init failed.\n");
 	ProcessArgs(argc, argv);
 
 	return 0;
