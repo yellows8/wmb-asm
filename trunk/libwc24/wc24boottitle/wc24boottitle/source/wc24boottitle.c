@@ -27,11 +27,33 @@ void ProcessArgs(int argc, char **argv)
 	s32 retval;
 	char *path = (char*)0x900FFF00;
 	void (*entry)() = (void*)0x80001800;
+	u64 curtitleid, nandboot_titleid;
 	YellHttp_Ctx *ctx;
 	char localip[16];
 	char gateway[16];
 	char netmask[16];
+
 	printf("Processing args...\n");
+	#ifndef WIILOADAPPDEBUG
+	if(argc)
+	{
+		retval = ES_GetTitleID(&curtitleid);
+		if(retval<0)
+		{
+			printf("ES_GetTitleID returned %d\n", retval);
+		}
+		else
+		{
+			sscanf(argv[0], "%016llx", &nandboot_titleid);
+			if(curtitleid!=nandboot_titleid)
+			{
+				printf("Current titleID and titleID from NANDBOOTINFO don't match: %016llx %s\n", curtitleid, argv[1]);
+				argc = 0;
+			}
+		}
+	}
+	#endif
+
 	if(argc)
 	{
 		switch(launchcode)
@@ -86,7 +108,7 @@ void ProcessArgs(int argc, char **argv)
 				DCFlushRange(path, 256);
 				WII_SetNANDBootInfoLaunchcode(0);
 				printf("Booting: %s\n", path);
-				IOS_ReloadIOS(36);
+				//IOS_ReloadIOS(36);
 				SYS_ResetSystem(SYS_SHUTDOWN, 0, 0);
 				entry();
 			break;
@@ -108,7 +130,7 @@ void ProcessArgs(int argc, char **argv)
 		}
 	}
 
-	printf("Invalid launchcode or argc: %x %x\n", launchcode, argc);
+	printf("Invalid launchcode or argc, or invalid titleID: %x %x\n", launchcode, argc);
 	printf("Shutting down...\n");
 	WII_Shutdown();
 }

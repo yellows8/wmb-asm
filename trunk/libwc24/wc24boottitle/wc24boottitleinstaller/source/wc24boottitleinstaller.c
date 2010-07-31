@@ -3,6 +3,7 @@
 #include <gccore.h>
 #include <wiiuse/wpad.h>
 #include <string.h>
+#include <malloc.h>
 #include <fat.h>
 
 #include "sha1.h"
@@ -26,15 +27,29 @@ int forge_tik(signed_blob *s_tik);
 
 u8 *contents[2] = {(u8*)meta_app, (u8*)wc24boottitle_dol};
 
+u64 wc24boottitle_titleID = 0x0001000857434254LL;
+
 void Install()
 {
+	int which = -1;;
 	u16 ci;
 	s32 retval, cfd;
 	tmd *TitleTMD;
 	u8 *encrypt_content;
 	u8 titlekey[16];
 	u8 iv[16];
-fatInitDefault();
+
+	printf("Install wc24boottitle? Press A to install, press B to skip install.\n");
+	while(1)
+	{
+		WPAD_ScanPads();
+		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_A)which = 0;
+		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_B)which = 1;
+		if(which>-1)break;
+		VIDEO_WaitVSync();
+	}
+	if(which==1)return;
+
 	printf("Installing ticket...\n");
 	forge_tik((signed_blob*)title_tik);
 	retval = ES_AddTicket((signed_blob*)title_tik, STD_SIGNED_TIK_SIZE, (signed_blob*)haxx_certs_bin, haxx_certs_bin_size, NULL, 0);
@@ -116,8 +131,62 @@ fatInitDefault();
 
 	printf("Launching title...\n");
 	WPAD_Shutdown();
-	retval = WII_LaunchTitle(0x0001000857434254);
+	retval = WII_LaunchTitle(wc24boottitle_titleID);
 	if(retval<0)printf("WII_LaunchTitle returned %d\n", retval);
+}
+
+void Delete()
+{
+	u32 retval, numviews;
+	int which = -1;
+	tikview *views;
+	retval = ES_GetNumTicketViews(wc24boottitle_titleID, &numviews);
+	if(retval<0 || numviews>4)return;
+
+	printf("Detected wc24boottitle, delete the title? Press A to delete, press B to skip deleting.\n");
+	while(1)
+	{
+		WPAD_ScanPads();
+		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_A)which = 0;
+		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_B)which = 1;
+		if(which>-1)break;
+		VIDEO_WaitVSync();
+	}
+	if(which==1)return;
+
+	printf("Deleting...\n");
+	views = (tikview*)memalign(32, sizeof(tikview) * numviews);
+	memset(views, 0, sizeof(tikview) * numviews);
+	retval = ES_GetTicketViews(wc24boottitle_titleID, views, numviews);
+	if(retval<0)
+	{
+		printf("ES_GetTicketViews returned %d", retval);
+		free(views);
+		return;
+	}
+
+	retval = ES_DeleteTitleContent(wc24boottitle_titleID);
+	if(retval<0)
+	{
+		printf("ES_DeleteTitleContent returned %d", retval);
+		free(views);
+		return;
+	}
+	retval = ES_DeleteTitle(wc24boottitle_titleID);
+	if(retval<0)
+	{
+		printf("ES_DeleteTitle returned %d", retval);
+		free(views);
+		return;
+	}
+
+	retval = ES_DeleteTicket(views);
+	free(views);
+	if(retval<0)
+	{
+		printf("ES_DeleteTitle returned %d", retval);
+		return;
+	}
 }
 
 //---------------------------------------------------------------------------------
@@ -157,6 +226,8 @@ int main(int argc, char **argv) {
 	if(rmode->viTVMode&VI_NON_INTERLACE) VIDEO_WaitVSync();
 	if(usb_isgeckoalive(1))CON_EnableGecko(1, 1);
 
+	fatInitDefault();
+	Delete();
 	Install();
 
 	printf("Press the home button to exit.\n");
