@@ -58,7 +58,7 @@ typedef struct {//From libogc.
 #define RETURN_TO_SETTINGS 1
 #define RETURN_TO_ARGS 2
 
-#define LANSRVR_ADDR "192.168.1.200"
+#define LANSRVR_ADDR "192.168.1.33"
 
 static u32 __CalcChecksum(u32 *buf, int len)//Based on function from libogc.
 {
@@ -84,8 +84,8 @@ void DoStuff(char *url)
 	memset(wiibrewnews_url, 0, 256);
 	memset(wiibrewreleases_url, 0, 256);	
 	snprintf(hackmii_url, 255, "http://%s/hackmii/index.php", LANSRVR_ADDR);
-	snprintf(wiibrewnews_url, 255, "http://%s/wiibrew/releases/index.php", LANSRVR_ADDR);
-	snprintf(wiibrewreleases_url, 255, "http://%s/wiibrew/news/index.php", LANSRVR_ADDR);
+	snprintf(wiibrewnews_url, 255, "http://%s/wiibrew/releases/index.php", "iwconfig.net/~yellows8");
+	snprintf(wiibrewreleases_url, 255, "http://%s/wiibrew/news/index.php", "iwconfig.net/~yellows8");
 	memset(mailurl, 0, 256);
 	strncpy(mailurl, url, 255);
 
