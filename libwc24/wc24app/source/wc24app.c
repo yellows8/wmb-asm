@@ -39,6 +39,7 @@ char mailurl[256];
 char hackmii_url[256];
 char wiibrewnews_url[256];
 char wiibrewreleases_url[256];
+char url_id[256];//Used for anonymous info added to the URL, contains the consoleID.
 
 void IOSReload_SelectMenu();
 
@@ -79,15 +80,29 @@ void DoStuff(char *url)
 	u32 triggers[2];
 	u64 titleid;
 	u64 homebrewtitleid = 0x0001000848424D4CLL;//TitleID for wiibrew+hackmii mail: 00010008-HBML. This is only an ID used for WC24, it's not a real NAND title.
+	u32 consoleID = 1;
 
 	memset(hackmii_url, 0, 256);
 	memset(wiibrewnews_url, 0, 256);
-	memset(wiibrewreleases_url, 0, 256);	
+	memset(wiibrewreleases_url, 0, 256);
+
+	retval = ES_GetDeviceID(&consoleID);
+	if(retval<0)
+	{
+		printf("ES_GetDeviceID returned %d\n", retval);
+	}
+	memset(url_id, 0, 256);
+	snprintf(url_id, 255, "?cid=%08x", consoleID);
+
 	snprintf(hackmii_url, 255, "http://%s/hackmii/index.php", LANSRVR_ADDR);
 	snprintf(wiibrewnews_url, 255, "http://%s/wiibrew/releases/index.php", "iwconfig.net/~yellows8");
 	snprintf(wiibrewreleases_url, 255, "http://%s/wiibrew/news/index.php", "iwconfig.net/~yellows8");
 	memset(mailurl, 0, 256);
 	strncpy(mailurl, url, 255);
+	strncat(url, ".php", 255);
+	strncat(url, url_id, 255);
+	strncat(mailurl, ".php", 255);
+	strncat(mailurl, url_id, 255);
 
 	printf("Use normal mail URL, or boot mail URL? Boot mail will wake up the Wii from idle mode to boot HBC, if you use(d) the option to enable WC24 title booting. Once the entry is installed with WC24 title booting enabled, you must either shutdown with the wiimote when \"Done\" is displayed, or with official software, in order for title booting to work.(A = normal mail, B = boot mail)\n");
 	which = -1;
