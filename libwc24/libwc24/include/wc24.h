@@ -132,7 +132,7 @@ s32 WC24_DeleteRecord(u32 index);//Deletes a record and entry.
 s32 WC24_MntCreateDataDirVFF(char *path, u32 filesize, int delvff);//Create a VFF when filesize is not zero, mount it otherwise. Path is relative to current title data dir without an leading '/'. When mounting the mntname is the path filename. See vff.h for the delvff param.
 s32 WC24_CreateWC24DlVFF(u32 filesize, int delvff);//Create wc24dl.vff in the current title's data dir. See vff.h for the delvff param.
 s32 WC24_MountWC24DlVFF();//Mounts wc24dl.vff in the current title's data dir, as mntname wc24dl.vff.
-s32 WC24_CreateWC24ScrVFF(u32 filesize, int delvff);//Create wc24scr.vff in the current title's data dir, used to store CHANS scripts that process certain mail meant for this title specified by the X-Wii-AppId mail header. See vff.h for the delvff param.
+s32 WC24_CreateWC24ScrVFF(u32 filesize, int delvff);//Create wc24scr.vff in the current title's data dir, used to store CHANS scripts that process certain mail meant for this title specified by the X-Wii-AppID mail header. See vff.h for the delvff param.
 s32 WC24_MountWC24ScrVFF();//Mounts wc24scr.vff in the current title's data dir, as mntname wc24scr.vff.
 time_t WC24_TimestampToSeconds(u32 timestamp);
 u32 WC24_SecondsToTimestamp(time_t timestamp);
