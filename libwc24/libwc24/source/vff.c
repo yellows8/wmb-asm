@@ -170,7 +170,6 @@ s32 VFF_CreateVFF(char *path, u32 filesize, int delvff)
 		}
 		if(retval<0)
 		{
-			printf("Failed to create file\n");
 			free(header);
 			free(fat);
 			return retval;
@@ -179,7 +178,6 @@ s32 VFF_CreateVFF(char *path, u32 filesize, int delvff)
 	retval = ISFS_Open(path, ISFS_OPEN_RW);
 	if(retval<0)
 	{
-		printf("Failed to open file\n");
 		free(header);
 		free(fat);
 		return retval;
@@ -200,7 +198,6 @@ s32 VFF_CreateVFF(char *path, u32 filesize, int delvff)
 	fat[0] = 0xf0ff;
 	fat[1] = 0xffff;
 	fat[2] = 0x0f00;
-	//fat[2] = 0xffff;
 	retval = ISFS_Seek(fd, 0x20, SEEK_SET);
 	if(retval<0)
 	{
@@ -260,10 +257,9 @@ s32 VFF_CreateVFF(char *path, u32 filesize, int delvff)
 		retval = ISFS_Write(fd, buf, 0x20);
 		if(retval<0)
 		{
-			printf("Write fail: %d\n", retval);
 			ISFS_Close(fd);
 			free(buf);
-			return -1;
+			return retval;
 		}
 		i+=0x20;
 	}

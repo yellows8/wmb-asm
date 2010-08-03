@@ -74,11 +74,12 @@ static u32 __CalcChecksum(u32 *buf, int len)//Based on function from libogc.
 void DoStuff(char *url)
 {
 	s32 retval;
-	int which, i; //, enableboot;
+	int which, i;
 	u32 triggers[2];
 	u64 titleid;
 	u64 homebrewtitleid = 0x0001000848424D4CLL;//TitleID for wiibrew+hackmii mail: 00010008-HBML. This is only an ID used for WC24, it's not a real NAND title.
 	u32 consoleID = 1;
+	char *hbml_srvr = (char*)"iwconfig.net/~yellows8";
 
 	memset(hackmii_url, 0, 256);
 	memset(wiibrewnews_url, 0, 256);
@@ -92,9 +93,10 @@ void DoStuff(char *url)
 	memset(url_id, 0, 256);
 	snprintf(url_id, 255, "?cid=%08x", consoleID);
 
+	if(strstr(url, LANSRVR_ADDR))hbml_srvr = LANSRVR_ADDR;
 	snprintf(hackmii_url, 255, "http://%s/hackmii/index.php%s", LANSRVR_ADDR, url_id);
-	snprintf(wiibrewnews_url, 255, "http://%s/wiibrew/releases/index.php%s", "iwconfig.net/~yellows8", url_id);
-	snprintf(wiibrewreleases_url, 255, "http://%s/wiibrew/news/index.php%s", "iwconfig.net/~yellows8", url_id);
+	snprintf(wiibrewnews_url, 255, "http://%s/wiibrew/releases/index.php%s", hbml_srvr, url_id);
+	snprintf(wiibrewreleases_url, 255, "http://%s/wiibrew/news/index.php%s", hbml_srvr, url_id);
 	
 	memset(mailurl, 0, 256);
 	strncpy(mailurl, url, 255);
