@@ -3,6 +3,8 @@
 #include <gccore.h>
 #include <wiiuse/wpad.h>
 #include <string.h>
+#include <ogc/machine/processor.h>
+#include <unistd.h>
 #include <malloc.h>
 #include <fat.h>
 
@@ -13,6 +15,10 @@
 #include "haxx_certs_bin.h"
 #include "meta_app.h"
 #include "wc24boottitle_dol.h"
+
+#ifndef BIT
+#define BIT(n) 1<<n
+#endif
 
 static void *xfb = NULL;
 static GXRModeObj *rmode = NULL;
@@ -29,7 +35,7 @@ u8 *contents[2] = {(u8*)meta_app, (u8*)wc24boottitle_dol};
 
 u64 wc24boottitle_titleID = 0x0001000857434254LL;
 
-void Install()
+void Install(int arg)
 {
 	int which = -1;;
 	u16 ci;
@@ -43,8 +49,8 @@ void Install()
 	while(1)
 	{
 		WPAD_ScanPads();
-		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_A)which = 0;
-		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_B)which = 1;
+		if((WPAD_ButtonsDown(0) & WPAD_BUTTON_A) || (arg & BIT(0)))which = 0;
+		if((WPAD_ButtonsDown(0) & WPAD_BUTTON_B) || (arg & BIT(1)))which = 1;
 		if(which>-1)break;
 		VIDEO_WaitVSync();
 	}
@@ -135,7 +141,7 @@ void Install()
 	if(retval<0)printf("WII_LaunchTitle returned %d\n", retval);
 }
 
-void Delete()
+void Delete(int arg)
 {
 	u32 retval, numviews = 0;
 	int which = -1;
@@ -143,12 +149,12 @@ void Delete()
 	retval = ES_GetNumTicketViews(wc24boottitle_titleID, &numviews);
 	if(retval<0 || numviews>4)return;
 
-	printf("\nDetected wc24boottitle, delete the title? Press A to delete, press B to skip deleting.\n");
+	printf("Detected wc24boottitle, delete the title? Press A to delete, press B to skip deleting.\n");
 	while(1)
 	{
 		WPAD_ScanPads();
-		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_A)which = 0;
-		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_B)which = 1;
+		if((WPAD_ButtonsDown(0) & WPAD_BUTTON_A) || ((arg>>2) & BIT(0)))which = 0;
+		if((WPAD_ButtonsDown(0) & WPAD_BUTTON_B) || ((arg>>2) & BIT(1)))which = 1;
 		if(which>-1)break;
 		VIDEO_WaitVSync();
 	}
@@ -192,6 +198,8 @@ void Delete()
 //---------------------------------------------------------------------------------
 int main(int argc, char **argv) {
 //---------------------------------------------------------------------------------
+	int arg = 0;
+	int temp = 0;
 	IOS_ReloadIOS(36);
 	// Initialise the video system
 	VIDEO_Init();
@@ -226,9 +234,27 @@ int main(int argc, char **argv) {
 	if(rmode->viTVMode&VI_NON_INTERLACE) VIDEO_WaitVSync();
 	if(usb_isgeckoalive(1))CON_EnableGecko(1, 1);
 
+	printf("\n\n");
+	if(argc>=2)
+	{
+		sscanf(argv[1], "%x", &temp);
+		if(temp==0)temp = 2;
+		arg |= temp & 3;
+		printf("Install argument specified, wc24bootitle will %s\n", temp==1?"be installed":"not be installed");
+	}
+
+	if(argc>=3)
+	{
+		sscanf(argv[2], "%x", &temp);
+		if(temp==0)temp = 2;
+		arg |= (temp<<2) & (3<<2);
+		printf("Delete argument specified, wc24bootitle will %s\n", temp==1?"be deleted":"not be deleted");
+	}
+	if(arg)printf("Arguments(%x) were specified, this installer will automatically exit if install/delete fails or if wc24boottitle isn't installed.\n", arg);
+
 	fatInitDefault();
-	Delete();
-	Install();
+	Delete(arg);
+	Install(arg);
 
 	printf("Press the home button to exit.\n");
 	while(1) {
@@ -241,7 +267,7 @@ int main(int argc, char **argv) {
 		u32 pressed = WPAD_ButtonsDown(0);
 
 		// We return to the launcher application via exit
-		if(pressed & WPAD_BUTTON_HOME) exit(0);
+		if((pressed & WPAD_BUTTON_HOME) || arg) exit(0);
 
 		// Wait for the next frame
 		VIDEO_WaitVSync();
