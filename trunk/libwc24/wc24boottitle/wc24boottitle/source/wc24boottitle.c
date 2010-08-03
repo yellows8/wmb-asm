@@ -5,8 +5,11 @@
 #include <string.h>
 #include <ogc/machine/processor.h>
 #include <network.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <fat.h>
 #include <yellhttp.h>
+#include <wc24/wc24.h>
 
 #include "loader_bin.h"
 #include "tinyload_dol.h"
@@ -16,18 +19,28 @@
 //#define WIILOADTEST_BOOTHB "/apps/wc24app/boot.dol"//Uncomment this to test booting homebrew, by default when enabled this boots /apps/wc24app/boot.dol from SD.
 //#define WIILOADTEST_BOOTDISC//Uncomment this to test booting discs.
 
+#define WC24BOOTTITLE_VERSION "Stable: v1.0.0 0"
+#define SRVR_BASEURL "http://192.168.1.33/"
+
 static void *xfb = NULL;
 static GXRModeObj *rmode = NULL;
-u32 launchcode = 0;
-char errstr[256];
 
-void ProcessArgs(int argc, char **argv)
+u32 launchcode = 0;
+u64 curtitleid = 0;
+nwc24dl_record myrec;
+nwc24dl_entry myent;
+
+char errstr[256];
+char url[256];
+char url_id[256];
+
+void ProcessArgs(int argc, char **argv, int boothbdirect)
 {
 	int i;
 	s32 retval;
 	char *path = (char*)0x900FFF00;
 	void (*entry)() = (void*)0x80001800;
-	u64 curtitleid, nandboot_titleid;
+	u64 nandboot_titleid;
 	YellHttp_Ctx *ctx;
 	char localip[16];
 	char gateway[16];
@@ -35,79 +48,83 @@ void ProcessArgs(int argc, char **argv)
 
 	printf("Processing args...\n");
 	#ifndef WIILOADAPPDEBUG
-	if(argc)
+	if(argc && !boothbdirect)
 	{
-		retval = ES_GetTitleID(&curtitleid);
-		if(retval<0)
+		sscanf(argv[0], "%016llx", &nandboot_titleid);
+		if(curtitleid!=nandboot_titleid)
 		{
-			printf("ES_GetTitleID returned %d\n", retval);
-		}
-		else
-		{
-			sscanf(argv[0], "%016llx", &nandboot_titleid);
-			if(curtitleid!=nandboot_titleid)
-			{
-				printf("Current titleID and titleID from NANDBOOTINFO don't match: %016llx %s\n", curtitleid, argv[1]);
-				argc = 0;
-			}
+			printf("Current titleID and titleID from NANDBOOTINFO don't match: %016llx %s\n", curtitleid, argv[1]);
+			argc = 0;
 		}
 	}
 	#endif
 
 	if(argc)
 	{
+		if(boothbdirect)launchcode = 1;
 		switch(launchcode)
 		{
 			case 1://Boot homebrew
 				if(argc<2)break;
-				printf("Booting homebrew from: %s\n", argv[1]);
+				if(!boothbdirect)printf("Booting homebrew from: %s\n", argv[1]);
 				memcpy((void*)0x80001800, loader_bin, loader_bin_size);
 				memset(path, 0, 256);
-				if(strncmp(argv[1], "http", 4)==0)
+				if(!boothbdirect)
 				{
-					memset(localip, 0, 16);
-					memset(netmask, 0, 16);
-					memset(gateway, 0, 16);
-					printf("Initializing network...\n");
-					retval = if_config (localip, netmask, gateway, true);
-					if(retval<0)
+					if(strncmp(argv[1], "http", 4)==0)
 					{
-						printf("Network init failed: %d\n", retval);
-						break;
-					}
-					ctx = YellHttp_InitCtx();
-					if(ctx==NULL)
-					{
-						printf("Failed to init/alloc http ctx.\n");
-						break;
-					}
+						memset(localip, 0, 16);
+						memset(netmask, 0, 16);
+						memset(gateway, 0, 16);
+						printf("Initializing network...\n");
+						retval = if_config (localip, netmask, gateway, true);
+						if(retval<0)
+						{
+							printf("Network init failed: %d\n", retval);
+							break;
+						}
+						ctx = YellHttp_InitCtx();
+						if(ctx==NULL)
+						{
+							printf("Failed to init/alloc http ctx.\n");
+							break;
+						}
 
-					printf("Downloading %s...\n", argv[1]);
-					retval = YellHttp_ExecRequest(ctx, argv[1]);
-					YellHttp_FreeCtx(ctx);
+						printf("Downloading %s...\n", argv[1]);
+						retval = YellHttp_ExecRequest(ctx, argv[1]);
+						YellHttp_FreeCtx(ctx);
 
-					if(retval<0)
-					{
-						memset(errstr, 0, 256);
-						YellHttp_GetErrorStr(retval, errstr, 256);
-						printf("retval = %d str: %s", retval, errstr);
-						break;
+						if(retval<0)
+						{
+							memset(errstr, 0, 256);
+							YellHttp_GetErrorStr(retval, errstr, 256);
+							printf("retval = %d str: %s", retval, errstr);
+							break;
+						}
+						for(i=strlen(argv[1])-1; i>0; i--)
+						{
+							if(argv[1][i]=='/')break;
+						}
+						i++;
+						strncpy(path, &argv[1][i], 255);
 					}
-					for(i=strlen(argv[1])-1; i>0; i--)
+					else
 					{
-						if(argv[1][i]=='/')break;
+						strncpy(path, argv[1], 255);
 					}
-					i++;
-					strncpy(path, &argv[1][i], 255);
+				}
+
+				DCFlushRange((void*)0x80001800, loader_bin_size);
+				DCFlushRange(path, 256);
+				if(!boothbdirect)WII_SetNANDBootInfoLaunchcode(0);
+				if(!boothbdirect)
+				{
+					printf("Booting: %s\n", path);
 				}
 				else
 				{
-					strncpy(path, argv[1], 255);
+					printf("Booting homebrew directly from RAM buffer.\n");
 				}
-				DCFlushRange((void*)0x80001800, loader_bin_size);
-				DCFlushRange(path, 256);
-				WII_SetNANDBootInfoLaunchcode(0);
-				printf("Booting: %s\n", path);
 				//IOS_ReloadIOS(36);
 				SYS_ResetSystem(SYS_SHUTDOWN, 0, 0);
 				entry();
@@ -135,9 +152,239 @@ void ProcessArgs(int argc, char **argv)
 	WII_Shutdown();
 }
 
+s32 ProcessWC24()//This installs entries for wc24boottitle auto-update, and processes the downloaded auto-update content downloaded via WC24. When wc24boottitle is deleted by the installer app, these entries aren't deleted by the installer app. When KD downloads title data entries, and can't find wc24dl.vff, KD deletes the entries since the data dir containing wc24dl.vff was deleted by ES when the installer app deleted wc24boottitle.
+{
+	s32 retval;
+	u32 entry_bitmask = 0;
+	FILE *fdol = NULL, *fver = NULL, *fconfig = NULL;
+	int i;
+	char *configbuf;
+	char *updateinfobuf;
+	char *configlines[0x10];
+	char *updateinfolines[0x10];
+	struct stat dolstats;
+	u32 consoleID;
+
+	printf("Initializing WC24...\n");
+	retval = WC24_Init();
+	if(retval<0)
+	{
+		printf("WC24_Init returned %d\n", retval);
+		return retval;
+	}
+	curtitleid = WC24_GetTitleID();
+
+	retval = WC24_CreateWC24DlVFF(0x100000, 0);//2MB
+	if(retval<0 && retval!=-105)//Return when VFF creation fails, except when the VFF already exists.
+	{
+		printf("WC24_CreateWC24DlVFF returned %d\n", retval);
+		WC24_Shutdown();
+		return retval;
+	}
+
+	retval = ES_GetDeviceID(&consoleID);
+	if(retval<0)
+	{
+		printf("ES_GetDeviceID returned %d\n", retval);
+	}
+	memset(url_id, 0, 256);
+	snprintf(url_id, 255, ".php?cid=%08x", consoleID);
+
+	memset(url, 0, 256);
+	snprintf(url, 255, "%swc24boottitle_autoupdate/installer.dol%s", SRVR_BASEURL, url_id);
+	retval = WC24_FindEntry((u32)curtitleid, "installer.dol", &myent, 1);
+	if(retval>=0)
+	{
+		if(strncmp(myent.url, url, 0xec))
+		{
+			WC24_DeleteRecord(retval);
+			retval = LIBWC24_ENOENT;
+		}
+		else
+		{
+			retval = -1;
+		}
+	}
+
+	if(retval==LIBWC24_ENOENT)//Only create the entry when it doesn't exist. When there's an entry with "installer.dol" for the URL filename but the whole URL doesn't match the one we're going to install, that entry is deleted then we create a new one.
+	{
+		printf("Creating record+entry for wc24boottitle auto-update installer...\n");
+		retval = WC24_CreateRecord(&myrec, &myent, 0, 0, 0x4842, WC24_TYPE_TITLEDATA, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_RSA_VERIFY_DISABLE, 0x3c, 0x5a0, url, "installer.dol");//Set the dl_freq fields to download hourly and daily.
+		if(retval<0)
+		{
+			printf("WC24_CreateRecord returned %d\n", retval);
+			WC24_Shutdown();
+			return retval;
+		}
+		entry_bitmask |= BIT(0);
+	}
+
+	memset(url, 0, 256);
+	snprintf(url, 255, "%swc24boottitle_autoupdate/verinfo%s", SRVR_BASEURL, url_id);
+	retval = WC24_FindEntry((u32)curtitleid, "verinfo", &myent, 1);
+	if(retval>=0)
+	{
+		if(strncmp(myent.url, url, 0xec))
+		{
+			WC24_DeleteRecord(retval);
+			retval = LIBWC24_ENOENT;
+		}
+		else
+		{
+			retval = -1;
+		}
+	}
+
+	if(retval==LIBWC24_ENOENT)
+	{
+		printf("Creating record+entry for wc24boottitle auto-update version info...\n");
+		retval = WC24_CreateRecord(&myrec, &myent, 0, 0, 0x4842, WC24_TYPE_TITLEDATA, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_RSA_VERIFY_DISABLE, 0x3c, 0x5a0, url, "verinfo");//Set the dl_freq fields to download hourly and daily.
+		if(retval<0)
+		{
+			printf("WC24_CreateRecord returned %d\n", retval);
+			WC24_Shutdown();
+			return retval;
+		}
+		entry_bitmask |= BIT(1);
+	}
+
+	if(entry_bitmask)
+	{
+		printf("New entries were installed, downloading the content immediately...\n");
+
+		if(entry_bitmask & BIT(0))
+		{
+			memset(url, 0, 256);
+			snprintf(url, 255, "%swc24boottitle_autoupdate/installer.dol", SRVR_BASEURL);
+			retval = WC24_FindEntry((u32)curtitleid, url, &myent, 0);
+			if(retval<0)
+			{
+				printf("Failed to find entry for wc24boottitle auto-update installer.\n");
+			}
+			else
+			{
+				retval = KD_Download(KD_DOWNLOADFLAGS_MANUAL, (u16)retval, 0x0);
+				if(retval<0)printf("KD_Download for wc24boottitle auto-update installer entry failed: %d\n", retval);
+			}
+		}
+
+		if(entry_bitmask & BIT(1))
+		{
+			memset(url, 0, 256);
+			snprintf(url, 255, "%swc24boottitle_autoupdate/verinfo", SRVR_BASEURL);
+			retval = WC24_FindEntry((u32)curtitleid, url, &myent, 0);
+			if(retval<0)
+			{
+				printf("Failed to find entry for wc24boottitle auto-update version info.\n");
+			}
+			else
+			{
+				retval = KD_Download(KD_DOWNLOADFLAGS_MANUAL, (u16)retval, 0x0);
+				if(retval<0)printf("KD_Download for wc24boottitle auto-update version info entry failed: %d\n", retval);
+			}
+		}
+	}
+
+	printf("Processing content in wc24dl.vff...\n");
+	retval = WC24_MountWC24DlVFF();
+	if(retval<0)
+	{
+		printf("WC24_MountWC24DlVFF returned %d\n", retval);
+		WC24_Shutdown();
+		return retval;
+	}
+
+	fdol = fopen("wc24dl.vff:/installer.dol", "r");
+	if(fdol==NULL)
+	{
+		printf("wc24dl.vff:/installer.dol doesn't exist, no update is available.\n");
+	}
+	else
+	{
+		fver = fopen("wc24dl.vff:/verinfo", "r");
+		if(fver==NULL)
+		{
+			printf("wc24dl.vff:/verinfo doesn't exist, no update is available.\n");
+		}
+		else
+		{
+			configbuf = (char*)malloc(0x200);
+			updateinfobuf = (char*)malloc(0x200);
+			memset(configbuf, 0, 0x200);
+			memset(updateinfobuf, 0, 0x200);
+			for(i=0; i<0x10; i++)
+			{
+				configlines[i] = &configbuf[i*0x20];
+				updateinfolines[i] = &updateinfobuf[i*0x20];
+			}
+			fread(updateinfobuf, 1, 0x200, fver);
+			fclose(fver);
+
+			fconfig = fopen("wc24dl.vff:/config", "r+");
+			if(fconfig==NULL)
+			{
+				printf("Config file doesn't exist, creating.\n");
+				fconfig = fopen("wc24dl.vff:/config", "w+");
+				strncpy(configlines[0], WC24BOOTTITLE_VERSION, 0x1f);
+				snprintf(configlines[1], 0x1f, "Revision: %d", 0);//SVN beta auto-update isn't implemented yet.
+				fwrite(configbuf, 1, 0x200, fconfig);
+				fseek(fconfig, 0, SEEK_SET);
+			}
+			else
+			{
+				fread(configbuf, 1, 0x200, fconfig);
+				fseek(fconfig, 0, SEEK_SET);
+
+				if(strncmp(configlines[0], WC24BOOTTITLE_VERSION, 0x1f)<0)
+				{
+					printf("The stable version contained in the config is older than the version contained in the title dol, updating the config version...\n");
+					strncpy(configlines[0], WC24BOOTTITLE_VERSION, 0x1f);
+					fwrite(configbuf, 1, 0x200, fconfig);
+					fseek(fconfig, 0, SEEK_SET);
+				}
+			}
+
+			if(strncmp(configlines[0], updateinfolines[0], 0x1f)<0)
+			{
+				printf("The stable version contained in the config is older than the version contained in the stable wc24boottitle version info WC24 dl content, updating...\n");
+				strncpy(configlines[0], updateinfolines[0], 0x1f);
+				fwrite(configbuf, 1, 0x200, fconfig);
+				fseek(fconfig, 0, SEEK_SET);
+
+				stat("wc24dl.vff:/installer.dol", &dolstats);
+				fread((void*)0x90100000, 1, dolstats.st_size, fdol);
+
+				free(updateinfobuf);
+				free(configbuf);
+				fclose(fconfig);
+				fclose(fdol);
+				fclose(fver);
+				unlink("wc24dl.vff:/installer.dol");
+				unlink("wc24dl.vff:/verinfo");
+
+				ProcessArgs(2, NULL, 1);
+			}
+
+			free(updateinfobuf);
+			free(configbuf);
+			fclose(fconfig);
+		}
+	}
+
+	if(fdol)fclose(fdol);
+	if(fver)fclose(fver);
+	VFF_Unmount("wc24dl.vff");
+
+	printf("Shutting down WC24...\n");
+	WC24_Shutdown();
+
+	return 0;
+}
+
 //---------------------------------------------------------------------------------
 int main(int argc, char **argv) {
 //---------------------------------------------------------------------------------
+	s32 retval;
 
 	// Initialise the video system
 	VIDEO_Init();
@@ -187,7 +434,11 @@ int main(int argc, char **argv) {
 		#endif
 	#endif
 	if(!fatInitDefault())printf("FAT init failed.\n");
-	ProcessArgs(argc, argv);
+
+	#ifndef WIILOADAPPDEBUG
+	retval = ProcessWC24();//Don't do any WC24 stuff with HBC wiiload, only with the actual installed wc24boottitle.
+	#endif
+	ProcessArgs(argc, argv , 0);
 
 	return 0;
 }

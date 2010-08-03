@@ -144,7 +144,7 @@ u32 VFF_GetFATType(u32 filesize)//This is based on the above function VFF_GetFAT
 }
 
 #ifdef HW_RVL
-s32 VFF_CreateVFF(char *path, u32 filesize)
+s32 VFF_CreateVFF(char *path, u32 filesize, int delvff)
 {
 	s32 retval, fd;
 	u32 fatsz = VFF_GetFATSize(filesize);
@@ -163,7 +163,7 @@ s32 VFF_CreateVFF(char *path, u32 filesize)
 	retval = ISFS_CreateFile(path, 0, 3, 3, 3);
 	if(retval<0)
 	{
-		if(retval==-105)
+		if(retval==-105 && delvff)
 		{
 			ISFS_Delete(path);
 			retval = ISFS_CreateFile(path, 0, 3, 3, 3);
