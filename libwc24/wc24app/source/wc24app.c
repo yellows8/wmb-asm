@@ -92,9 +92,10 @@ void DoStuff(char *url)
 	memset(url_id, 0, 256);
 	snprintf(url_id, 255, "?cid=%08x", consoleID);
 
-	snprintf(hackmii_url, 255, "http://%s/hackmii/index.php", LANSRVR_ADDR);
-	snprintf(wiibrewnews_url, 255, "http://%s/wiibrew/releases/index.php", "iwconfig.net/~yellows8");
-	snprintf(wiibrewreleases_url, 255, "http://%s/wiibrew/news/index.php", "iwconfig.net/~yellows8");
+	snprintf(hackmii_url, 255, "http://%s/hackmii/index.php%s", LANSRVR_ADDR, url_id);
+	snprintf(wiibrewnews_url, 255, "http://%s/wiibrew/releases/index.php%s", "iwconfig.net/~yellows8", url_id);
+	snprintf(wiibrewreleases_url, 255, "http://%s/wiibrew/news/index.php%s", "iwconfig.net/~yellows8", url_id);
+	
 	memset(mailurl, 0, 256);
 	strncpy(mailurl, url, 255);
 	strncat(url, ".php", 255);
