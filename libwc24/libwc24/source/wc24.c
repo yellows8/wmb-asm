@@ -342,7 +342,7 @@ s32 WC24_FindRecord(u32 id, nwc24dl_record *rec)
 	return retval;
 }
 
-s32 WC24_FindEntry(u32 id, char *url, nwc24dl_entry *ent)
+s32 WC24_FindEntry(u32 id, char *url, nwc24dl_entry *ent, int cmpwith_strstr)
 {
 	s32 retval = 0;
 	u32 found = 0;
@@ -357,7 +357,13 @@ s32 WC24_FindEntry(u32 id, char *url, nwc24dl_entry *ent)
 		{
 			if(url)
 			{
-				if(strncmp(ent->url, url, 0xec)==0)
+				if(cmpwith_strstr==0 && (strncmp(ent->url, url, 0xec)==0))
+				{
+					found = 1;
+					retval = i;
+					break;
+				}
+				if(cmpwith_strstr && (strstr(ent->url, url)))
 				{
 					found = 1;
 					retval = i;
@@ -396,7 +402,7 @@ s32 WC24_CreateRecord(nwc24dl_record *rec, nwc24dl_entry *ent, u32 id, u64 title
 {
 	s32 retval = -1;
 	u32 index;
-	retval = WC24_FindEntry(id, url, ent);
+	retval = WC24_FindEntry(id, url, ent, 0);
 	if(retval<0)
 	{
 		if(retval==LIBWC24_ENOENT)
@@ -458,7 +464,7 @@ s32 WC24_DeleteRecord(u32 index)
 	return 0;
 }
 
-s32 WC24_MntCreateDataDirVFF(char *path, u32 filesize)
+s32 WC24_MntCreateDataDirVFF(char *path, u32 filesize, int delvff)
 {
 	s32 retval = 0;
 	char *filename = (char*)memalign(32, 256);
@@ -475,31 +481,31 @@ s32 WC24_MntCreateDataDirVFF(char *path, u32 filesize)
 	strcat(filename, "/");
 	strcat(filename, path);
 	#ifdef HW_RVL
-	if(filesize)retval = VFF_CreateVFF(filename, filesize);
+	if(filesize)retval = VFF_CreateVFF(filename, filesize, delvff);
 	#endif
 	if(filesize==0)retval = VFF_Mount(filename, NULL);
 	free(filename);
 	return retval;
 }
 
-s32 WC24_CreateWC24DlVFF(u32 filesize)
+s32 WC24_CreateWC24DlVFF(u32 filesize, int delvff)
 {
-	return WC24_MntCreateDataDirVFF("wc24dl.vff", filesize);
+	return WC24_MntCreateDataDirVFF("wc24dl.vff", filesize, delvff);
 }
 
 s32 WC24_MountWC24DlVFF()
 {
-	return WC24_MntCreateDataDirVFF("wc24dl.vff", 0);
+	return WC24_MntCreateDataDirVFF("wc24dl.vff", 0, 0);
 }
 
-s32 WC24_CreateWC24ScrVFF(u32 filesize)
+s32 WC24_CreateWC24ScrVFF(u32 filesize, int delvff)
 {
-	return WC24_MntCreateDataDirVFF("wc24scr.vff", filesize);
+	return WC24_MntCreateDataDirVFF("wc24scr.vff", filesize, delvff);
 }
 
 s32 WC24_MountWC24ScrVFF()
 {
-	return WC24_MntCreateDataDirVFF("wc24scr.vff", 0);
+	return WC24_MntCreateDataDirVFF("wc24scr.vff", 0, 0);
 }
 
 time_t WC24_TimestampToSeconds(u32 timestamp)

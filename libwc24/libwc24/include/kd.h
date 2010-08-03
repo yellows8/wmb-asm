@@ -34,6 +34,7 @@ DEALINGS IN THE SOFTWARE.
 
 //These errors can be returned by KD_Download.
 #define KD_ESIGFAIL -45//RSA signature verification failed. Or KD_CreateRSA failed.
+#define KD_ETIME -31//Failed to sync current UTC time with the time server?
 #define KD_EHTTP -32//HTTP error or time server error?
 #define KD_ECACHE -15//"Detected AKAMAI's cache refreshing." This error doesn't seem to be returned by KD_Download? However KD_Download still aborts when this happens. This error is caused when KD sends the If-Modified-Since header, and the server sends a 200 OK with a Modified-Since header that has a timestamp very close in range to the client If-Modified-Since header.(Very close meaning only roughly 15 seconds difference, or when If-Modified-Since and Last-Modified match exactly.)
 #define KD_EINVAL -3//Invalid input.

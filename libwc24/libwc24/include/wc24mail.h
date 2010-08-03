@@ -107,8 +107,8 @@ s32 WC24Mail_CfgUpdate();//Updates/writes the NAND config files.
 
 s32 WC24Mail_WC24RecvMount();//Mounts /shared2/wc24/mbox/wc24recv.mbx as device wc24recv.mbx, this stores recieved WC24 mail.
 s32 WC24Mail_WC24SendMount();//Mounts /shared2/wc24/mbox/wc24send.mbx as device wc24send.mbx, mail that will be sent by KD is stored here.
-s32 WC24Mail_WC24RecvCreate(u32 filesize);//Normally doesn't need to be used, unless you completely replace sysmenu. Filesize is 7MB by default when input filesize is zero.
-s32 WC24Mail_WC24SendCreate(u32 filesize);//Filesize is 2MB by default when input filesize is zero.
+s32 WC24Mail_WC24RecvCreate(u32 filesize, int delvff);//Normally doesn't need to be used, unless you completely replace sysmenu. Filesize is 7MB by default when input filesize is zero. See vff.h for the delvff param.
+s32 WC24Mail_WC24SendCreate(u32 filesize, int delvff);//Filesize is 2MB by default when input filesize is zero. See vff.h for the delvff param.
 
 s32 WC24Mail_Read();//Updates the read nwc24fl.bin buffers from NAND.
 s32 WC24Mail_FlUpdate();//Writes the nwc24fl.bin struct buffers to NAND.

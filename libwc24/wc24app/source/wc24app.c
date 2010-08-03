@@ -41,8 +41,6 @@ char wiibrewnews_url[256];
 char wiibrewreleases_url[256];
 char url_id[256];//Used for anonymous info added to the URL, contains the consoleID.
 
-void IOSReload_SelectMenu();
-
 typedef struct {//From libogc.
 	u32 checksum;
 	u8 flags;
@@ -101,8 +99,6 @@ void DoStuff(char *url)
 	strncpy(mailurl, url, 255);
 	strncat(url, ".php", 255);
 	strncat(url, url_id, 255);
-	strncat(mailurl, ".php", 255);
-	strncat(mailurl, url_id, 255);
 
 	printf("Use normal mail URL, or boot mail URL? Boot mail will wake up the Wii from idle mode to boot HBC, if you use(d) the option to enable WC24 title booting. Once the entry is installed with WC24 title booting enabled, you must either shutdown with the wiimote when \"Done\" is displayed, or with official software, in order for title booting to work.(A = normal mail, B = boot mail)\n");
 	which = -1;
@@ -118,6 +114,8 @@ void DoStuff(char *url)
 
 	if(which)strncat(mailurl, "mail", 255);
 	if(!which)strncat(mailurl, "boot", 255);
+	strncat(mailurl, ".php", 255);
+	strncat(mailurl, url_id, 255);
 
 	fatInitDefault();
 
@@ -145,7 +143,7 @@ void DoStuff(char *url)
 	if(which)
 	{
 		printf("Creating wc24dl.vff...\n");
-		retval = WC24_CreateWC24DlVFF(128 * 1024);
+		retval = WC24_CreateWC24DlVFF(128 * 1024, 1);
 		if(retval<0)
 		{
 			printf("WC24_CreateWC24DlVFF returned %d\n", retval);
@@ -168,41 +166,48 @@ void DoStuff(char *url)
 	if(which)
 	{
 		FILE *f = fopen("/nwc24dlbak.bin", "rb");
-		retval = WC24_FindEntry((u32)titleid, url, &myent);
-		if(retval<0)
+		if(f)
 		{
-			printf("Failed to find WC24 title data entry.\n");
-		}
-		else
-		{
-			fseek(f, 0x800 + (retval * sizeof(nwc24dl_entry)), SEEK_SET);
-			fread(&myent, 1, sizeof(nwc24dl_entry), f);
-			fseek(f, 0x80 + (retval * sizeof(nwc24dl_record)), SEEK_SET);
-			fread(&myrec, 1, sizeof(nwc24dl_record), f);
-			
-			WC24_WriteEntry((u32)retval, &myent);
-			WC24_WriteRecord((u32)retval, &myrec);
-		}
+			retval = WC24_FindEntry((u32)titleid, url, &myent, 0);
+			if(retval<0)
+			{
+				printf("Failed to find WC24 title data entry.\n");
+			}
+			else
+			{
+				fseek(f, 0x800 + (retval * sizeof(nwc24dl_entry)), SEEK_SET);
+				fread(&myent, 1, sizeof(nwc24dl_entry), f);
+				fseek(f, 0x80 + (retval * sizeof(nwc24dl_record)), SEEK_SET);
+				fread(&myrec, 1, sizeof(nwc24dl_record), f);
+				
+				WC24_WriteEntry((u32)retval, &myent);
+				WC24_WriteRecord((u32)retval, &myrec);
+			}
 
-		retval = WC24_FindEntry((u32)titleid, mailurl, &myent);
-		if(retval<0)
-		{
-			printf("Failed to find WC24 mail entry.\n");
+			retval = WC24_FindEntry((u32)titleid, mailurl, &myent, 0);
+			if(retval<0)
+			{
+				printf("Failed to find WC24 mail entry.\n");
+			}
+			else
+			{
+				fseek(f, 0x800 + (retval * sizeof(nwc24dl_entry)), SEEK_SET);
+				fread(&myent, 1, sizeof(nwc24dl_entry), f);
+				fseek(f, 0x80 + (retval * sizeof(nwc24dl_record)), SEEK_SET);
+				fread(&myrec, 1, sizeof(nwc24dl_record), f);
+				
+				WC24_WriteEntry((u32)retval, &myent);
+				WC24_WriteRecord((u32)retval, &myrec);
+			}
+			fclose(f);
 		}
 		else
 		{
-			fseek(f, 0x800 + (retval * sizeof(nwc24dl_entry)), SEEK_SET);
-			fread(&myent, 1, sizeof(nwc24dl_entry), f);
-			fseek(f, 0x80 + (retval * sizeof(nwc24dl_record)), SEEK_SET);
-			fread(&myrec, 1, sizeof(nwc24dl_record), f);
-			
-			WC24_WriteEntry((u32)retval, &myent);
-			WC24_WriteRecord((u32)retval, &myrec);
+			printf("Failed to open /nwc24dlbak.bin.\n");
 		}
-		fclose(f);
 	}
 
-	printf("Delete WC24 records+entries for the current title?(A = yes, B = no)\n");
+	printf("Delete all WC24 records+entries for the current title?(A = yes, B = no)\n");
 	which = -1;
 	WPAD_ScanPads();
 	while(1)
@@ -216,7 +221,27 @@ void DoStuff(char *url)
 
 	if(which)
 	{
-		while((retval=WC24_FindRecord((u32)titleid, &myrec))!=LIBWC24_ENOENT)//Delete all HBC records+entries.
+		while((retval=WC24_FindRecord((u32)titleid, &myrec))!=LIBWC24_ENOENT)
+		{
+			WC24_DeleteRecord((u32)retval);
+		}
+	}
+
+	printf("Delete all WC24 records+entries for JODI HBC 1.0.6?(A = yes, B = no)\n");
+	which = -1;
+	WPAD_ScanPads();
+	while(1)
+	{
+		WPAD_ScanPads();
+		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_B)which = 0;
+		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_A)which = 1;
+		if(which>-1)break;
+		VIDEO_WaitVSync();
+	}
+
+	if(which)
+	{
+		while((retval=WC24_FindRecord(0x4a4f4449, &myrec))!=LIBWC24_ENOENT)
 		{
 			WC24_DeleteRecord((u32)retval);
 		}
@@ -338,74 +363,24 @@ void DoStuff(char *url)
 	{
 		WPAD_ScanPads();
 		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_B)which = 0;
-		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_A)which = 1;
-		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_1)which = 2;
+		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_1)which = 1;
+		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_A)which = 2;
 		if(which>-1)break;
 		VIDEO_WaitVSync();
 	}
 
 	if(which)
 	{
-		if(which==1)wc24mail_nwc24msgcfg->wc24titleboot_enableflag = 1;
-		if(which==2)wc24mail_nwc24msgcfg->wc24titleboot_enableflag = 0;
+		if(wc24mail_nwc24msgcfg->wc24titleboot_enableflag == which - 1)
+		{
+			if(which==1)printf("WC24 title boot flag is already cleared. Clearing flag and updating checksum again...\n");
+			if(which==2)printf("WC24 title boot flag is already set. Setting flag and updating checksum again...\n");
+		}
+		wc24mail_nwc24msgcfg->wc24titleboot_enableflag = which - 1;
 		retval = WC24Mail_CfgUpdate();
 		if(retval<0)printf("WC24Mail_Update returned %d\n", retval);
+		printf("%s WC24 title booting flag.\n", which - 1==0?"Disabled":"Enabled");
 	}
-
-	/*printf("Write a test WC24 NANDBOOTINFO to NAND?(A = yes, B = no)\n");
-	which = -1;
-	WPAD_ScanPads();
-	while(1)
-	{
-		WPAD_ScanPads();
-		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_B)which = 0;
-		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_A)which = 1;
-		if(which>-1)break;
-		VIDEO_WaitVSync();
-	}
-
-	if(which)
-	{
-		//u8 *nandinfobuf;
-		//FILE *finfo;
-		//printf("Opening NANDBOOTINFO in NAND...\n");
-		s32 infofd = ISFS_Open("/shared2/sys/NANDBOOTINFO", ISFS_OPEN_RW);
-		if(infofd<0)
-		{
-			printf("Failed to open NANDBOOTINFO in NAND.\n");
-		}
-		else
-		{
-			printf("Opening /NANDBOOTINFO on SD...\n");
-			finfo = fopen("/NANDBOOTINFO", "r");
-			if(finfo==NULL)
-			{
-				printf("Failed to open /NANDBOOTINFO on SD.\n");
-			}
-			else
-			{
-				printf("Allocating buffer...\n");
-				nandinfobuf = (u8*)memalign(32, 0x1020);
-				if(nandinfobuf)
-				{
-					printf("Reading from SD...\n");
-					fread(nandinfobuf, 1, 0x1020, finfo);
-					printf("Writing to NAND...\n");
-					ISFS_Write(infofd, nandinfobuf, 0x1020);
-					free(nandinfobuf);
-				}
-				else
-				{
-					printf("Failed to allocate buffer.\n");
-				}
-				fclose(finfo);
-				
-			}
-			ISFS_Close(infofd);
-		}
-		retval = WII_LaunchTitleWithArgsWC24(0x0001000148415445LL, 0, 0);
-		if(retval<0)printf("WII_LaunchTitleWithArgsWC24 returned %d\n", retval);
-	}*/
 
 	printf("Get time triggers?(A = yes, B = no)\n");
 	which = -1;
@@ -445,7 +420,7 @@ void DoStuff(char *url)
 	{
 		if(which & BIT(0))
 		{
-			retval = WC24_FindEntry((u32)titleid, url, &myent);
+			retval = WC24_FindEntry((u32)titleid, url, &myent, 0);
 			if(retval<0)
 			{
 				printf("Failed to find WC24 title data entry.\n");
@@ -454,10 +429,10 @@ void DoStuff(char *url)
 			{
 				printf("Downloading title data...\n");
 				retval = KD_Download(KD_DOWNLOADFLAGS_MANUAL, (u16)retval, 0x0);
-				printf("KD_Download returned %d\n", retval);
+				if(retval<0)printf("KD_Download returned %d\n", retval);
 			}
 
-			retval = WC24_FindEntry((u32)titleid, mailurl, &myent);
+			retval = WC24_FindEntry((u32)titleid, mailurl, &myent, 0);
 			if(retval<0)
 			{
 				printf("Failed to find WC24 mail entry.\n");
@@ -474,7 +449,7 @@ void DoStuff(char *url)
 
 		if(which & BIT(1))
 		{
-			retval = WC24_FindEntry((u32)homebrewtitleid, hackmii_url, &myent);
+			retval = WC24_FindEntry((u32)homebrewtitleid, hackmii_url, &myent, 0);
 			if(retval>=0)
 			{
 				printf("Downloading hackmii mail...\n");
@@ -484,7 +459,7 @@ void DoStuff(char *url)
 				if(retval<0)printf("KD_SaveMail returned %d\n", retval);
 			}
 
-			retval = WC24_FindEntry((u32)homebrewtitleid, wiibrewnews_url, &myent);
+			retval = WC24_FindEntry((u32)homebrewtitleid, wiibrewnews_url, &myent, 0);
 			if(retval>=0)
 			{
 				printf("Downloading wiibrew news mail...\n");
@@ -494,7 +469,7 @@ void DoStuff(char *url)
 				if(retval<0)printf("KD_SaveMail returned %d\n", retval);
 			}
 
-			retval = WC24_FindEntry((u32)homebrewtitleid, wiibrewreleases_url, &myent);
+			retval = WC24_FindEntry((u32)homebrewtitleid, wiibrewreleases_url, &myent, 0);
 			if(retval>=0)
 			{
 				printf("Downloading wiibrew releases mail...\n");
@@ -535,7 +510,7 @@ void DoStuff(char *url)
 		struct tm *time;
 		time_t dltime;
 		char *dlbuf = NULL;
-		retval = WC24_FindEntry((u32)titleid, url, &myent);
+		retval = WC24_FindEntry((u32)titleid, url, &myent, 0);
 		if(retval<0)
 		{
 			printf("Failed to find WC24 title data entry.\n");
@@ -635,7 +610,7 @@ void DoStuff(char *url)
 			}
 		}
 
-		retval = WC24_FindEntry((u32)titleid, mailurl, &myent);
+		retval = WC24_FindEntry((u32)titleid, mailurl, &myent, 0);
 		if(retval<0)
 		{
 			printf("Failed to find WC24 mail entry.\n");

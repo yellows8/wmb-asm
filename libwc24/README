@@ -20,6 +20,7 @@ With wc24app, a WC24 title boot mail entry can be installed. You need to use the
 Read/write nwc24msg config files, and read/write nwc24fl.bin. Wc24recv.mbx and wc24send.mbx can be mounted for reading/writing received mail or mail pending to be sent. Code to move mail elsewhere from wc24recv.mbx or to send mail with via wc24send.mbx and the WC24 mail engine can't be written until the mail ctl files are reverse engineered.
 NAND title wc24boottitle can be used with WC24 title booting to boot homebrew and game discs with WC24, see the wc24boottitle README.
 Wc24app adds anonymous tracking info to the installed entries' URLs for logging server access. This only contains the consoleID, which is unique to each Wii. Currently this is only enabled for the test entries, and only works with the LAN server the Internet server doesn't have the logging scripts yet.
+Added VFF creation param delvff, to specify whether to automatically delete the VFF when it exists or not. Wc24app passes 1 for delvff so when creating wc24dl.vff from wc24app wc24dl.vff is always deleted before creation.
 
 Known bugs:
 Bugs not listed here can be reported at: http://code.google.com/p/wmb-asm/issues/list

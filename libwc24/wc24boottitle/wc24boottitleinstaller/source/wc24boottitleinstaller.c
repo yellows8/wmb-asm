@@ -137,13 +137,13 @@ void Install()
 
 void Delete()
 {
-	u32 retval, numviews;
+	u32 retval, numviews = 0;
 	int which = -1;
 	tikview *views;
 	retval = ES_GetNumTicketViews(wc24boottitle_titleID, &numviews);
 	if(retval<0 || numviews>4)return;
 
-	printf("Detected wc24boottitle, delete the title? Press A to delete, press B to skip deleting.\n");
+	printf("\nDetected wc24boottitle, delete the title? Press A to delete, press B to skip deleting.\n");
 	while(1)
 	{
 		WPAD_ScanPads();
