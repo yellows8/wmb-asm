@@ -57,7 +57,7 @@ typedef struct {//From libogc.
 #define RETURN_TO_SETTINGS 1
 #define RETURN_TO_ARGS 2
 
-#define LANSRVR_ADDR "192.168.1.33"
+#define LANSRVR_ADDR "yellzone.en"
 
 static u32 __CalcChecksum(u32 *buf, int len)//Based on function from libogc.
 {
@@ -79,7 +79,7 @@ void DoStuff(char *url)
 	u64 titleid;
 	u64 homebrewtitleid = 0x0001000848424D4CLL;//TitleID for wiibrew+hackmii mail: 00010008-HBML. This is only an ID used for WC24, it's not a real NAND title.
 	u32 consoleID = 1;
-	char *hbml_srvr = (char*)"iwconfig.net/~yellows8";
+	char *hbml_srvr;
 
 	memset(hackmii_url, 0, 256);
 	memset(wiibrewnews_url, 0, 256);
@@ -93,8 +93,18 @@ void DoStuff(char *url)
 	memset(url_id, 0, 256);
 	snprintf(url_id, 255, "?cid=%08x", consoleID);
 
+	hbml_srvr = (char*)"wc24.hackmii.com";
+	if(strstr(url, LANSRVR_ADDR))
+	{
+		hbml_srvr = LANSRVR_ADDR;
+		snprintf(hackmii_url, 255, "http://%s/hackmii/index.php%s", hbml_srvr, url_id);
+	}
+	else
+	{
+		snprintf(hackmii_url, 255, "http://%s/index.php%s", hbml_srvr, url_id);
+	}
+	hbml_srvr = (char*)"iwconfig.net/~yellows8";
 	if(strstr(url, LANSRVR_ADDR))hbml_srvr = LANSRVR_ADDR;
-	snprintf(hackmii_url, 255, "http://%s/hackmii/index.php%s", LANSRVR_ADDR, url_id);
 	snprintf(wiibrewnews_url, 255, "http://%s/wiibrew/releases/index.php%s", hbml_srvr, url_id);
 	snprintf(wiibrewreleases_url, 255, "http://%s/wiibrew/news/index.php%s", hbml_srvr, url_id);
 	
@@ -250,7 +260,7 @@ void DoStuff(char *url)
 		}
 	}
 
-	printf("Delete WC24 msg board mail records+entries for wiibrew+hackmii news/releases feed mail? This is LAN testing only.(A = yes, B = no)\n");
+	printf("Delete WC24 msg board mail records+entries for wiibrew+hackmii news/releases feed mail?(A = yes, B = no)\n");
 	which = -1;
 	WPAD_ScanPads();
 	while(1)
@@ -319,7 +329,7 @@ void DoStuff(char *url)
 		}
 	}
 
-	printf("Install WC24 msg board mail records+entries for wiibrew+hackmii news/releases feed mail? This is LAN testing only.(A = yes download hourly, 1 = yes download daily, B = no)\n");
+	printf("Install WC24 msg board mail records+entries for wiibrew+hackmii news/releases feed mail?(A = yes download hourly, 1 = yes download daily, B = no)\n");
 	which = -1;
 	WPAD_ScanPads();
 	while(1)

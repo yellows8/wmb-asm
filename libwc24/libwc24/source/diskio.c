@@ -215,9 +215,9 @@ DRESULT disk_write(BYTE drv, const BYTE *buff, DWORD sector, BYTE count)
 			#ifdef HW_RVL
 			retval = ISFS_Write((s32)disk_vff_handles[(int)drv], diskio_buffer, 0x200);
 			#endif
-			if(retval!=count)
+			if(retval!=0x200)
 			{
-				printf("read only %x bytes, wanted %x bytes\n", retval, 0x200);
+				printf("wrote only %x bytes, wanted %x bytes\n", retval, 0x200);
 				return RES_PARERR;
 			}		
 			buff+=0x200;
