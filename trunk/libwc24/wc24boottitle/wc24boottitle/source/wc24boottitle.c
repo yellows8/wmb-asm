@@ -20,7 +20,7 @@
 //#define WIILOADTEST_BOOTDISC//Uncomment this to test booting discs.
 
 #define WC24BOOTTITLE_VERSION "Stable: v1.0.0 0"
-#define SRVR_BASEURL "http://192.168.1.33/"
+#define SRVR_BASEURL "http://yellzone.en/"
 
 static void *xfb = NULL;
 static GXRModeObj *rmode = NULL;
@@ -229,7 +229,7 @@ void ProcessArgs(int argc, char **argv, int boothbdirect)
 s32 ProcessWC24()//This installs entries for wc24boottitle auto-update, and processes the downloaded auto-update content downloaded via WC24. When wc24boottitle is deleted by the installer app, these entries aren't deleted by the installer app. When KD downloads title data entries, and can't find wc24dl.vff, KD deletes the entries since the data dir containing wc24dl.vff was deleted by ES when the installer app deleted wc24boottitle.
 {
 	s32 retval;
-	u32 entry_bitmask = 0;
+	u32 entry_bitmask = 3;
 	FILE *fdol = NULL, *fver = NULL, *fconfig = NULL;
 	int i;
 	char *configbuf;
@@ -248,7 +248,7 @@ s32 ProcessWC24()//This installs entries for wc24boottitle auto-update, and proc
 	}
 	curtitleid = WC24_GetTitleID();
 
-	retval = WC24_CreateWC24DlVFF(0x100000, 0);//2MB
+	retval = WC24_CreateWC24DlVFF(0x200000, 1);//2MB
 	if(retval<0 && retval!=-105)//Return when VFF creation fails, except when the VFF already exists.
 	{
 		printf("WC24_CreateWC24DlVFF returned %d\n", retval);
@@ -428,6 +428,7 @@ s32 ProcessWC24()//This installs entries for wc24boottitle auto-update, and proc
 				stat("wc24dl.vff:/installer.dol", &dolstats);
 				fread((void*)0x90100000, 1, dolstats.st_size, fdol);
 				DCFlushRange((void*)0x90100000, dolstats.st_size);
+				printf("Update size: %x\n", (u32)dolstats.st_size);
 
 				free(updateinfobuf);
 				free(configbuf);

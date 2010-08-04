@@ -41,6 +41,8 @@ Added support for KD_SaveMail, this is now called each time wc24app downloads ma
 Added wc24mail code, for handling reading/writing nwc24msg config files, handling the msg board friends list, mounting the wc24recv.mbx/wc24send.mbx files, etc. See the features section.
 Added app wc24boottitle, see features section.
 Wc24app now adds anonymous tracking info to the installed entries' URLs for logging server access by WC24 from the Wiis with the new URLs installed. See the features section.
+Added VFF creation param delvff, to specify whether to automatically delete the VFF when it exists or not. Wc24app passes 1 for delvff so when creating wc24dl.vff from wc24app wc24dl.vff is always deleted before creation.
+Fixed major VFF writing bug that caused all writing to fail.
 
 v1.0:
 Initial release.
