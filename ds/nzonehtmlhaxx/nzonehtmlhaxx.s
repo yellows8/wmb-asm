@@ -1,5 +1,5 @@
 /*
-nzoneurlstacksmash is licensed under the MIT license:
+nzonehtmlhaxx is licensed under the MIT license:
 Copyright (c) 2010 yellowstar6
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this
@@ -19,7 +19,7 @@ OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 DEALINGS IN THE SOFTWARE.
 */
 
-/* nzoneurlstacksmash v0.2 */
+/* nzonehtmlhaxx v0.2 */
 
 .arch armv5te
 .fpu softvfp
