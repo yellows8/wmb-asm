@@ -102,6 +102,7 @@ DEPENDS	:=	$(OFILES:.o=.d)
 #---------------------------------------------------------------------------------
 $(LOADBIN)	:	$(LOADELF)
 	@$(OBJCOPY) -O binary $< $@
+	@cp $(LOADBIN) ../../loadnds/arm9/data
 	@echo built ... $(notdir $@)
 
 

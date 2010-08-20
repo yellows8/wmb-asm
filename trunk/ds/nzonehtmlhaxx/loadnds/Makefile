@@ -21,8 +21,9 @@ all: $(TARGET).nds
 #---------------------------------------------------------------------------------
 $(TARGET).nds	:	$(TARGET).arm7 $(TARGET).arm9
 	ndstool	-c $(TARGET).nds -7 $(TARGET).arm7 -9 $(TARGET).arm9
-	dlditool ak2_sd.dldi $(TARGET).nds
+	dlditool card.dldi $(TARGET).nds
 	gbalzss e $(TARGET).nds $(TARGET).lz
+	@cp $(TARGET).lz ../exploit/data/ndsloader.lz
 
 #---------------------------------------------------------------------------------
 $(TARGET).arm7	: arm7/$(TARGET).elf

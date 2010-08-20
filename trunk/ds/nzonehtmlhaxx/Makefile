@@ -7,8 +7,8 @@ endif
 
 TARGET_DSSTATION	:=	htmlhaxx_dsstation.html
 TARGET_NZONE	:=	htmlhaxx_nzone.html
-WEBDIR_DSSTATION	:=	../../../../website/ds/data
-WEBDIR_NZONE	:=	../../../../website/ds/data
+WEBDIR_DSSTATION	:=	$(HOME)/website/ds/data
+WEBDIR_NZONE	:=	$(HOME)/website/ds/data
 
 $(TARGET_NZONE) $(TARGET_DSSTATION):	nzonehtmlhaxx_nzone.elf nzonehtmlhaxx_dsstation.elf
 	arm-eabi-objcopy -O binary nzonehtmlhaxx_dsstation.elf $(TARGET_DSSTATION)
