@@ -92,7 +92,7 @@ s32 KD_CorrectRTC(u64 diff)
     if(__kdtime_fd==0)return LIBWC24_EINIT;
     kd_timebuf time;
     DCFlushRange(&time, sizeof(kd_timebuf));
-    s32 retval = IOS_Ioctl(__kdtime_fd,IOCTL_KD_SETUTCTIME,&diff,8,&time,12);
+    s32 retval = IOS_Ioctl(__kdtime_fd,IOCTL_KD_CORRECTRTC,&diff,8,&time,12);
     DCInvalidateRange(&time, sizeof(kd_timebuf));
     return retval;
 }
