@@ -58,7 +58,7 @@ void ProcessArgs(int argc, char **argv, int boothbdirect)
 		sscanf(argv[0], "%016llx", &nandboot_titleid);
 		if(curtitleid!=nandboot_titleid)
 		{
-			printf("Current titleID and titleID from NANDBOOTINFO don't match: %016llx %s\n", curtitleid, argv[1]);
+			printf("Current titleID and titleID from NANDBOOTINFO don't match: %016llx %s\n", curtitleid, argv[0]);
 			argc = 0;
 		}
 	}
@@ -223,6 +223,7 @@ void ProcessArgs(int argc, char **argv, int boothbdirect)
 
 	printf("Invalid launchcode or argc, or invalid titleID: %x %x\n", launchcode, argc);
 	printf("Shutting down...\n");
+	WPAD_Shutdown();
 	WII_Shutdown();
 }
 
@@ -464,6 +465,37 @@ s32 ProcessWC24()//This installs entries for wc24boottitle auto-update, and proc
 	return 0;
 }
 
+void ResetWakeup_Timestamp()
+{
+	s32 fd;
+	unsigned char *miscbuf;
+
+	printf("Resetting wakeup time...\n");
+	fd = ISFS_Open("/shared2/wc24/misc.bin", ISFS_OPEN_RW);
+	if(fd<0)
+	{
+		printf("Failed to open misc.bin.\n");
+	}
+	else
+	{
+		miscbuf = (unsigned char*)memalign(32, 0x400);
+		memset(miscbuf, 0, 0x400);
+		ISFS_Read(fd, miscbuf, 0x400);
+		ISFS_Seek(fd, 0, SEEK_SET);
+		
+		time_t curtime = (time_t)((u32*)&miscbuf[0x3c]);
+		struct tm *misc_time = gmtime(&curtime);
+		printf(" Wakeup timestamp time: %s\n", asctime(misc_time));
+		
+		*((u32*)&miscbuf[0x38]) = 0;
+		*((u32*)&miscbuf[0x3c]) = 0;
+		ISFS_Write(fd, miscbuf, 0x400);
+	
+		free(miscbuf);
+		ISFS_Close(fd);
+	}
+}
+
 //---------------------------------------------------------------------------------
 int main(int argc, char **argv) {
 //---------------------------------------------------------------------------------
@@ -473,7 +505,7 @@ int main(int argc, char **argv) {
 	VIDEO_Init();
 	
 	// This function initialises the attached controllers
-	//WPAD_Init();
+	WPAD_Init();
 	
 	// Obtain the preferred video mode from the system
 	// This will correspond to the settings in the Wii menu
@@ -519,8 +551,9 @@ int main(int argc, char **argv) {
 	#endif
 	if(!fatInitDefault())printf("FAT init failed.\n");
 
+	ResetWakeup_Timestamp();
 	#ifndef WIILOADAPPDEBUG
-	retval = ProcessWC24();//Don't do any WC24 stuff with HBC wiiload, only with the actual installed wc24boottitle.
+	//retval = ProcessWC24();//Don't do any WC24 stuff with HBC wiiload, only with the actual installed wc24boottitle.
 	#endif
 	ProcessArgs(argc, argv , 0);
 

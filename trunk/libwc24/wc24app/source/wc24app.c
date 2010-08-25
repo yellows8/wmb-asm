@@ -80,6 +80,7 @@ void DoStuff(char *url)
 	u64 homebrewtitleid = 0x0001000848424D4CLL;//TitleID for wiibrew+hackmii mail: 00010008-HBML. This is only an ID used for WC24, it's not a real NAND title.
 	u32 consoleID = 1;
 	char *hbml_srvr;
+	unsigned char *miscbuf;
 
 	memset(hackmii_url, 0, 256);
 	memset(wiibrewnews_url, 0, 256);
@@ -303,7 +304,7 @@ void DoStuff(char *url)
 		}
 	}
 
-	printf("Install WC24 test msg board e-mail dl record+entry?(A = yes dl hourly, B = no, 1 = dl 30 every minutes, 2 = dl every 15 minutes, + = dl every 5 minutes)\n");
+	printf("Install WC24 test msg board e-mail dl record+entry?(A = yes dl hourly, B = no, 1 = dl 30 every minutes, 2 = dl every 15 minutes, + = dl every 5 minutes, - = every 1 minutes)\n");
 	which = -1;
 	WPAD_ScanPads();
 	while(1)
@@ -314,6 +315,7 @@ void DoStuff(char *url)
 		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_1)which = 30;
 		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_2)which = 15;
 		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_PLUS)which = 5;
+		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_MINUS)which = 1;
 		if(which>-1)break;
 		VIDEO_WaitVSync();
 	}
@@ -369,7 +371,7 @@ void DoStuff(char *url)
 		}
 	}
 
-	printf("Set the flag which enables WC24 title booting?(A = yes, B = no, 1 = clear flag)\n");
+	printf("Set the flag which enables WC24 title booting?(A = yes, B = no, 1 = clear flag, 2 = read the flag)\n");
 	which = -1;
 	WPAD_ScanPads();
 	while(1)
@@ -378,6 +380,7 @@ void DoStuff(char *url)
 		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_B)which = 0;
 		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_1)which = 1;
 		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_A)which = 2;
+		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_2)which = 3;
 		if(which>-1)break;
 		VIDEO_WaitVSync();
 	}
@@ -389,10 +392,17 @@ void DoStuff(char *url)
 			if(which==1)printf("WC24 title boot flag is already cleared. Clearing flag and updating checksum again...\n");
 			if(which==2)printf("WC24 title boot flag is already set. Setting flag and updating checksum again...\n");
 		}
-		wc24mail_nwc24msgcfg->wc24titleboot_enableflag = which - 1;
-		retval = WC24Mail_CfgUpdate();
-		if(retval<0)printf("WC24Mail_Update returned %d\n", retval);
-		printf("%s WC24 title booting flag.\n", which - 1==0?"Disabled":"Enabled");
+		if(which!=3)
+		{
+			wc24mail_nwc24msgcfg->wc24titleboot_enableflag = which - 1;
+			retval = WC24Mail_CfgUpdate();
+			if(retval<0)printf("WC24Mail_Update returned %d\n", retval);
+			printf("%s WC24 title booting flag.\n", which - 1==0?"Disabled":"Enabled");
+		}
+		else
+		{
+			printf("WC24 title booting flag is %s.\n", wc24mail_nwc24msgcfg->wc24titleboot_enableflag==0?"disabled":"enabled");
+		}
 	}
 
 	printf("Get time triggers?(A = yes, B = no)\n");
@@ -504,6 +514,47 @@ void DoStuff(char *url)
 			retval = KD_Download(KD_DOWNLOADFLAGS_MANUAL, (u16)retval, 0x0);
 			printf("KD_Download returned %d\n", retval);
 		}*/
+	}
+
+	printf("Reset the WC24 title boot STM_Wakeup timestamp to zero? Sometimes KD may refuse to use process WC24 title boot mail due to the current time being less than this timestamp, using this option can work-around waiting for the time specified in the timestamp.(A = yes, B = no, 1 = read timestamp)\n");
+	which = -1;
+	WPAD_ScanPads();
+	while(1)
+	{
+		WPAD_ScanPads();
+		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_B)which = 0;
+		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_A)which = 1;
+		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_1)which = 2;
+		if(which>-1)break;
+		VIDEO_WaitVSync();
+	}
+
+	if(which)
+	{
+		s32 fd = ISFS_Open("/shared2/wc24/misc.bin", ISFS_OPEN_RW);
+		if(fd<0)
+		{
+			printf("Failed to open misc.bin.\n");
+		}
+		else
+		{
+			miscbuf = (unsigned char*)memalign(32, 0x400);
+			memset(miscbuf, 0, 0x400);
+			ISFS_Read(fd, miscbuf, 0x400);
+			ISFS_Seek(fd, 0, SEEK_SET);
+			if(which==2)
+			{
+				time_t curtime = (time_t)((u32*)&miscbuf[0x3c]);
+				struct tm *misc_time = gmtime(&curtime);
+				printf("Timestamp time: %s\n", asctime(misc_time));
+			}
+			*((u32*)&miscbuf[0x38]) = 0;
+			*((u32*)&miscbuf[0x3c]) = 0;
+			if(which==1)ISFS_Write(fd, miscbuf, 0x400);
+
+			free(miscbuf);
+			ISFS_Close(fd);
+		}
 	}
 
 	printf("Check WC24 entries for WC24 error, and dump timestamps?(A = yes, B = no)\n");
