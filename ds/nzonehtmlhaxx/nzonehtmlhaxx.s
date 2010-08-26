@@ -52,7 +52,7 @@ DEALINGS IN THE SOFTWARE.
 .word 0x01ff9aa8 @ TWL SDK address
 #endif
 
-@.ascii "p"
+.ascii "ppp"
 .byte 0x22 @ The '"' character.
 
 #if defined(DS_STATION)
