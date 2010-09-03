@@ -17,7 +17,12 @@ $(TARGET_NZONE) $(TARGET_DSSTATION):	nzonehtmlhaxx_nzone.elf nzonehtmlhaxx_dssta
 	cp $(TARGET_NZONE) $(WEBDIR_NZONE)
 
 nzonehtmlhaxx_dsstation.elf nzonehtmlhaxx_nzone.elf:	$(SOURCE)
+	@make clean -C exploit DS_STATION=1
+	@make -C exploit DS_STATION=1
 	arm-eabi-gcc -x assembler-with-cpp -DDS_STATION -nostartfiles -nostdlib $< -o nzonehtmlhaxx_dsstation.elf
+	@make clean -C exploit NZONE=1
+	@make -C exploit NZONE=1
+	@ls
 	arm-eabi-gcc -x assembler-with-cpp -DNZONE -nostartfiles -nostdlib $< -o nzonehtmlhaxx_nzone.elf
 
 clean:
