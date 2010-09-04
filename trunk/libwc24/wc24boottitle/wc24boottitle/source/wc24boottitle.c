@@ -183,10 +183,10 @@ void ProcessArgs(int argc, char **argv, int boothbdirect)
 							}
 							else
 							{
-								stat("wc24dl.vff:/installer.dol", &dolstats);
+								stat("wc24dl.vff:/boot.dol", &dolstats);
 								fread((void*)0x90100000, 1, dolstats.st_size, fdol);
 								fclose(fdol);
-								unlink("wc24dl.vff:/installer.dol");
+								unlink("wc24dl.vff:/boot.dol");
 								DCFlushRange((void*)0x90100000, dolstats.st_size);
 							}
 
@@ -200,7 +200,19 @@ void ProcessArgs(int argc, char **argv, int boothbdirect)
 					else
 					{
 						if(strncmp(argv[1], "dvd", 3)==0)ISO9660_Mount();
-						strncpy(path, argv[1], 255);
+						stat(argv[1], &dolstats);
+						fdol = fopen(argv[1], "r");
+						if(fdol==NULL)
+						{
+							printf("Dol doesn't exist: %s\n", argv[1]);
+							break;
+						}
+						else
+						{
+							fread((void*)0x90100000, 1, dolstats.st_size, fdol);
+							DCFlushRange((void*)0x90100000, dolstats.st_size);
+							fclose(fdol);
+						}
 					}
 				}
 
@@ -215,6 +227,7 @@ void ProcessArgs(int argc, char **argv, int boothbdirect)
 				{
 					printf("Booting homebrew directly from RAM buffer.\n");
 				}
+				DI_Close();
 				FlushLog();
 				//IOS_ReloadIOS(36);
 				SYS_ResetSystem(SYS_SHUTDOWN, 0, 0);
@@ -229,6 +242,7 @@ void ProcessArgs(int argc, char **argv, int boothbdirect)
 				DCFlushRange(path, 256);
 				DCFlushRange((void*)0x90100000, tinyload_dol_size);
 				WII_SetNANDBootInfoLaunchcode(0);
+				DI_Close();
 				printf("Booting game disc.\n");
 				FlushLog();
 				entry();
@@ -252,6 +266,7 @@ void ProcessArgs(int argc, char **argv, int boothbdirect)
 	printf("Shutting down...\n");
 	printf("Shutting down WC24...\n");
 	WC24_Shutdown();
+	DI_Close();
 	FlushLog();
 	WPAD_Shutdown();
 	WII_Shutdown();
@@ -260,7 +275,7 @@ void ProcessArgs(int argc, char **argv, int boothbdirect)
 s32 ProcessWC24()//This installs entries for wc24boottitle auto-update, and processes the downloaded auto-update content downloaded via WC24. When wc24boottitle is deleted by the installer app, these entries aren't deleted by the installer app. When KD downloads title data entries, and can't find wc24dl.vff, KD deletes the entries since the data dir containing wc24dl.vff was deleted by ES when the installer app deleted wc24boottitle.
 {
 	s32 retval;
-	u32 entry_bitmask = 3;
+	u32 entry_bitmask = 0;
 	FILE *fdol = NULL, *fver = NULL, *fconfig = NULL;
 	int i;
 	char *configbuf;
@@ -523,7 +538,7 @@ s32 ProcessWC24()//This installs entries for wc24boottitle auto-update, and proc
 	return 0;
 }
 
-/*void ResetWakeup_Timestamp()
+void ResetWakeup_Timestamp()
 {
 	s32 fd;
 	unsigned char *miscbuf;
@@ -532,7 +547,7 @@ s32 ProcessWC24()//This installs entries for wc24boottitle auto-update, and proc
 	fd = ISFS_Open("/shared2/wc24/misc.bin", ISFS_OPEN_RW);
 	if(fd<0)
 	{
-		printf("Failed to open misc.bin.\n");
+		printf("Failed to open misc.bin: %d\n", fd);
 	}
 	else
 	{
@@ -552,7 +567,7 @@ s32 ProcessWC24()//This installs entries for wc24boottitle auto-update, and proc
 		free(miscbuf);
 		ISFS_Close(fd);
 	}
-}*/
+}
 
 int authentication_callback(YellHttp_Ctx *ctx, char *realm, char *authout, void* usrarg, int digest, int invalidcreds)
 {
@@ -715,13 +730,14 @@ int main(int argc, char **argv) {
 		#endif
 	#endif
 
-	//ResetWakeup_Timestamp();
+	ResetWakeup_Timestamp();
 	#ifndef WIILOADAPPDEBUG
 	retval = ProcessWC24();//Don't do any WC24 stuff with HBC wiiload, only with the actual installed wc24boottitle.
 	#endif
 	ProcessArgs(argc, argv, 0);
 	printf("Shutting down WC24...\n");
 	WC24_Shutdown();
+	DI_Close();
 	FlushLog();
 
 	return 0;
