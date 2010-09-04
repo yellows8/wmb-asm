@@ -227,7 +227,9 @@ void ProcessArgs(int argc, char **argv, int boothbdirect)
 				{
 					printf("Booting homebrew directly from RAM buffer.\n");
 				}
+				WC24_Shutdown();
 				DI_Close();
+				WPAD_Shutdown();
 				FlushLog();
 				//IOS_ReloadIOS(36);
 				SYS_ResetSystem(SYS_SHUTDOWN, 0, 0);
@@ -242,7 +244,9 @@ void ProcessArgs(int argc, char **argv, int boothbdirect)
 				DCFlushRange(path, 256);
 				DCFlushRange((void*)0x90100000, tinyload_dol_size);
 				WII_SetNANDBootInfoLaunchcode(0);
+				WC24_Shutdown();
 				DI_Close();
+				WPAD_Shutdown();
 				printf("Booting game disc.\n");
 				FlushLog();
 				entry();
