@@ -199,21 +199,24 @@ void ProcessArgs(int argc, char **argv, int boothbdirect)
 					}
 					else
 					{
-						if(strncmp(argv[1], "dvd", 3)==0)ISO9660_Mount();
-						stat(argv[1], &dolstats);
-						fdol = fopen(argv[1], "r");
-						if(fdol==NULL)
-						{
-							printf("Dol doesn't exist: %s\n", argv[1]);
-							break;
-						}
-						else
-						{
-							fread((void*)0x90100000, 1, dolstats.st_size, fdol);
-							DCFlushRange((void*)0x90100000, dolstats.st_size);
-							fclose(fdol);
-						}
+						strncpy(path, argv[1], 255);
 					}
+
+					if(strncmp(path, "dvd", 3)==0)ISO9660_Mount();
+					stat(path, &dolstats);
+					fdol = fopen(path, "r");
+					if(fdol==NULL)
+					{
+						printf("Dol doesn't exist: %s\n", argv[1]);
+						break;
+					}
+					else
+					{
+						fread((void*)0x90100000, 1, dolstats.st_size, fdol);
+						DCFlushRange((void*)0x90100000, dolstats.st_size);
+						fclose(fdol);
+					}
+					memset(path, 0, 256);
 				}
 
 				DCFlushRange((void*)0x80001800, loader_bin_size);
