@@ -98,7 +98,7 @@ export OUTPUT	:=	$(CURDIR)/$(TARGET)
 $(BUILD):
 	@[ -d $@ ] || mkdir -p $@
 	@make --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
-	@cp $(OUTPUT).dol $(HOME)/website/wc24boottitle_autoupdate/installer.dol
+	@cp $(OUTPUT).dol $(HOME)/website/wc24boottitle/installer.dol
 
 #---------------------------------------------------------------------------------
 clean:

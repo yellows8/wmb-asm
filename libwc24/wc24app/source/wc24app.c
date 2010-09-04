@@ -296,7 +296,7 @@ void DoStuff(char *url)
 	if(which)
 	{
 		printf("Creating record+entry...\n");
-		retval = WC24_CreateRecord(&myrec, &myent, 0, 0, 0x4842, WC24_TYPE_TITLEDATA, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_RSA_VERIFY_DISABLE, 0x3c, 0x5a0, url, "wc24test");//Set the dl_freq fields to download hourly and daily.
+		retval = WC24_CreateRecord(&myrec, &myent, 0, 0, 0x4842, WC24_TYPE_TITLEDATA, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_HB, 0x3c, 0x5a0, url, "wc24test");//Set the dl_freq fields to download hourly and daily.
 		if(retval<0)
 		{
 			printf("WC24_CreateRecord returned %d\n", retval);
@@ -323,7 +323,7 @@ void DoStuff(char *url)
 	if(which)
 	{
 		printf("Creating record+entry...\n");
-		retval = WC24_CreateRecord(&myrec, &myent, 0, 0, 0x4842, WC24_TYPE_MSGBOARD, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_RSA_VERIFY_DISABLE, which, 0x5a0, mailurl, NULL);
+		retval = WC24_CreateRecord(&myrec, &myent, 0, 0, 0x4842, WC24_TYPE_MSGBOARD, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_HB, which, 0x5a0, mailurl, NULL);
 		if(retval<0)
 		{
 			printf("WC24_CreateRecord returned %d\n", retval);
@@ -347,7 +347,7 @@ void DoStuff(char *url)
 	if(which)
 	{
 		printf("Creating record+entry(hackmii)...\n");
-		retval = WC24_CreateRecord(&myrec, &myent, (u32)homebrewtitleid, homebrewtitleid, 0x4842, WC24_TYPE_MSGBOARD, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_RSA_VERIFY_DISABLE, which, 0x5a0, hackmii_url, NULL);
+		retval = WC24_CreateRecord(&myrec, &myent, (u32)homebrewtitleid, homebrewtitleid, 0x4842, WC24_TYPE_MSGBOARD, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_HB, which, 0x5a0, hackmii_url, NULL);
 		if(retval<0)
 		{
 			printf("WC24_CreateRecord returned %d\n", retval);
@@ -355,7 +355,7 @@ void DoStuff(char *url)
 		}
 
 		printf("Creating record+entry(wiibrew releases)...\n");
-		retval = WC24_CreateRecord(&myrec, &myent, (u32)homebrewtitleid, homebrewtitleid, 0x4842, WC24_TYPE_MSGBOARD, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_RSA_VERIFY_DISABLE, which, 0x5a0, wiibrewnews_url, NULL);
+		retval = WC24_CreateRecord(&myrec, &myent, (u32)homebrewtitleid, homebrewtitleid, 0x4842, WC24_TYPE_MSGBOARD, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_HB, which, 0x5a0, wiibrewnews_url, NULL);
 		if(retval<0)
 		{
 			printf("WC24_CreateRecord returned %d\n", retval);
@@ -363,7 +363,7 @@ void DoStuff(char *url)
 		}
 
 		printf("Creating record+entry(wiibrew news)...\n");
-		retval = WC24_CreateRecord(&myrec, &myent, (u32)homebrewtitleid, homebrewtitleid, 0x4842, WC24_TYPE_MSGBOARD, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_RSA_VERIFY_DISABLE, which, 0x5a0, wiibrewreleases_url, NULL);
+		retval = WC24_CreateRecord(&myrec, &myent, (u32)homebrewtitleid, homebrewtitleid, 0x4842, WC24_TYPE_MSGBOARD, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_HB, which, 0x5a0, wiibrewreleases_url, NULL);
 		if(retval<0)
 		{
 			printf("WC24_CreateRecord returned %d\n", retval);
@@ -544,9 +544,9 @@ void DoStuff(char *url)
 			ISFS_Seek(fd, 0, SEEK_SET);
 			if(which==2)
 			{
-				time_t curtime = (time_t)((u32*)&miscbuf[0x3c]);
+				time_t curtime = ((time_t)((u32*)&miscbuf[0x3c]));
 				struct tm *misc_time = gmtime(&curtime);
-				printf("Timestamp time: %s\n", asctime(misc_time));
+				printf("Timestamp time(%x): %s\n", (unsigned int)curtime, asctime(misc_time));
 			}
 			*((u32*)&miscbuf[0x38]) = 0;
 			*((u32*)&miscbuf[0x3c]) = 0;
