@@ -29,6 +29,15 @@ ifeq ($(WIILOADAPPDEBUG),1)
 DEFINES	:=	-DWIILOADAPPDEBUG
 endif
 
+ifeq ($(DEBUG),1)
+DEFINES	+=	-DDEBUG
+endif
+
+
+ifeq ($(DEBUGPOST),1)
+DEFINES	+=	-DDEBUGPOST
+endif
+
 CFLAGS	= -g -O2 -Wall $(MACHDEP) $(INCLUDE) $(DEFINES)
 CXXFLAGS	=	$(CFLAGS)
 
@@ -38,7 +47,7 @@ LDFLAGS	=	-g $(MACHDEP) -Wl,-Map,$(notdir $@).map
 #---------------------------------------------------------------------------------
 # any extra libraries we wish to link with the project
 #---------------------------------------------------------------------------------
-LIBS	:=	-lwc24 -lyellhttp -lcyassl -lfat -lwiiuse -lbte -logc -lm
+LIBS	:=	-liso9660 -ldi -lwc24 -lyellhttp -lcyassl -lfat -lwiiuse -lbte -logc -lm
 
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing
