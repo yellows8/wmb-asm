@@ -151,6 +151,8 @@ void ProcessArgs(int argc, char **argv, int boothbdirect)
 							index = retval;
 
 							printf("Downloading...\n");
+							printf("Deleting record+entry...\n");
+							WC24_DeleteRecord(index);
 							retval = KD_Download(KD_DOWNLOADFLAGS_MANUAL, (u16)index, 0x0);
 							if(retval<0)
 							{
@@ -158,9 +160,6 @@ void ProcessArgs(int argc, char **argv, int boothbdirect)
 								WC24_Shutdown();
 								break;
 							}
-
-							printf("Deleting record+entry...\n");
-							WC24_DeleteRecord(index);
 
 							printf("Mounting VFF...\n");
 							retval = WC24_MountWC24DlVFF();
