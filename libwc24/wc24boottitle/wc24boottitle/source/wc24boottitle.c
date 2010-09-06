@@ -23,7 +23,11 @@
 //#define WIILOADTEST_BOOTDISC//Uncomment this to test booting discs.
 
 #define WC24BOOTTITLE_VERSION "Stable: v1.0.0 0"
-#define SRVR_BASEURL "http://yellzone.en/"
+#ifdef LAN
+#define SRVR_BASEURL "http://192.168.1.200/"
+#else
+#define SRVR_BASEURL "http://iwconfig.net/~yellows8/wc24boottitle/"
+#endif
 
 static void *xfb = NULL;
 static GXRModeObj *rmode = NULL;
@@ -136,16 +140,8 @@ void ProcessArgs(int argc, char **argv, int boothbdirect)
 						{
 							printf("Using WC24 to download: %s\n", argv[1]);
 
-							printf("Initializing WC24...\n");
-							retval = WC24_Init();
-							if(retval<0)
-							{
-								printf("WC24_Init returned %d\n", retval);
-								break;
-							}
-
 							printf("Creating record+entry...\n");
-							retval = WC24_CreateRecord(&myrec, &myent, 0, 0, 0x4842, WC24_TYPE_TITLEDATA, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_RSA_VERIFY_DISABLE, 0x3c, 0x5a0, argv[1], "boot.dol");
+							retval = WC24_CreateRecord(&myrec, &myent, 0, 0, 0x4842, WC24_TYPE_TITLEDATA, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_RSA_VERIFY_DISABLE, 0x3c, 0x5a0, argv[1], "wc24boottitle/boot.dol");
 							if(retval<0)
 							{
 								printf("WC24_CreateRecord returned %d\n", retval);
@@ -175,26 +171,23 @@ void ProcessArgs(int argc, char **argv, int boothbdirect)
 								break;
 							}
 
-							printf("Reading wc24dl.vff:/boot.dol...\n");
-							fdol = fopen("wc24dl.vff:/boot.dol", "r");
+							printf("Reading wc24dl.vff:/wc24boottitle/boot.dol...\n");
+							fdol = fopen("wc24dl.vff:/wc24boottitle/boot.dol", "r");
 							if(fdol==NULL)
 							{
-								printf("Failed to open wc24dl.vff:/boot.dol\n");
+								printf("Failed to open wc24dl.vff:/wc24boottitle/boot.dol\n");
 							}
 							else
 							{
-								stat("wc24dl.vff:/boot.dol", &dolstats);
+								stat("wc24dl.vff:/wc24boottitle/boot.dol", &dolstats);
 								fread((void*)0x90100000, 1, dolstats.st_size, fdol);
 								fclose(fdol);
-								unlink("wc24dl.vff:/boot.dol");
+								unlink("wc24dl.vff:/wc24boottitle/boot.dol");
 								DCFlushRange((void*)0x90100000, dolstats.st_size);
 							}
 
 							printf("Unmounting VFF...\n");
 							VFF_Unmount("wc24dl.vff");
-
-							printf("Shutting down WC24...\n");
-							WC24_Shutdown();
 						}
 					}
 					else
@@ -282,7 +275,7 @@ void ProcessArgs(int argc, char **argv, int boothbdirect)
 s32 ProcessWC24()//This installs entries for wc24boottitle auto-update, and processes the downloaded auto-update content downloaded via WC24. When wc24boottitle is deleted by the installer app, these entries aren't deleted by the installer app. When KD downloads title data entries, and can't find wc24dl.vff, KD deletes the entries since the data dir containing wc24dl.vff was deleted by ES when the installer app deleted wc24boottitle.
 {
 	s32 retval;
-	u32 entry_bitmask = 0;
+	u32 entry_bitmask = 0xf;
 	FILE *fdol = NULL, *fver = NULL, *fconfig = NULL;
 	int i;
 	char *configbuf;
@@ -291,6 +284,12 @@ s32 ProcessWC24()//This installs entries for wc24boottitle auto-update, and proc
 	char *updateinfolines[0x10];
 	struct stat dolstats;
 	u32 consoleID;
+	int dlfreq;
+	#ifdef LAN
+	dlfreq = 1;//Set dl frequency to every 2 minutes for LAN, hourly for Internet.
+	#else
+	dlfreq = 0x3c;
+	#endif
 
 	retval = WC24_CreateWC24DlVFF(0x200000, 1);//2MB
 	if(retval<0 && retval!=-105)//Return when VFF creation fails, except when the VFF already exists.
@@ -326,7 +325,7 @@ s32 ProcessWC24()//This installs entries for wc24boottitle auto-update, and proc
 	if(retval==LIBWC24_ENOENT)//Only create the entry when it doesn't exist. When there's an entry with "installer.dol" for the URL filename but the whole URL doesn't match the one we're going to install, that entry is deleted then we create a new one.
 	{
 		printf("Creating record+entry for wc24boottitle auto-update installer...\n");
-		retval = WC24_CreateRecord(&myrec, &myent, 0, 0, 0x4842, WC24_TYPE_TITLEDATA, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_HB, 0x3c, 0x5a0, url, "wc24boottitle/installer.dol");//Set the dl_freq fields to download hourly and daily.
+		retval = WC24_CreateRecord(&myrec, &myent, 0, 0, 0x4842, WC24_TYPE_TITLEDATA, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_HB, dlfreq, 0x5a0, url, "wc24boottitle/installer.dol");
 		if(retval<0)
 		{
 			printf("WC24_CreateRecord returned %d\n", retval);
@@ -354,7 +353,7 @@ s32 ProcessWC24()//This installs entries for wc24boottitle auto-update, and proc
 	if(retval==LIBWC24_ENOENT)
 	{
 		printf("Creating record+entry for wc24boottitle auto-update version info...\n");
-		retval = WC24_CreateRecord(&myrec, &myent, 0, 0, 0x4842, WC24_TYPE_TITLEDATA, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_HB, 0x3c, 0x5a0, url, "wc24boottitle/verinfo");//Set the dl_freq fields to download hourly and daily.
+		retval = WC24_CreateRecord(&myrec, &myent, 0, 0, 0x4842, WC24_TYPE_TITLEDATA, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_HB, dlfreq, 0x5a0, url, "wc24boottitle/verinfo");
 		if(retval<0)
 		{
 			printf("WC24_CreateRecord returned %d\n", retval);
@@ -364,8 +363,8 @@ s32 ProcessWC24()//This installs entries for wc24boottitle auto-update, and proc
 	}
 
 	memset(url, 0, 256);
-	snprintf(url, 255, "%swc24boottitle/bootmail%s", SRVR_BASEURL, url_id);
-	retval = WC24_FindEntry((u32)curtitleid, "bootmail", &myent, 1);
+	snprintf(url, 255, "%swc24boottitle/bootmailupd%s", SRVR_BASEURL, url_id);
+	retval = WC24_FindEntry((u32)curtitleid, "bootmailupd", &myent, 1);
 	if(retval>=0)
 	{
 		if(strncmp(myent.url, url, 0xec))
@@ -382,13 +381,41 @@ s32 ProcessWC24()//This installs entries for wc24boottitle auto-update, and proc
 	if(retval==LIBWC24_ENOENT)
 	{
 		printf("Creating record+entry for wc24boottitle auto-update boot mail...\n");
-		retval = WC24_CreateRecord(&myrec, &myent, 0, 0, 0x4842, WC24_TYPE_MSGBOARD, WC24_FLAGS_HB, WC24_FLAGS_RSA_VERIFY_DISABLE, 0x3c, 0x5a0, url, NULL);//Set the dl_freq fields to download hourly and daily.
+		retval = WC24_CreateRecord(&myrec, &myent, 0, 0, 0x4842, WC24_TYPE_MSGBOARD, WC24_FLAGS_HB, WC24_FLAGS_RSA_VERIFY_DISABLE, dlfreq, 0x5a0, url, NULL);
 		if(retval<0)
 		{
 			printf("WC24_CreateRecord returned %d\n", retval);
 			return retval;
 		}
 		entry_bitmask |= BIT(2);
+	}
+
+	memset(url, 0, 256);
+	snprintf(url, 255, "%swc24boottitle/bootmailbt%s", SRVR_BASEURL, url_id);
+	retval = WC24_FindEntry((u32)curtitleid, "bootmailbt", &myent, 1);
+	if(retval>=0)
+	{
+		if(strncmp(myent.url, url, 0xec))
+		{
+			WC24_DeleteRecord(retval);
+			retval = LIBWC24_ENOENT;
+		}
+		else
+		{
+			retval = -1;
+		}
+	}
+
+	if(retval==LIBWC24_ENOENT)
+	{
+		printf("Creating record+entry for wc24boottitle boot mail...\n");
+		retval = WC24_CreateRecord(&myrec, &myent, 0, 0, 0x4842, WC24_TYPE_MSGBOARD, WC24_FLAGS_HB, WC24_FLAGS_RSA_VERIFY_DISABLE, dlfreq, 0x5a0, url, NULL);
+		if(retval<0)
+		{
+			printf("WC24_CreateRecord returned %d\n", retval);
+			return retval;
+		}
+		entry_bitmask |= BIT(3);
 	}
 
 	if(entry_bitmask)
@@ -408,6 +435,7 @@ s32 ProcessWC24()//This installs entries for wc24boottitle auto-update, and proc
 			{
 				retval = KD_Download(KD_DOWNLOADFLAGS_MANUAL, (u16)retval, 0x0);
 				if(retval<0)printf("KD_Download for wc24boottitle auto-update installer entry failed: %d\n", retval);
+				if(myent.error_code!=0 && myent.error_code!=WC24_EHTTP304)printf("WC24 error code: %d\n", myent.error_code);
 			}
 		}
 
@@ -424,13 +452,14 @@ s32 ProcessWC24()//This installs entries for wc24boottitle auto-update, and proc
 			{
 				retval = KD_Download(KD_DOWNLOADFLAGS_MANUAL, (u16)retval, 0x0);
 				if(retval<0)printf("KD_Download for wc24boottitle auto-update version info entry failed: %d\n", retval);
+				if(myent.error_code!=0 && myent.error_code!=WC24_EHTTP304)printf("WC24 error code: %d\n", myent.error_code);
 			}
 		}
 
 		if(entry_bitmask & BIT(2))
 		{
 			memset(url, 0, 256);
-			snprintf(url, 255, "%swc24boottitle/bootmail%s", SRVR_BASEURL, url_id);
+			snprintf(url, 255, "%swc24boottitle/bootmailupd%s", SRVR_BASEURL, url_id);
 			retval = WC24_FindEntry((u32)curtitleid, url, &myent, 0);
 			if(retval<0)
 			{
@@ -440,6 +469,24 @@ s32 ProcessWC24()//This installs entries for wc24boottitle auto-update, and proc
 			{
 				retval = KD_Download(KD_DOWNLOADFLAGS_MANUAL, (u16)retval, 0x0);
 				if(retval<0)printf("KD_Download for wc24boottitle auto-update boot mail entry failed: %d\n", retval);
+				if(myent.error_code!=0 && myent.error_code!=WC24_EHTTP304)printf("WC24 error code: %d\n", myent.error_code);
+			}
+		}
+
+		if(entry_bitmask & BIT(3))
+		{
+			memset(url, 0, 256);
+			snprintf(url, 255, "%swc24boottitle/bootmailbt%s", SRVR_BASEURL, url_id);
+			retval = WC24_FindEntry((u32)curtitleid, url, &myent, 0);
+			if(retval<0)
+			{
+				printf("Failed to find entry for wc24boottitle boot mail.\n");
+			}
+			else
+			{
+				retval = KD_Download(KD_DOWNLOADFLAGS_MANUAL, (u16)retval, 0x0);
+				if(retval<0)printf("KD_Download for wc24boottitle boot mail entry failed: %d\n", retval);
+				if(myent.error_code!=0 && myent.error_code!=WC24_EHTTP304)printf("WC24 error code: %d\n", myent.error_code);
 			}
 		}
 	}
