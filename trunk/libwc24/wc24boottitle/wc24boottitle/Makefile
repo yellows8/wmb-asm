@@ -33,9 +33,12 @@ ifeq ($(DEBUG),1)
 DEFINES	+=	-DDEBUG
 endif
 
-
 ifeq ($(DEBUGPOST),1)
 DEFINES	+=	-DDEBUGPOST
+endif
+
+ifeq ($(LAN),1)
+DEFINES	+=	-DLAN
 endif
 
 CFLAGS	= -g -O2 -Wall $(MACHDEP) $(INCLUDE) $(DEFINES)
