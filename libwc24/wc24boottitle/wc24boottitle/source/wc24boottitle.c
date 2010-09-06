@@ -271,10 +271,10 @@ void ProcessArgs(int argc, char **argv, int boothbdirect)
 	WII_Shutdown();
 }
 
-s32 ProcessWC24()//This installs entries for wc24boottitle auto-update, and processes the downloaded auto-update content downloaded via WC24. When wc24boottitle is deleted by the installer app, these entries aren't deleted by the installer app. When KD downloads title data entries, and can't find wc24dl.vff, KD deletes the entries since the data dir containing wc24dl.vff was deleted by ES when the installer app deleted wc24boottitle.
+s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update, and processes the downloaded auto-update content downloaded via WC24. When wc24boottitle is deleted by the installer app, these entries aren't deleted by the installer app. When KD downloads title data entries, and can't find wc24dl.vff, KD deletes the entries since the data dir containing wc24dl.vff was deleted by ES when the installer app deleted wc24boottitle.
 {
 	s32 retval;
-	u32 entry_bitmask = 0xf;
+	u32 entry_bitmask = 0;
 	FILE *fdol = NULL, *fver = NULL, *fconfig = NULL;
 	int i;
 	char *configbuf;
@@ -289,6 +289,7 @@ s32 ProcessWC24()//This installs entries for wc24boottitle auto-update, and proc
 	#else
 	dlfreq = 0x3c;
 	#endif
+	if(dlnow)entry_bitmask = 0xf;
 
 	retval = WC24_CreateWC24DlVFF(0x200000, 1);//2MB
 	if(retval<0 && retval!=-105)//Return when VFF creation fails, except when the VFF already exists.
@@ -785,8 +786,9 @@ int main(int argc, char **argv) {
 
 	ResetWakeup_Timestamp();
 	#ifndef WIILOADAPPDEBUG
-	retval = ProcessWC24();//Don't do any WC24 stuff with HBC wiiload, only with the actual installed wc24boottitle.
+	retval = ProcessWC24(launchcode & BIT(25));//Don't do any WC24 stuff with HBC wiiload, only with the actual installed wc24boottitle.
 	#endif
+	launchcode &= ~BIT(25);
 	ProcessArgs(argc, argv, 0);
 	printf("Shutting down WC24...\n");
 	WC24_Shutdown();
