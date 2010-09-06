@@ -60,6 +60,7 @@ DEALINGS IN THE SOFTWARE.
 //Errors in the -1072xx range might be errors from KD_Download, where xx is the retval of KD_Download.
 
 #define WC24_EINVALVFF -107243//Invalid wc24dl.vff.
+#define WC24_EVFFPATH -107216//The VFF subdirectories which the file path is under doesn't exist.
 #define WC24_ESIGFAIL -107245//RSA signature verification failed. Or KD_CreateRSA failed.
 #define WC24_EHTTP304 -107304//HTTP 304.
 #define WC24_EHTTP404 -117404//HTTP 404. Errors in the -117xxx range seem to be HTTP errors, where xxx is the HTTP error/status code.
