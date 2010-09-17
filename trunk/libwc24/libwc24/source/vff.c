@@ -443,9 +443,9 @@ int _VFF_open_r (struct _reent *r, void *fileStruct, const char *path, int flags
 	FIL *f = (FIL*)fileStruct;
 	TCHAR *lfnpath = (TCHAR*)malloc(128 * sizeof(TCHAR));
 	memset(f, 0, sizeof(FIL));
-	memset(lfnpath, 0, 256);
+	memset(lfnpath, 0, 128 * sizeof(TCHAR));
 	if(strchr(path, ':'))path = strchr(path, ':')+1;
-	if(strlen(path)>255)
+	if(strlen(path)>127)
 	{
 		r->_errno = ENAMETOOLONG;
 		return -1;
@@ -545,8 +545,8 @@ int _VFF_fstat_r (struct _reent *r, int fd, struct stat *st)
 	FILINFO info;
 	TCHAR *lfnpath = (TCHAR*)malloc(128 * sizeof(TCHAR));
 	TCHAR *lfnpathinfo = (TCHAR*)malloc(128 * sizeof(TCHAR));
-	memset(lfnpath, 0, 256);
-	memset(lfnpathinfo, 0, 256);
+	memset(lfnpath, 0, 128 * sizeof(TCHAR));
+	memset(lfnpathinfo, 0, 128 * sizeof(TCHAR));
 	for(fdi=0; fdi<VFF_MAXFDS; fdi++)
 	{
 		if((int)vffoptab_fds[fdi]==fd)
@@ -609,9 +609,16 @@ int _VFF_stat_r (struct _reent *r, const char *path, struct stat *st)
 	FILINFO info;
 	TCHAR *lfnpath = (TCHAR*)malloc(128 * sizeof(TCHAR));
 	TCHAR *lfnpathinfo = (TCHAR*)malloc(128 * sizeof(TCHAR));
-	memset(lfnpath, 0, 256);
-	memset(lfnpathinfo, 0, 256);
+	memset(lfnpath, 0, 128 * sizeof(TCHAR));
+	memset(lfnpathinfo, 0, 128 * sizeof(TCHAR));
 	if(strchr(path, ':'))path = strchr(path, ':')+1;
+	if(strlen(path)>127)
+	{
+		free(lfnpath);
+		free(lfnpathinfo);
+		r->_errno = ENAMETOOLONG;
+		return -1;
+	}
 
 	for(i=0; i<strlen(path); i++)lfnpath[i] = path[i];
 	info.lfname = lfnpathinfo;
@@ -628,9 +635,9 @@ int _VFF_unlink_r (struct _reent *r, const char *path)
 {
 	int i;
 	TCHAR *lfnpath = (TCHAR*)malloc(128 * sizeof(TCHAR));
-	memset(lfnpath, 0, 256);
+	memset(lfnpath, 0, 128 * sizeof(TCHAR));
 	if(strchr(path, ':'))path = strchr(path, ':')+1;
-	if(strlen(path)>255)
+	if(strlen(path)>127)
 	{
 		free(lfnpath);
 		r->_errno = ENAMETOOLONG;
@@ -647,9 +654,9 @@ int _VFF_chdir_r (struct _reent *r, const char *path)
 {
 	int i;
 	TCHAR *lfnpath = (TCHAR*)malloc(128 * sizeof(TCHAR));
-	memset(lfnpath, 0, 256);
+	memset(lfnpath, 0, 128 * sizeof(TCHAR));
 	if(strchr(path, ':'))path = strchr(path, ':')+1;
-	if(strlen(path)>255)
+	if(strlen(path)>127)
 	{
 		free(lfnpath);
 		r->_errno = ENAMETOOLONG;
@@ -667,11 +674,11 @@ int _VFF_rename_r (struct _reent *r, const char *oldName, const char *newName)
 	int i;
 	TCHAR *lfnpathold = (TCHAR*)malloc(128 * sizeof(TCHAR));
 	TCHAR *lfnpathnew = (TCHAR*)malloc(128 * sizeof(TCHAR));
-	memset(lfnpathold, 0, 256);
-	memset(lfnpathnew, 0, 256);
+	memset(lfnpathold, 0, 128 * sizeof(TCHAR));
+	memset(lfnpathnew, 0, 128 * sizeof(TCHAR));
 	if(strchr(oldName, ':'))oldName = strchr(oldName, ':')+1;
 	if(strchr(newName, ':'))newName = strchr(newName, ':')+1;
-	if(strlen(oldName)>255 || strlen(newName)>255)
+	if(strlen(oldName)>127 || strlen(newName)>127)
 	{
 		free(lfnpathold);
 		free(lfnpathnew);
@@ -691,9 +698,9 @@ int _VFF_mkdir_r (struct _reent *r, const char *path, int mode)
 {
 	int i;
 	TCHAR *lfnpath = (TCHAR*)malloc(128 * sizeof(TCHAR));
-	memset(lfnpath, 0, 256);
+	memset(lfnpath, 0, 128 * sizeof(TCHAR));
 	if(strchr(path, ':'))path = strchr(path, ':')+1;
-	if(strlen(path)>255)
+	if(strlen(path)>127)
 	{
 		free(lfnpath);
 		r->_errno = ENAMETOOLONG;
@@ -717,9 +724,9 @@ DIR_ITER* _VFF_diropen_r(struct _reent *r, DIR_ITER *dirState, const char *path)
 	int i;
 	DIR *dir = (DIR*)dirState->dirStruct;
 	TCHAR *lfnpath = (TCHAR*)malloc(128 * sizeof(TCHAR));
-	memset(lfnpath, 0, 256);
+	memset(lfnpath, 0, 128 * sizeof(TCHAR));
 	if(strchr(path, ':'))path = strchr(path, ':')+1;
-	if(strlen(path)>255)
+	if(strlen(path)>127)
 	{
 		free(lfnpath);
 		r->_errno = ENAMETOOLONG;

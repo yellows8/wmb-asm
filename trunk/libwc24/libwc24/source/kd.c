@@ -29,8 +29,6 @@ DEALINGS IN THE SOFTWARE.
 #include "wc24.h"
 #include "kd.h"
 
-s32 __kdtime_fd, __kdreq_fd;
-
 #define IOCTL_KD_GETUTCTIME 0x14
 #define IOCTL_KD_SETUTCTIME 0x15
 #define IOCTL_KD_CORRECTRTC 0x17
@@ -39,6 +37,14 @@ s32 __kdtime_fd, __kdreq_fd;
 #define IOCTL_KD_SAVEMAIL 0xd
 #define IOCTL_KD_DOWNLOAD 0xe
 #define IOCTL_KD_SETNEXTWAKEUP 0x21
+
+s32 __kdtime_fd, __kdreq_fd;
+
+typedef struct _skd_timebuf
+{
+	s32 retval;//Zero for success, -30 when "Universal time is not ready.".
+	u64 time;//UTC time in seconds.
+} kd_timebuf;
 
 s32 KD_Open()
 {
@@ -70,20 +76,28 @@ s32 KD_Close()
 
 // -- /dev/net/kd/time --
 
-s32 KD_GetUTCTime(kd_timebuf *time)
+s32 KD_GetUTCTime(u64 *curtime)
 {
+    kd_timebuf time;
     if(__kdtime_fd==0)return LIBWC24_EINIT;
-    s32 retval = IOS_Ioctl(__kdtime_fd,IOCTL_KD_GETUTCTIME,NULL,0,time,12);
-    DCInvalidateRange(time, sizeof(kd_timebuf));
-    return retval;
+    s32 retval = IOS_Ioctl(__kdtime_fd,IOCTL_KD_GETUTCTIME,NULL,0,&time,12);
+    DCInvalidateRange(&time, sizeof(kd_timebuf));
+    if(retval<0)return retval;
+    if(time.retval<0)return time.retval;
+
+    *curtime = time.time;
+    return time.retval;
 }
 
-s32 KD_SetUTCTime(kd_timebuf *time)
+s32 KD_SetUTCTime(u64 set_time)
 {
+    kd_timebuf time;
     if(__kdtime_fd==0)return LIBWC24_EINIT;
-    DCFlushRange(time, sizeof(kd_timebuf));
-    s32 retval = IOS_Ioctl(__kdtime_fd,IOCTL_KD_SETUTCTIME,time,12,time,12);
-    DCInvalidateRange(time, sizeof(kd_timebuf));
+    memset(&time, 0, 12);
+    time.time = set_time;
+    DCFlushRange(&time, sizeof(kd_timebuf));
+    s32 retval = IOS_Ioctl(__kdtime_fd,IOCTL_KD_SETUTCTIME,&time,12,&time,12);
+    DCInvalidateRange(&time, sizeof(kd_timebuf));
     return retval;
 }
 
