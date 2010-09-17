@@ -297,6 +297,14 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 		printf("WC24_CreateWC24DlVFF returned %d\n", retval);
 		return retval;
 	}
+	
+	retval = WC24_MountWC24DlVFF();
+	if(retval<0)
+	{
+		printf("WC24_MountWC24DlVFF returned %d\n", retval);
+		return retval;
+	}
+	
 	printf("mkdir...\n");
 	mkdir("wc24dl.vff:/wc24boottitle", 777);
 	printf("done.\n");
@@ -332,6 +340,7 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 		if(retval<0)
 		{
 			printf("WC24_CreateRecord returned %d\n", retval);
+			VFF_Unmount("wc24dl.vff");
 			return retval;
 		}
 		entry_bitmask |= BIT(0);
@@ -360,6 +369,7 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 		if(retval<0)
 		{
 			printf("WC24_CreateRecord returned %d\n", retval);
+			VFF_Unmount("wc24dl.vff");
 			return retval;
 		}
 		entry_bitmask |= BIT(1);
@@ -388,6 +398,7 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 		if(retval<0)
 		{
 			printf("WC24_CreateRecord returned %d\n", retval);
+			VFF_Unmount("wc24dl.vff");
 			return retval;
 		}
 		entry_bitmask |= BIT(2);
@@ -416,6 +427,7 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 		if(retval<0)
 		{
 			printf("WC24_CreateRecord returned %d\n", retval);
+			VFF_Unmount("wc24dl.vff");
 			return retval;
 		}
 		entry_bitmask |= BIT(3);
@@ -495,12 +507,6 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 	}
 
 	printf("Processing content in wc24dl.vff...\n");
-	retval = WC24_MountWC24DlVFF();
-	if(retval<0)
-	{
-		printf("WC24_MountWC24DlVFF returned %d\n", retval);
-		return retval;
-	}
 
 	fdol = fopen("wc24dl.vff:/wc24boottitle/installer.dol", "r");
 	if(fdol==NULL)
