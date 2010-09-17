@@ -57,7 +57,7 @@ typedef struct {//From libogc.
 #define RETURN_TO_SETTINGS 1
 #define RETURN_TO_ARGS 2
 
-#define LANSRVR_ADDR "yellzone.en"
+#define LANSRVR_ADDR "192.168.1.33"
 
 static u32 __CalcChecksum(u32 *buf, int len)//Based on function from libogc.
 {
