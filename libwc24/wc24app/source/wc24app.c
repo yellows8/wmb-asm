@@ -30,6 +30,8 @@ DEALINGS IN THE SOFTWARE.
 #include <sys/stat.h>
 #include <dirent.h>
 
+#define WIILAUNCHMOD
+
 static void *xfb = NULL;
 static GXRModeObj *rmode = NULL;
 nwc24dl_record myrec;
@@ -59,6 +61,7 @@ typedef struct {//From libogc.
 
 #define LANSRVR_ADDR "192.168.1.33"
 
+#ifndef WIILAUNCHMOD
 static u32 __CalcChecksum(u32 *buf, int len)//Based on function from libogc.
 {
 	u32 sum = 0;
@@ -70,6 +73,7 @@ static u32 __CalcChecksum(u32 *buf, int len)//Based on function from libogc.
 
 	return sum;
 }
+#endif
 
 void DoStuff(char *url)
 {
@@ -775,7 +779,6 @@ int main(int argc, char **argv) {
 		if(shutdown)
 		{
 			WPAD_Shutdown();
-			#define WIILAUNCHMOD
 			#ifndef WIILAUNCHMOD
 			StateFlags *state = memalign(32, sizeof(StateFlags));
 			s32 fd = ISFS_Open("/title/00000001/00000002/data/state.dat", ISFS_OPEN_RW);
