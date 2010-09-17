@@ -51,4 +51,5 @@ Credits:
 Bushing for VFF FAT size code: http://wiibrew.org/wiki/VFF
 Elm Chan FatFs. libff ff.c, ff.h, option/syscall.c, and option/ccsbcs.c were modified to redefine f_* functions as fvff_* functions.
 Mha for hosting the wiibrew mail server scripts, and for hosting the content for wc24app test entries
+Marcan for hosting the hackmii mail server scripts
 
