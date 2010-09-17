@@ -41,17 +41,11 @@ DEALINGS IN THE SOFTWARE.
 #define KD_ESHUTDOWN -48//Only happens when STM_Wakeup needs to be called by KD: "Shutdown required. Quit processing."
 #define KD_ENOSPACE -6//No space is available in VFF.
 
-typedef struct _skd_timebuf
-{
-	s32 retval;//Zero for success, -30 when "Universal time is not ready.".
-	u64 time;//UTC time in seconds.
-} kd_timebuf;
-
 s32 KD_Open();//KD_Open and KD_Close are called by WC24_Init and WC24_Shutdown.
 s32 KD_Close();
 
-s32 KD_GetUTCTime(kd_timebuf *time);//If KD_Open wasn't called when any of these KD ioctl functions are called, LIBWC24_EINIT will be returned.
-s32 KD_SetUTCTime(kd_timebuf *time);
+s32 KD_GetUTCTime(u64 *curtime);//If KD_Open/WC24_Init wasn't called when any of these KD ioctl functions are called, LIBWC24_EINIT will be returned.
+s32 KD_SetUTCTime(u64 set_time);
 s32 KD_CorrectRTC(u64 diff);
 
 s32 KD_SaveMail();//Should be called after downloading mail immediately. This saves the dlcnt.bin mail content to nwc24recv.mbx, if more mail would be downloaded immediately dlcnt.bin mail content would be overwritten without saving it.

@@ -24,7 +24,7 @@
 
 #define WC24BOOTTITLE_VERSION "Stable: v1.0.0 0"
 #ifdef LAN
-#define SRVR_BASEURL "http://192.168.1.200/"
+#define SRVR_BASEURL "http://192.168.1.33/"
 #else
 #define SRVR_BASEURL "http://iwconfig.net/~yellows8/wc24boottitle/"
 #endif
@@ -274,7 +274,7 @@ void ProcessArgs(int argc, char **argv, int boothbdirect)
 s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update, and processes the downloaded auto-update content downloaded via WC24. When wc24boottitle is deleted by the installer app, these entries aren't deleted by the installer app. When KD downloads title data entries, and can't find wc24dl.vff, KD deletes the entries since the data dir containing wc24dl.vff was deleted by ES when the installer app deleted wc24boottitle.
 {
 	s32 retval;
-	u32 entry_bitmask = 0;
+	u32 entry_bitmask = 0xf;
 	FILE *fdol = NULL, *fver = NULL, *fconfig = NULL;
 	int i;
 	char *configbuf;
@@ -297,6 +297,9 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 		printf("WC24_CreateWC24DlVFF returned %d\n", retval);
 		return retval;
 	}
+	printf("mkdir...\n");
+	mkdir("wc24dl.vff:/wc24boottitle", 777);
+	printf("done.\n");
 
 	retval = ES_GetDeviceID(&consoleID);
 	if(retval<0)
@@ -529,7 +532,7 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 			if(fconfig==NULL)
 			{
 				printf("Config file doesn't exist, creating.\n");
-				fconfig = fopen("wc24dl.vff:/config", "w+");
+				fconfig = fopen("wc24dl.vff:/wc24boottitle/config", "w+");
 				strncpy(configlines[0], WC24BOOTTITLE_VERSION, 0x1f);
 				snprintf(configlines[1], 0x1f, "Revision: %d", 0);//SVN beta auto-update isn't implemented yet.
 				fwrite(configbuf, 1, 0x200, fconfig);
@@ -556,7 +559,7 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 				fwrite(configbuf, 1, 0x200, fconfig);
 				fseek(fconfig, 0, SEEK_SET);
 
-				stat("wc24dl.vff:/installer.dol", &dolstats);
+				stat("wc24dl.vff:/wc24boottitle/installer.dol", &dolstats);
 				fread((void*)0x90100000, 1, dolstats.st_size, fdol);
 				DCFlushRange((void*)0x90100000, dolstats.st_size);
 				printf("Update size: %x\n", (u32)dolstats.st_size);
@@ -574,7 +577,7 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 			}
 			else
 			{
-				printf("Deleting wc24dl.vff:/installer.dol and wc24dl.vff:/verinfo since no update is available.\n");
+				printf("Deleting wc24dl.vff:/wc24boottitle/installer.dol and wc24dl.vff:/wc24boottitle/verinfo since no update is available.\n");
 				unlink("wc24dl.vff:/wc24boottitle/installer.dol");
 				unlink("wc24dl.vff:/wc24boottitle/verinfo");
 			}
