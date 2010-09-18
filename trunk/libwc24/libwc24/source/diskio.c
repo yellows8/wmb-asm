@@ -120,7 +120,7 @@ DRESULT disk_read(BYTE drv,BYTE *buff, DWORD sector, BYTE count)
 	if(sector==0)return diskio_generatefatsector(drv, sector, buff);
 	if(sector==1 && vff_fat_types[(int)drv]==32)return diskio_generatefatsector(drv, sector, buff);
 	sector--;
-	if((sector>0 && sector<31) && vff_fat_types[(int)drv]==32)
+	if((sector>=0 && sector<31) && vff_fat_types[(int)drv]==32)
 	{
 		memset(buff, 0, count*0x200);
 		return 0;
