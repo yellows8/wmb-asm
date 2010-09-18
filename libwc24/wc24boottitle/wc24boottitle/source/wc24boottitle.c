@@ -291,7 +291,7 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 	#endif
 	if(dlnow)entry_bitmask = 0xf;
 
-	retval = WC24_CreateWC24DlVFF(0x200000, 1);//2MB
+	retval = WC24_CreateWC24DlVFF(0x200000, 0);//2MB
 	if(retval<0 && retval!=-105)//Return when VFF creation fails, except when the VFF already exists.
 	{
 		printf("WC24_CreateWC24DlVFF returned %d\n", retval);
@@ -449,6 +449,7 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 			else
 			{
 				retval = KD_Download(KD_DOWNLOADFLAGS_MANUAL, (u16)retval, 0x0);
+				WC24_ReadEntry(myent.index, &myent);
 				if(retval<0)printf("KD_Download for wc24boottitle auto-update installer entry failed: %d\n", retval);
 				if(myent.error_code!=0 && myent.error_code!=WC24_EHTTP304)printf("WC24 error code: %d\n", myent.error_code);
 			}
@@ -466,6 +467,7 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 			else
 			{
 				retval = KD_Download(KD_DOWNLOADFLAGS_MANUAL, (u16)retval, 0x0);
+				WC24_ReadEntry(myent.index, &myent);
 				if(retval<0)printf("KD_Download for wc24boottitle auto-update version info entry failed: %d\n", retval);
 				if(myent.error_code!=0 && myent.error_code!=WC24_EHTTP304)printf("WC24 error code: %d\n", myent.error_code);
 			}
@@ -483,6 +485,7 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 			else
 			{
 				retval = KD_Download(KD_DOWNLOADFLAGS_MANUAL, (u16)retval, 0x0);
+				WC24_ReadEntry(myent.index, &myent);
 				if(retval<0)printf("KD_Download for wc24boottitle auto-update boot mail entry failed: %d\n", retval);
 				if(myent.error_code!=0 && myent.error_code!=WC24_EHTTP304)printf("WC24 error code: %d\n", myent.error_code);
 			}
@@ -500,6 +503,7 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 			else
 			{
 				retval = KD_Download(KD_DOWNLOADFLAGS_MANUAL, (u16)retval, 0x0);
+				WC24_ReadEntry(myent.index, &myent);
 				if(retval<0)printf("KD_Download for wc24boottitle boot mail entry failed: %d\n", retval);
 				if(myent.error_code!=0 && myent.error_code!=WC24_EHTTP304)printf("WC24 error code: %d\n", myent.error_code);
 			}
