@@ -90,6 +90,7 @@ _DLDI_shutdown:
 	.pool
 
 	.space (_dldi_start + 32768) - .	@ Fill to 32KiB
+	@.space (_dldi_start + 4096) - .	@ Fill to 4KiB
 
 _dldi_end:
 	.end

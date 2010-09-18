@@ -88,6 +88,8 @@ ldr r3, [r0], #4
 str r3, [r2], #4
 cmp r0, r1
 blt payloadcpy
+@mov r1, r2
+@bl swiDecompressLZSSWram
 
 bl DC_FlushAll
 bl DC_InvalidateAll
@@ -95,7 +97,6 @@ bl IC_InvalidateAll
 
 ldr r0, =0x02200000
 bx r0
-@b exploit @ Execute the exploit/exploit.bin payload.
 
 .pool
 .align 2
@@ -141,6 +142,13 @@ IC_InvalidateAll: @ From libnds.
 	mcr	p15, 0, r0, c7, c5, 0
 	bx	lr
 
+.thumb
+.thumb_func
+swiDecompressLZSSWram:
+svc 0x11
+bx lr
+
+.arm
 exploit:
 .incbin "exploit/exploit.bin"
 
