@@ -25,6 +25,8 @@ Added VFF creation param delvff, to specify whether to automatically delete the 
 Known bugs:
 Bugs not listed here can be reported at: http://code.google.com/p/wmb-asm/issues/list
 
+1) Reading/writing FAT16 VFFs doesn't work, FAT32 VFFs weren't tested.
+
 Changelog:
 v1.1:
 The libwc24 v1.0 source tarball(not the pre-compiled library and dol) had a ISFS heap buffer overflow bug. Only 0x10 bytes for the size of a record was allocated for reading and writing records, but ISFS always reads/writes at least 0x20 bytes. This was fixed in libwc24 v1.1.
