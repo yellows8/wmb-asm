@@ -26,8 +26,8 @@ distribution.
 
 ---------------------------------------------------------------------------------*/
 #include <nds.h>
-#include <dswifi7.h>
-#include <maxmod7.h>
+//#include <dswifi7.h>
+//#include <maxmod7.h>
 
 //---------------------------------------------------------------------------------
 void VcountHandler() {
@@ -38,7 +38,7 @@ void VcountHandler() {
 //---------------------------------------------------------------------------------
 void VblankHandler(void) {
 //---------------------------------------------------------------------------------
-	Wifi_Update();
+	//Wifi_Update();
 }
 
 
@@ -46,7 +46,7 @@ void VblankHandler(void) {
 int main() {
 //---------------------------------------------------------------------------------
 	irqInit();
-	fifoInit();
+	if(!fifoInit())systemShutDown();
 
 	// read User Settings from firmware
 	readUserSettings();
@@ -56,10 +56,10 @@ int main() {
 
 	SetYtrigger(80);
 
-	installWifiFIFO();
+	//installWifiFIFO();
 	installSoundFIFO();
 
-	mmInstall(FIFO_MAXMOD);
+	//mmInstall(FIFO_MAXMOD);
 
 	installSystemFIFO();
 	
