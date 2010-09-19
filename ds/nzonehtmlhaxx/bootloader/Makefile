@@ -23,7 +23,7 @@ SPECS		:=  specs
 #---------------------------------------------------------------------------------
 ARCH	:=	-marm -mthumb-interwork
 
-CFLAGS	:=	-Wall -Os\
+CFLAGS	:=	-Wall -O3\
 			-mcpu=arm7tdmi -mtune=arm7tdmi -fomit-frame-pointer\
 			-ffast-math \
 			$(ARCH)
@@ -84,7 +84,8 @@ export LD	:=	$(CC)
 #---------------------------------------------------------------------------------
 $(BUILD):
 	@[ -d $@ ] || mkdir -p $@
-	@$(MAKE) -C $(BUILD) -f $(CURDIR)/Makefile 
+	@$(MAKE) -C $(BUILD) -f $(CURDIR)/Makefile
+	@cp load.bin ../BootStrap/arm9/data/load.bin
  
 #---------------------------------------------------------------------------------
 clean:
@@ -102,7 +103,6 @@ DEPENDS	:=	$(OFILES:.o=.d)
 #---------------------------------------------------------------------------------
 $(LOADBIN)	:	$(LOADELF)
 	@$(OBJCOPY) -O binary $< $@
-	@cp $(LOADBIN) ../../loadnds/arm9/data
 	@echo built ... $(notdir $@)
 
 
