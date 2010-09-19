@@ -18,8 +18,6 @@
 
 ------------------------------------------------------------------*/
 
-//Some printfs added by yellowstar6, for debugging.
-
 #include <nds.h>
 #include <fat.h>
 
@@ -29,14 +27,10 @@
 
 int main( int argc, char **argv) {
 	consoleDemoInit();
-	ledBlink(0);
-	printf("Initializing FAT...\n");
 	if (fatInitDefault()) {
-		printf("Booting...\n");
 		runNdsFile("/_BOOT_DS.NDS", 0, NULL);
 	} else {
 		printf("FAT init failed!\n");
 	}
-	printf("Boot fail.\n");
 	while(1) swiWaitForVBlank();
 }

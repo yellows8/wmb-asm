@@ -27,8 +27,6 @@
 
 #include "load_bin.h"
 
-#define _NO_BOOTSTUB_
-
 #ifndef _NO_BOOTSTUB_
 #include "bootstub_bin.h"
 #endif
@@ -313,7 +311,7 @@ int runNds (const void* loader, u32 loaderSize, u32 cluster, bool initDisc, bool
 	*((vu32*)0x02FFFFFC) = 0;
 	*((vu32*)0x02FFFE04) = (u32)0xE59FF018;
 	*((vu32*)0x02FFFE24) = (u32)0x02FFFE04;
-	
+
 	resetARM7(0x06000000);
 
 	swiSoftReset(); 

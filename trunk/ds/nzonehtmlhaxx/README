@@ -5,7 +5,7 @@ In order to use this exploit, a Linux/hostapd compatible box with a wireless NIC
 This exploit works with any html sent over http. With Nintendo's DS Station server, this is mostly the *_up.html files, which are used for the main screen. NZone uses only HTTPS. By default, this exploit generates htmlhaxx_x.html,(x is dsstation/nzone) which should replace the target html, for example dsds_menu_up.html retrieved by the client.(With a web server, the htmlhaxx html can be linked to from the target html, like dsds_menu_up.html.)
 
 Credits:
-WinterMute and chishm for bootloader and BootStrap, loadnds is BootStrap with a different Makefile(s). The exploit arm9/arm7 reset code is based on the bootloader reset code.
+WinterMute and chishm for bootloader and BootStrap, bootloader and BootStrap are from devKitPro SVN with Makefiles and some code modified for use with this exploit. The exploit arm9/arm7 reset code is based on the bootloader reset code.
 Team Twiizers for tips on cache for Arm7 bootstrap fix
 Team Twiizers for MINI elfloader linker script and start.S
 
