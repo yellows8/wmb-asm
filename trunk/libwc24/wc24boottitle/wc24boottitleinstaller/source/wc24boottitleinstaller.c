@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <malloc.h>
 #include <fat.h>
+#include <wc24/wc24.h>
 
 #include "sha1.h"
 #include "RuntimeIOSPatch.h"
@@ -20,6 +21,8 @@
 #ifndef BIT
 #define BIT(n) 1<<n
 #endif
+
+#define WC24ID 0x57434254//WCBT
 
 static void *xfb = NULL;
 static GXRModeObj *rmode = NULL;
@@ -147,6 +150,7 @@ void Install(int arg)
 
 void Delete(int arg)
 {
+	nwc24dl_record rec;
 	u32 retval, numviews = 0;
 	int which = -1;
 	tikview *views;
@@ -197,6 +201,14 @@ void Delete(int arg)
 		printf("ES_DeleteTitle returned %d", retval);
 		return;
 	}
+
+	printf("Deleting WC24 entries...\n");
+	WC24_Init();
+	while((retval = WC24_FindRecord(WC24ID, &rec)))
+	{
+		WC24_DeleteRecord(retval);
+	}
+	WC24_Shutdown();
 }
 
 //---------------------------------------------------------------------------------

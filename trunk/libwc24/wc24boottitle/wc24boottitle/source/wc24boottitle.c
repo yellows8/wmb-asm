@@ -34,6 +34,8 @@
 #define VFFPATH ""
 #endif
 
+#define WC24ID 0x57434254//WCBT
+
 static void *xfb = NULL;
 static GXRModeObj *rmode = NULL;
 
@@ -257,7 +259,7 @@ void ProcessArgs(int argc, char **argv, int boothbdirect)
 		}
 	}
 
-	printf("Invalid launchcode or argc, or invalid titleID: %x %x\n", launchcode, argc);
+	printf("Invalid launchcode or argc: %x %x\n", launchcode, argc);
 	#ifdef DEBUG
 	printf("Press A to contine.\n");
 	while(1)
@@ -341,7 +343,7 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 	if(retval==LIBWC24_ENOENT)//Only create the entry when it doesn't exist. When there's an entry with "installer.dol" for the URL filename but the whole URL doesn't match the one we're going to install, that entry is deleted then we create a new one.
 	{
 		printf("Creating record+entry for wc24boottitle auto-update installer...\n");
-		retval = WC24_CreateRecord(&myrec, &myent, 0, 0, 0x4842, WC24_TYPE_TITLEDATA, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_HB, dlfreq, 0x5a0, url, VFFPATH "installer.dol");
+		retval = WC24_CreateRecord(&myrec, &myent, WC24ID, 0, 0x4842, WC24_TYPE_TITLEDATA, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_HB, dlfreq, 0x5a0, url, VFFPATH "installer.dol");
 		if(retval<0)
 		{
 			printf("WC24_CreateRecord returned %d\n", retval);
@@ -370,7 +372,7 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 	if(retval==LIBWC24_ENOENT)
 	{
 		printf("Creating record+entry for wc24boottitle auto-update version info...\n");
-		retval = WC24_CreateRecord(&myrec, &myent, 0, 0, 0x4842, WC24_TYPE_TITLEDATA, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_HB, dlfreq, 0x5a0, url, VFFPATH "verinfo");
+		retval = WC24_CreateRecord(&myrec, &myent, WC24ID, 0, 0x4842, WC24_TYPE_TITLEDATA, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_HB, dlfreq, 0x5a0, url, VFFPATH "verinfo");
 		if(retval<0)
 		{
 			printf("WC24_CreateRecord returned %d\n", retval);
@@ -399,7 +401,7 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 	if(retval==LIBWC24_ENOENT)
 	{
 		printf("Creating record+entry for wc24boottitle auto-update boot mail...\n");
-		retval = WC24_CreateRecord(&myrec, &myent, 0, 0, 0x4842, WC24_TYPE_MSGBOARD, WC24_FLAGS_HB, WC24_FLAGS_RSA_VERIFY_DISABLE, dlfreq, 0x5a0, url, NULL);
+		retval = WC24_CreateRecord(&myrec, &myent, WC24ID, 0, 0x4842, WC24_TYPE_MSGBOARD, WC24_FLAGS_HB, WC24_FLAGS_RSA_VERIFY_DISABLE, dlfreq, 0x5a0, url, NULL);
 		if(retval<0)
 		{
 			printf("WC24_CreateRecord returned %d\n", retval);
@@ -428,7 +430,7 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 	if(retval==LIBWC24_ENOENT)
 	{
 		printf("Creating record+entry for wc24boottitle boot mail...\n");
-		retval = WC24_CreateRecord(&myrec, &myent, 0, 0, 0x4842, WC24_TYPE_MSGBOARD, WC24_FLAGS_HB, WC24_FLAGS_RSA_VERIFY_DISABLE, dlfreq, 0x5a0, url, NULL);
+		retval = WC24_CreateRecord(&myrec, &myent, WC24ID, 0, 0x4842, WC24_TYPE_MSGBOARD, WC24_FLAGS_HB, WC24_FLAGS_RSA_VERIFY_DISABLE, dlfreq, 0x5a0, url, NULL);
 		if(retval<0)
 		{
 			printf("WC24_CreateRecord returned %d\n", retval);
@@ -517,17 +519,17 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 
 	printf("Processing content in wc24dl.vff...\n");
 
-	fdol = fopen("wc24dl.vff:/wc24boottitle/installer.dol", "r");
+	fdol = fopen("wc24dl.vff:/" VFFPATH "installer.dol", "r");
 	if(fdol==NULL)
 	{
-		printf("wc24dl.vff:/wc24boottitle/installer.dol doesn't exist, no update is available.\n");
+		printf("wc24dl.vff:/" VFFPATH "installer.dol doesn't exist, no update is available.\n");
 	}
 	else
 	{
-		fver = fopen("wc24dl.vff:/wc24boottitle/verinfo", "r");
+		fver = fopen("wc24dl.vff:/" VFFPATH "verinfo", "r");
 		if(fver==NULL)
 		{
-			printf("wc24dl.vff:/wc24boottitle/verinfo doesn't exist, no update is available.\n");
+			printf("wc24dl.vff:/" VFFPATH "verinfo doesn't exist, no update is available.\n");
 		}
 		else
 		{
@@ -543,11 +545,11 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 			fread(updateinfobuf, 1, 0x200, fver);
 			fclose(fver);
 
-			fconfig = fopen("wc24dl.vff:/wc24boottitle/config", "r+");
+			fconfig = fopen("wc24dl.vff:/" VFFPATH "config", "r+");
 			if(fconfig==NULL)
 			{
 				printf("Config file doesn't exist, creating.\n");
-				fconfig = fopen("wc24dl.vff:/wc24boottitle/config", "w+");
+				fconfig = fopen("wc24dl.vff:/" VFFPATH "config", "w+");
 				strncpy(configlines[0], WC24BOOTTITLE_VERSION, 0x1f);
 				snprintf(configlines[1], 0x1f, "Revision: %d", 0);//SVN beta auto-update isn't implemented yet.
 				fwrite(configbuf, 1, 0x200, fconfig);
@@ -574,7 +576,7 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 				fwrite(configbuf, 1, 0x200, fconfig);
 				fseek(fconfig, 0, SEEK_SET);
 
-				stat("wc24dl.vff:/wc24boottitle/installer.dol", &dolstats);
+				stat("wc24dl.vff:/" VFFPATH "installer.dol", &dolstats);
 				fread((void*)0x90100000, 1, dolstats.st_size, fdol);
 				DCFlushRange((void*)0x90100000, dolstats.st_size);
 				printf("Update size: %x\n", (u32)dolstats.st_size);
@@ -584,17 +586,17 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 				fclose(fconfig);
 				fclose(fdol);
 				fclose(fver);
-				unlink("wc24dl.vff:/wc24boottitle/installer.dol");
-				unlink("wc24dl.vff:/wc24boottitle/verinfo");
+				unlink("wc24dl.vff:/" VFFPATH "installer.dol");
+				unlink("wc24dl.vff:/" VFFPATH "verinfo");
 				VFF_Unmount("wc24dl.vff");
 
 				ProcessArgs(2, NULL, 1);
 			}
 			else
 			{
-				printf("Deleting wc24dl.vff:/wc24boottitle/installer.dol and wc24dl.vff:/wc24boottitle/verinfo since no update is available.\n");
-				unlink("wc24dl.vff:/wc24boottitle/installer.dol");
-				unlink("wc24dl.vff:/wc24boottitle/verinfo");
+				printf("Deleting wc24dl.vff:/" VFFPATH "installer.dol and wc24dl.vff:/" VFFPATH "verinfo since no update is available.\n");
+				unlink("wc24dl.vff:/" VFFPATH "installer.dol");
+				unlink("wc24dl.vff:/" VFFPATH "verinfo");
 			}
 
 			free(updateinfobuf);
@@ -630,8 +632,9 @@ void ResetWakeup_Timestamp()
 		
 		time_t curtime = (time_t)*((u32*)&miscbuf[0x3c]);
 		struct tm *misc_time = gmtime(&curtime);
-		printf(" Wakeup timestamp time(%x): %s\n", (unsigned int)curtime, asctime(misc_time));
-		
+		if(curtime)printf("Wakeup timestamp time: %s\n", (unsigned int)curtime, asctime(misc_time));
+		if(curtime==0)printf("Current wakeup timestamp time is zero.\n");
+
 		*((u32*)&miscbuf[0x38]) = 0;
 		*((u32*)&miscbuf[0x3c]) = 0;
 		ISFS_Write(fd, miscbuf, 0x400);
