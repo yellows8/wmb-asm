@@ -9,6 +9,7 @@
 #include <fat.h>
 
 #include "sha1.h"
+#include "RuntimeIOSPatch.h"
 
 #include "title_tmd.h"
 #include "title_tik.h"
@@ -55,6 +56,9 @@ void Install(int arg)
 		VIDEO_WaitVSync();
 	}
 	if(which==1)return;
+
+	which = IOSPATCH_Apply();
+	printf("IOS patches count: %x\n", which);
 
 	printf("Installing ticket...\n");
 	forge_tik((signed_blob*)title_tik);

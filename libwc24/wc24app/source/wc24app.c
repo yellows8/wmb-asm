@@ -548,7 +548,7 @@ void DoStuff(char *url)
 			ISFS_Seek(fd, 0, SEEK_SET);
 			if(which==2)
 			{
-				time_t curtime = ((time_t)((u32*)&miscbuf[0x3c]));
+				time_t curtime = ((time_t)*((u32*)&miscbuf[0x3c]));
 				struct tm *misc_time = gmtime(&curtime);
 				printf("Timestamp time(%x): %s\n", (unsigned int)curtime, asctime(misc_time));
 			}
