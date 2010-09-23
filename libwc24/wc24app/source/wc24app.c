@@ -520,7 +520,7 @@ void DoStuff(char *url)
 		}*/
 	}
 
-	printf("Reset the WC24 title boot STM_Wakeup timestamp to zero? Sometimes KD may refuse to use process WC24 title boot mail due to the current time being less than this timestamp, using this option can work-around waiting for the time specified in the timestamp.(A = yes, B = no, 1 = read timestamp)\n");
+	printf("Reset the WC24 title boot STM_Wakeup timestamp to zero? Sometimes KD may refuse to use process WC24 title boot mail due to the current time being less than this timestamp, using this option can work-around waiting for the time specified in the timestamp.(A = yes, B = no, 1 = read timestamp, 2 = reset and read)\n");
 	which = -1;
 	WPAD_ScanPads();
 	while(1)
@@ -529,6 +529,7 @@ void DoStuff(char *url)
 		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_B)which = 0;
 		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_A)which = 1;
 		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_1)which = 2;
+		if(WPAD_ButtonsDown(0) & WPAD_BUTTON_2)which = 3;
 		if(which>-1)break;
 		VIDEO_WaitVSync();
 	}
@@ -546,11 +547,12 @@ void DoStuff(char *url)
 			memset(miscbuf, 0, 0x400);
 			ISFS_Read(fd, miscbuf, 0x400);
 			ISFS_Seek(fd, 0, SEEK_SET);
-			if(which==2)
+			if(which & BIT(1))
 			{
 				time_t curtime = ((time_t)*((u32*)&miscbuf[0x3c]));
 				struct tm *misc_time = gmtime(&curtime);
-				printf("Timestamp time(%x): %s\n", (unsigned int)curtime, asctime(misc_time));
+				if(curtime)printf("Wakeup timestamp time: %s\n", (unsigned int)curtime, asctime(misc_time));
+				if(curtime==0)printf("Current wakeup timestamp time is zero.\n");
 			}
 			*((u32*)&miscbuf[0x38]) = 0;
 			*((u32*)&miscbuf[0x3c]) = 0;
