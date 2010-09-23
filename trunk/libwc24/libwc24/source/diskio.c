@@ -178,7 +178,7 @@ DRESULT disk_write(BYTE drv, const BYTE *buff, DWORD sector, BYTE count)
 	if(sector==0)return 0;
 	if(sector==1 && vff_fat_types[(int)drv]==32)return 0;
 	sector--;
-	if((sector>0 && sector<31) && vff_fat_types[(int)drv]==32)
+	if((sector>=0 && sector<31) && vff_fat_types[(int)drv]==32)
 	{
 		return 0;
 	}
@@ -257,7 +257,7 @@ DRESULT diskio_generatebootsector(BYTE drv, BYTE *buff)
 		diskio_storele16(&buff[0x0e], 32);
 	}
 	buff[0x10] = 2;//Number of FATs.
-	diskio_storele16(&buff[0x11], 0x80);//Number of root directory entries.
+	if(vff_fat_types[(int)drv]!=32)diskio_storele16(&buff[0x11], 0x80);//Number of root directory entries.
 	if(vff_fat_types[(int)drv]!=32)
 	{
 		diskio_storele16(&buff[0x13], vff_filesizes[(int)drv] / 0x200);//Number of sectors.
