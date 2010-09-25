@@ -3,7 +3,7 @@ This library allows Wii homebrew to use WiiConnect24. You need at least HBC 1.0.
 For more WC24 info, see the Wiibrew pages: http://wiibrew.org/wiki/WiiConnect24 http://wiibrew.org/wiki//shared2/wc24/nwc24dl.bin http://wiibrew.org/wiki/WC24_Content
 The source is included with the download tarball, and is also available on SVN at: http://code.google.com/p/wmb-asm/source/checkout
 
-These are the Internet server URLs that wc24app can install: http://members.iglide.net/ticeandsons/yellowstar/wc24test http://members.iglide.net/ticeandsons/yellowstar/wc24testmail
+These are the Internet server URLs that wc24app can install: http://iwconfig.net/~yellows8/wc24test.php http://iwconfig.net/~yellows8/wc24testmail.php
 The former is the title data URL, the latter is the message board mail URL.
 Refrence the Wiibrew WC24_Content page for info on the required WC24 header when content length is less than 0x140 bytes. Also see the above URLs installed by wc24app for template WC24 content. The title data file is supposed to only contain the payload text when written to wc24dl.vff, however the whole file is written there. The cause of this is currently unknown, but the all-zero 0x140 bytes-long header isn't needed when the actual content length is larger than 0x140 bytes.
 
@@ -44,6 +44,7 @@ Added app wc24boottitle, see features section.
 Wc24app now adds anonymous tracking info to the installed entries' URLs for logging server access by WC24 from the Wiis with the new URLs installed. See the features section.
 Added VFF creation param delvff, to specify whether to automatically delete the VFF when it exists or not. Wc24app passes 1 for delvff so when creating wc24dl.vff from wc24app wc24dl.vff is always deleted before creation.
 Switched KD time functions input to u64 from struct kd_timebuf.
+Added max_errors parameter to WC24_CreateRecord, see wc24.h for details.
 
 v1.0:
 Initial release.

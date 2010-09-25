@@ -148,7 +148,7 @@ void ProcessArgs(int argc, char **argv, int boothbdirect)
 							printf("Using WC24 to download: %s\n", argv[1]);
 
 							printf("Creating record+entry...\n");
-							retval = WC24_CreateRecord(&myrec, &myent, 0, 0, 0x4842, WC24_TYPE_TITLEDATA, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_RSA_VERIFY_DISABLE, 0x3c, 0x5a0, argv[1], VFFPATH "boot.dol");
+							retval = WC24_CreateRecord(&myrec, &myent, 0, 0, 0x4842, WC24_TYPE_TITLEDATA, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_RSA_VERIFY_DISABLE, 0x3c, 0x5a0, 0, argv[1], VFFPATH "boot.dol");
 							if(retval<0)
 							{
 								printf("WC24_CreateRecord returned %d\n", retval);
@@ -315,6 +315,7 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 	printf("mkdir...\n");
 	mkdir("wc24dl.vff:/wc24boottitle", 777);
 	printf("done.\n");
+	VFF_Unmount("wc24dl.vff");
 
 	retval = ES_GetDeviceID(&consoleID);
 	if(retval<0)
@@ -343,7 +344,7 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 	if(retval==LIBWC24_ENOENT)//Only create the entry when it doesn't exist. When there's an entry with "installer.dol" for the URL filename but the whole URL doesn't match the one we're going to install, that entry is deleted then we create a new one.
 	{
 		printf("Creating record+entry for wc24boottitle auto-update installer...\n");
-		retval = WC24_CreateRecord(&myrec, &myent, WC24ID, 0, 0x4842, WC24_TYPE_TITLEDATA, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_HB, dlfreq, 0x5a0, url, VFFPATH "installer.dol");
+		retval = WC24_CreateRecord(&myrec, &myent, WC24ID, 0, 0x4842, WC24_TYPE_TITLEDATA, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_HB, dlfreq, 0x5a0, 0, url, VFFPATH "installer.dol");
 		if(retval<0)
 		{
 			printf("WC24_CreateRecord returned %d\n", retval);
@@ -372,7 +373,7 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 	if(retval==LIBWC24_ENOENT)
 	{
 		printf("Creating record+entry for wc24boottitle auto-update version info...\n");
-		retval = WC24_CreateRecord(&myrec, &myent, WC24ID, 0, 0x4842, WC24_TYPE_TITLEDATA, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_HB, dlfreq, 0x5a0, url, VFFPATH "verinfo");
+		retval = WC24_CreateRecord(&myrec, &myent, WC24ID, 0, 0x4842, WC24_TYPE_TITLEDATA, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_HB, dlfreq, 0x5a0, 0, url, VFFPATH "verinfo");
 		if(retval<0)
 		{
 			printf("WC24_CreateRecord returned %d\n", retval);
@@ -401,7 +402,7 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 	if(retval==LIBWC24_ENOENT)
 	{
 		printf("Creating record+entry for wc24boottitle auto-update boot mail...\n");
-		retval = WC24_CreateRecord(&myrec, &myent, WC24ID, 0, 0x4842, WC24_TYPE_MSGBOARD, WC24_FLAGS_HB, WC24_FLAGS_RSA_VERIFY_DISABLE, dlfreq, 0x5a0, url, NULL);
+		retval = WC24_CreateRecord(&myrec, &myent, WC24ID, 0, 0x4842, WC24_TYPE_MSGBOARD, WC24_FLAGS_HB, WC24_FLAGS_RSA_VERIFY_DISABLE, dlfreq, 0x5a0, 0, url, NULL);
 		if(retval<0)
 		{
 			printf("WC24_CreateRecord returned %d\n", retval);
@@ -430,7 +431,7 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 	if(retval==LIBWC24_ENOENT)
 	{
 		printf("Creating record+entry for wc24boottitle boot mail...\n");
-		retval = WC24_CreateRecord(&myrec, &myent, WC24ID, 0, 0x4842, WC24_TYPE_MSGBOARD, WC24_FLAGS_HB, WC24_FLAGS_RSA_VERIFY_DISABLE, dlfreq, 0x5a0, url, NULL);
+		retval = WC24_CreateRecord(&myrec, &myent, WC24ID, 0, 0x4842, WC24_TYPE_MSGBOARD, WC24_FLAGS_HB, WC24_FLAGS_RSA_VERIFY_DISABLE, dlfreq, 0x5a0, 0, url, NULL);
 		if(retval<0)
 		{
 			printf("WC24_CreateRecord returned %d\n", retval);
@@ -518,6 +519,7 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 	}
 
 	printf("Processing content in wc24dl.vff...\n");
+	WC24_MountWC24DlVFF();
 
 	fdol = fopen("wc24dl.vff:/" VFFPATH "installer.dol", "r");
 	if(fdol==NULL)
