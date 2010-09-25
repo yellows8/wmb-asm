@@ -203,8 +203,13 @@ void Delete(int arg)
 	}
 
 	printf("Deleting WC24 entries...\n");
-	WC24_Init();
-	while((retval = WC24_FindRecord(WC24ID, &rec)))
+	retval = WC24_Init();
+	if(retval<0)
+	{
+		printf("WC24_Init returned %d\n", retval);
+		return;
+	}
+	while((retval = WC24_FindRecord(WC24ID, &rec))!=LIBWC24_ENOENT)
 	{
 		WC24_DeleteRecord(retval);
 	}

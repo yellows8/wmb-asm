@@ -632,7 +632,7 @@ void ResetWakeup_Timestamp()
 		
 		time_t curtime = (time_t)*((u32*)&miscbuf[0x3c]);
 		struct tm *misc_time = gmtime(&curtime);
-		if(curtime)printf("Wakeup timestamp time: %s\n", (unsigned int)curtime, asctime(misc_time));
+		if(curtime)printf("Wakeup timestamp time: %s\n", asctime(misc_time));
 		if(curtime==0)printf("Current wakeup timestamp time is zero.\n");
 
 		*((u32*)&miscbuf[0x38]) = 0;
