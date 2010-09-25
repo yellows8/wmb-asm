@@ -96,7 +96,7 @@ typedef struct _nwc24dl_entry
 	u64 titleid;
 	u16 group_id;
 	u16 unk16;
-	u16 unk18;
+	u16 max_errors;//Rough but not exact, number of errors until WC24 starts downloading the next task with the same entry ID? It's unknown what happens when this is reached when WC24 reaches the last entry for the ID, or when this number is reached with only one entry for the ID.
 	u16 total_errors;//Zero for no error for the last dl. Unknown for subTasks.
 	u16 dl_freq_perday;//Download frequency in minutes per day.
 	u16 dl_freq_days;//Dl frequency in minutes, for when the next day of downloading begins.(Starting at midnight of dl day. Usually 0x5a0 for daily.)
@@ -129,7 +129,7 @@ s32 WC24_FindRecord(u32 id, nwc24dl_record *rec);//When find functions are succe
 s32 WC24_FindEntry(u32 id, char *url, nwc24dl_entry *ent, int cmpwith_strstr);//When cmpwith_strstr is zero, use strncmp to compare the URLs, otherwise use strstr.
 s32 WC24_FindEmptyRecord(nwc24dl_record *rec);
 s32 WC24_FindEmptyEntry(nwc24dl_entry *ent);
-s32 WC24_CreateRecord(nwc24dl_record *rec, nwc24dl_entry *ent, u32 id, u64 titleid, u16 group_id, u8 type, u8 record_flags, u32 flags, u16 dl_freq_perday, u16 dl_freq_days, char *url, char *filename);//Uses an old entry and record with same ID and URL if it exists, otherwise an empty record/entry is used. Returns index. The dl_freq parameters are in minutes, see: http://wiibrew.org/wiki//shared2/wc24/nwc24dl.bin When id or titleid is zero, the current titleid is used for those fields.
+s32 WC24_CreateRecord(nwc24dl_record *rec, nwc24dl_entry *ent, u32 id, u64 titleid, u16 group_id, u8 type, u8 record_flags, u32 flags, u16 dl_freq_perday, u16 dl_freq_days, u16 max_errors, char *url, char *filename);//Uses an old entry and record with same ID and URL if it exists, otherwise an empty record/entry is used. Returns index. The dl_freq parameters are in minutes, see: http://wiibrew.org/wiki//shared2/wc24/nwc24dl.bin When id or titleid is zero, the current titleid is used for those fields. The max_errors field seems to be the rough number of errors until WC24 starts downloading the next entry with the same ID, this can be zero to use the default values.
 s32 WC24_DeleteRecord(u32 index);//Deletes a record and entry.
 s32 WC24_MntCreateDataDirVFF(char *path, u32 filesize, int delvff);//Create a VFF when filesize is not zero, mount it otherwise. Path is relative to current title data dir without an leading '/'. When mounting the mntname is the path filename. See vff.h for the delvff param.
 s32 WC24_CreateWC24DlVFF(u32 filesize, int delvff);//Create wc24dl.vff in the current title's data dir. See vff.h for the delvff param.
