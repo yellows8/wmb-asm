@@ -69,14 +69,19 @@ void SetDolArgv(void* bin, int binsize, int argc, char **argv)
 	char *args = (char*)((int)bin + binsize);
 	u32 *dolptr = (u32*)bin;
 	struct __argv *dolargv;
-	argc-=2;
-	if(argc<=0)return;
+	argc-=1;
 
-	for(i=0; i<argc; i++)
+	for(i=0; i>0 && argv[1][i]!='/'; i--);
+	len = strlen(&argv[1][i]);
+	memset(&args[curpos], 0, len+1);
+	strcpy(&args[curpos], &argv[1][i]);
+	curpos+= len+1;
+
+	for(i=2; i<=argc; i++)
 	{
-		len = strlen(argv[i+2]);
+		len = strlen(argv[i]);
 		memset(&args[curpos], 0, len+1);
-		strcpy(&args[curpos], argv[i+2]);
+		strcpy(&args[curpos], argv[i]);
 		curpos+= len+1;
 	}
 	DCFlushRange(args, curpos);
