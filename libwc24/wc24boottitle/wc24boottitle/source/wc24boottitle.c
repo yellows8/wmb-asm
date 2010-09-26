@@ -518,7 +518,7 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 		}
 	}
 
-	printf("Processing content in wc24dl.vff...\n");
+	/*printf("Processing content in wc24dl.vff...\n");
 	WC24_MountWC24DlVFF();
 
 	fdol = fopen("wc24dl.vff:/" VFFPATH "installer.dol", "r");
@@ -609,7 +609,7 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 
 	if(fdol)fclose(fdol);
 	if(fver)fclose(fver);
-	VFF_Unmount("wc24dl.vff");
+	VFF_Unmount("wc24dl.vff");*/
 
 	return 0;
 }
@@ -811,7 +811,7 @@ int main(int argc, char **argv) {
 	#ifndef WIILOADAPPDEBUG
 	retval = ProcessWC24(launchcode & BIT(25));//Don't do any WC24 stuff with HBC wiiload, only with the actual installed wc24boottitle.
 	#endif
-	launchcode &= ~BIT(25);
+	launchcode &= ~(BIT(25));
 	ProcessArgs(argc, argv, 0);
 	printf("Shutting down WC24...\n");
 	WC24_Shutdown();
