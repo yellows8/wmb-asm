@@ -236,7 +236,14 @@ void ProcessArgs(int argc, char **argv, int boothbdirect)
 						strncpy(path, argv[1], 255);
 					}
 
-					if(strncmp(path, "dvd", 3)==0)ISO9660_Mount();
+					if(strncmp(path, "dvd", 3)==0)
+					{
+						if(!ISO9660_Mount())
+						{
+							printf("Failed to mount DVD ISO9660.\n");
+							break;
+						}
+					}
 					stat(path, &dolstats);
 					fdol = fopen(path, "r");
 					if(fdol==NULL)
@@ -251,6 +258,7 @@ void ProcessArgs(int argc, char **argv, int boothbdirect)
 						fclose(fdol);
 					}
 					memset(path, 0, 256);
+					if(strncmp(path, "dvd", 3)==0)ISO9660_Unmount();
 				}
 
 				SetDolArgv((void*)0x90100000, dolstats.st_size, argc, argv);
