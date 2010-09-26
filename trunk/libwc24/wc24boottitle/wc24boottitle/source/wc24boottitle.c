@@ -62,6 +62,41 @@ char netmask[16];
 
 void FlushLog();
 
+void SetDolArgv(void* bin, int binsize, int argc, char **argv)
+{
+	int i, len, curpos = 0;
+	int found = 0;
+	char *args = (char*)((int)bin + binsize);
+	u32 *dolptr = (u32*)bin;
+	struct __argv *dolargv;
+	argc-=2;
+	if(argc<=0)return;
+
+	for(i=0; i<argc; i++)
+	{
+		len = strlen(argv[i+2]);
+		memset(&args[curpos], 0, len+1);
+		strcpy(&args[curpos], argv[i+2]);
+		curpos+= len+1;
+	}
+	DCFlushRange(args, curpos);
+
+	for(i=0; i<binsize/4; i++)
+	{
+		if(dolptr[i]==ARGV_MAGIC)
+		{
+			found = 1;
+			break;
+		}
+	}
+	if(!found)return;
+
+	dolargv = (struct __argv*)&dolptr[i+1];
+	dolargv->argvMagic = ARGV_MAGIC;
+	dolargv->commandLine = args;
+	dolargv->length = curpos;
+}
+
 void ProcessArgs(int argc, char **argv, int boothbdirect)
 {
 	int i;
@@ -218,6 +253,7 @@ void ProcessArgs(int argc, char **argv, int boothbdirect)
 					memset(path, 0, 256);
 				}
 
+				SetDolArgv((void*)0x90100000, dolstats.st_size, argc, argv);
 				DCFlushRange((void*)0x80001800, loader_bin_size);
 				DCFlushRange(path, 256);
 				if(!boothbdirect)WII_SetNANDBootInfoLaunchcode(0);
