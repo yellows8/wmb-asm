@@ -96,7 +96,7 @@ typedef struct _nwc24dl_entry
 	u64 titleid;
 	u16 group_id;
 	u16 unk16;
-	u16 max_errors;//Rough but not exact, number of errors until WC24 starts downloading the next task with the same entry ID? It's unknown what happens when this is reached when WC24 reaches the last entry for the ID, or when this number is reached with only one entry for the ID.
+	u16 max_errors;//Rough but not exact, number of errors until WC24 starts downloading the next task with the same entry ID? It's unknown what happens when this is reached when WC24 reaches the last entry for the ID, or when this number is reached with only one entry for the ID. Seems to be decreased by KD, maybe when it switches to downloading the next entry with same ID, unknown.
 	u16 total_errors;//Zero for no error for the last dl. Unknown for subTasks.
 	u16 dl_freq_perday;//Download frequency in minutes per day.
 	u16 dl_freq_days;//Dl frequency in minutes, for when the next day of downloading begins.(Starting at midnight of dl day. Usually 0x5a0 for daily.)
