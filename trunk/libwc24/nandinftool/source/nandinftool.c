@@ -55,11 +55,8 @@ int main(int argc, char **argv)
 	{
 		printf(" Invalid input filesize, or file doesn't exist: %x\n", len);
 		if(f)fclose(f);
-		printf("yo\n");
 		f = fopen(argv[1], "w+");
-		printf("a\n");
 		fwrite(buffer, 1, 0x1020, f);
-		printf("b\n");
 		fseek(f, 0, SEEK_SET);
 		printf("Created valid empty NANDBOOTINFO as input filename.\n");
 	}
