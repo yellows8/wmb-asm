@@ -45,7 +45,7 @@ Added app wc24boottitle, see features section.
 Wc24app now adds anonymous tracking info to the installed entries' URLs for logging server access by WC24 from the Wiis with the new URLs installed. See the features section.
 Added VFF creation param delvff, to specify whether to automatically delete the VFF when it exists or not. Wc24app passes 1 for delvff so when creating wc24dl.vff from wc24app wc24dl.vff is always deleted before creation.
 Switched KD time functions input to u64 from struct kd_timebuf.
-Added max_errors parameter to WC24_CreateRecord, see wc24.h for details.
+Added cnt_nextdl parameter to WC24_CreateRecord, see wc24.h for details.
 
 v1.0:
 Initial release.

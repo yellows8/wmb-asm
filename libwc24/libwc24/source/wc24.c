@@ -398,7 +398,7 @@ s32 WC24_FindEmptyEntry(nwc24dl_entry *ent)
 	return retval;
 }
 
-s32 WC24_CreateRecord(nwc24dl_record *rec, nwc24dl_entry *ent, u32 id, u64 titleid, u16 group_id, u8 type, u8 record_flags, u32 flags, u16 dl_freq_perday, u16 dl_freq_days, u16 max_errors, char *url, char *filename)
+s32 WC24_CreateRecord(nwc24dl_record *rec, nwc24dl_entry *ent, u32 id, u64 titleid, u16 group_id, u8 type, u8 record_flags, u32 flags, u16 dl_freq_perday, u16 dl_freq_days, u16 cnt_nextdl, char *url, char *filename)
 {
 	s32 retval = -1;
 	u32 index;
@@ -433,12 +433,12 @@ s32 WC24_CreateRecord(nwc24dl_record *rec, nwc24dl_entry *ent, u32 id, u64 title
 	ent->ID = id;
 	ent->titleid = titleid;
 	ent->group_id = group_id;
-	if(max_errors==0)
+	if(cnt_nextdl==0)
 	{
-		if(type==WC24_TYPE_TITLEDATA)max_errors = 0x17;//Varies, from HATE.
-		if(type!=WC24_TYPE_TITLEDATA)max_errors = 0x64;//Usually 0x64 msg board entries for channels?
+		if(type==WC24_TYPE_TITLEDATA)cnt_nextdl = 0x17;//Varies, from HATE.
+		if(type!=WC24_TYPE_TITLEDATA)cnt_nextdl = 0x64;//Usually 0x64 msg board entries for channels?
 	}
-	ent->max_errors = max_errors;
+	ent->cnt_nextdl = cnt_nextdl;
 	ent->dl_freq_perday = dl_freq_perday;
 	ent->dl_freq_days = dl_freq_days;
 	strncpy(ent->url, url, 0xec);
