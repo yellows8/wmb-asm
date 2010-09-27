@@ -62,7 +62,9 @@ extern unsigned int vff_types[_DRIVES];
 int vff_totalmountedfs = 0;
 
 FIL *vffoptab_fds[VFF_MAXFDS];
+#ifdef HW_RVL
 devoptab_t *vffoptab_dev[VFF_MAXFDS];
+#endif
 char vffoptab_fd_paths[VFF_MAXFDS][256];
 char vffoptab_devmntname[VFF_MAXFDS][256];
 int vffoptab_total_fds = 0;
@@ -280,7 +282,9 @@ s32 VFF_Mount(char *path, char *mntname)
 	s32 retval;
 	unsigned int type = 0;
 	char *mntnamebuf;
+	#ifdef HW_RVL
 	devoptab_t *dotab;
+	#endif
 
 	mntnamebuf = (char*)malloc(256);
 	memset(mntnamebuf, 0, 256);
@@ -319,14 +323,18 @@ s32 VFF_Mount(char *path, char *mntname)
 	vff_types[vff_totalmountedfs] = type;
 	retval = (s32)fvff_mount((BYTE)vff_totalmountedfs, &vff_filesystems[vff_totalmountedfs]);
 	if(retval!=0)return retval;
+	#ifdef HW_RVL
 	dotab = (devoptab_t*)malloc(sizeof(devoptab_t));
 	memset(dotab, 0, sizeof(devoptab_t));
 	memcpy(dotab, &dotab_vff, sizeof(devoptab_t));
 	dotab->name = mntnamebuf;
+	#endif
 	memset(vffoptab_devmntname[vff_totalmountedfs], 0, 256);
 	strncpy(vffoptab_devmntname[vff_totalmountedfs], mntnamebuf, 255);
+	#ifdef HW_RVL
 	AddDevice(dotab);
 	vffoptab_dev[vff_totalmountedfs] = dotab;
+	#endif
 	vff_totalmountedfs++;
 
 	#ifdef HW_RVL
