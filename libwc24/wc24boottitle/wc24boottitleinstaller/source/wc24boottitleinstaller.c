@@ -39,6 +39,44 @@ u8 *contents[2] = {(u8*)meta_app, (u8*)wc24boottitle_dol};
 
 u64 wc24boottitle_titleID = 0x0001000857434254LL;
 
+void SetTitleIOS(tmd *wcbt_tmd)
+{
+	s32 retval;
+	u64 curtitleid = 0;
+	u32 tmdsize = 0;
+	signed_blob *tmdbuf;
+	tmd *hbc_tmd;
+	retval = ES_GetTitleID(&curtitleid);
+	if(retval<0)
+	{
+		printf("ES_GetTitleID returned %d\n", retval);
+	}
+	else
+	{
+		retval = ES_GetStoredTMDSize(curtitleid, &tmdsize);
+		if(retval<0)
+		{
+			printf("ES_GetTMDViewSize returned %d\n", retval);
+		}
+		else
+		{
+			tmdbuf = (signed_blob*)memalign(32, tmdsize);
+			retval = ES_GetStoredTMD(curtitleid, tmdbuf, tmdsize);
+			if(retval<0)
+			{
+				printf("ES_GetTMDView returned %d\n", retval);
+			}
+			else
+			{
+				hbc_tmd = (tmd*)SIGNATURE_PAYLOAD(tmdbuf);
+				wcbt_tmd->sys_version = hbc_tmd->sys_version;
+				printf("Set wc24boottitle IOS to HBC(%08x) IOS%d.\n", (u32)curtitleid, (u32)wcbt_tmd->sys_version);
+			}
+			free(tmdbuf);
+		}
+	}
+}
+
 void Install(int arg)
 {
 	int which = -1;;
@@ -72,7 +110,8 @@ void Install(int arg)
 		return;
 	}
 
-	TitleTMD = (tmd*)SIGNATURE_PAYLOAD((signed_blob*)title_tmd);
+	TitleTMD = (tmd*)SIGNATURE_PAYLOAD(((signed_blob*)title_tmd));
+	SetTitleIOS(TitleTMD);
 	TitleTMD->contents[0].size = (u64)meta_app_size;
 	SHA1((u8*)meta_app, TitleTMD->contents[0].size, TitleTMD->contents[0].hash);
 	TitleTMD->contents[1].size = (u64)wc24boottitle_dol_size;
