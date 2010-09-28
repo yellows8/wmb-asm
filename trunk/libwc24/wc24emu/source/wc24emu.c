@@ -10,8 +10,8 @@ nwc24dl_entry dlent;
 void ProcessEntry()
 {
 	int i;
-	unsigned int temp;
-	char id[5];
+	unsigned int temp, temp2;
+	char id[10];
 	struct tm *time;
 	time_t dltime;
 	printf("Found entry index %x\n", be16toh(dlent.index));
@@ -84,6 +84,19 @@ void ProcessEntry()
 	time = localtime(&dltime);
 	if(dltime)printf("last_modified: %s", asctime(time));
 	if(!dltime)printf("last_modified is zero, this was never downloaded or an error occurred.\n");
+
+	temp = (unsigned int)be64toh(dlent.titleid);
+	temp2 = ((unsigned int)be32toh(dlent.titleid));
+	memset(id, 0, 10);
+	if(temp > 0x21<<24)
+	{
+		memcpy(id, (void*)(((int)&dlent.titleid) + 4), 4);
+	}
+	else
+	{
+		snprintf(id, 9, "%08x", temp);
+	}
+	printf("titleid: %08x%08x(%08x-%s)\n", temp2, temp, temp2, id);
 
 	printf("\n");
 }
