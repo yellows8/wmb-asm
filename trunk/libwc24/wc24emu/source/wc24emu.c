@@ -11,6 +11,7 @@ void ProcessEntry()
 {
 	int i;
 	unsigned int temp, temp2;
+	int stemp;
 	char id[10];
 	struct tm *time;
 	time_t dltime;
@@ -97,6 +98,30 @@ void ProcessEntry()
 		snprintf(id, 9, "%08x", temp);
 	}
 	printf("titleid: %08x%08x(%08x-%s)\n", temp2, temp, temp2, id);
+
+	temp = be16toh(dlent.group_id);
+	memset(id, 0, 5);
+	memcpy(id, &dlent.group_id, 2);
+	printf("group_id: %04x(%s)\n", temp, id);
+
+	printf("cnt_nextdl: %x\n", be16toh(dlent.cnt_nextdl));
+	printf("total_errors: %x\n", be16toh(dlent.total_errors));
+	printf("total_errors: %x\n", be16toh(dlent.total_errors));
+	printf("dl_freq_perday: %x\n", be16toh(dlent.dl_freq_perday));
+	printf("dl_freq_days: %x\n", be16toh(dlent.dl_freq_days));
+	
+	stemp = (int)be32toh(dlent.error_code);
+	if(stemp==0)printf("error_code is zero, either this wasn't downloaded yet or the download was successful.\n");
+	if(stemp!=0)
+	{
+		printf("error_code: %d ", stemp);
+		if(stemp==WC24_EINVALVFF)printf("EINVALVFF");
+		if(stemp==WC24_EVFFPATH)printf("EVFFPATH");
+		if(stemp==WC24_ESIGFAIL)printf("ESIGFAIL");
+		if(stemp==WC24_EHTTP304)printf("EHTTP304");
+		if((abs(stemp) - 107000) < 11000)printf("HTTP %d", (abs(stemp) - 117000));
+		printf("\n");
+	}
 
 	printf("\n");
 }
