@@ -66,6 +66,9 @@ DEALINGS IN THE SOFTWARE.
 #define WC24_EHTTP404 -117404//HTTP 404. Errors in the -117xxx range seem to be HTTP errors, where xxx is the HTTP error/status code.
 // Errors with 5-digits are usually general Wifi/Internet errors, which can be looked up with Nintendo's tool: http://www.nintendo.com/consumer/systems/wii/en_na/errors/index.jsp
 
+#define WC24_URLMAXSZ 0xec
+#define WC24_VFFPATHMAXSZ 0x40
+
 typedef struct _nwc24dl_header
 {
 	u32 magic;//"WcDl" 0x5763446c
@@ -110,8 +113,8 @@ typedef struct _nwc24dl_entry
 	u16 unk2eSubTask;//0x5a0 sometimes for entries with subTasks? Might be related to dl time?
 	u32 dl_timestamp;//Last dl timestamp. Zero when download failed, with error_code less than zero, except for error  WC24_EHTTP304. This timestamp is the last dl timestamp for when the download succeeded without any error, with HTTP 200 OK.
 	u32 subTaskTimestamps[32];//Timestamps of last dl time for each subTask?
-	char url[0xec];
-	char filename[0x40];//Filename inside wc24dl.vff, without a leading root directory slash. This path can probably can be a path with sub-directories.
+	char url[WC24_URLMAXSZ];
+	char filename[WC24_VFFPATHMAXSZ];//Filename inside wc24dl.vff, without a leading root directory slash. This path can probably can be a path with sub-directories.
 	u8 unk1e0[0x1d];
 	u8 NHTTP_RootCA;//Usually zero.
 	u16 unk1fe;
