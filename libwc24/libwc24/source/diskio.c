@@ -116,7 +116,9 @@ DSTATUS disk_status (BYTE drv)
 DRESULT disk_read(BYTE drv,BYTE *buff, DWORD sector, BYTE count)
 {
 	int retval = 0;
+	#ifdef DEBUG
 	printf("disk read sector %x num %x\n", (unsigned int)sector, (unsigned int)count);
+	#endif
 	if(sector==0)return diskio_generatefatsector(drv, sector, buff);
 	if(sector==1 && vff_fat_types[(int)drv]==32)return diskio_generatefatsector(drv, sector, buff);
 	sector--;
@@ -134,7 +136,9 @@ DRESULT disk_read(BYTE drv,BYTE *buff, DWORD sector, BYTE count)
 		retval = ISFS_Seek((s32)disk_vff_handles[(int)drv], 0x20 + (sector*0x200), SEEK_SET);	
 		if(retval<0)
 		{
+			#ifdef DEBUG
 			printf("seek fail\n");
+			#endif
 			return RES_PARERR;
 		}
 	}
@@ -159,7 +163,9 @@ DRESULT disk_read(BYTE drv,BYTE *buff, DWORD sector, BYTE count)
 			#endif
 			if(retval!=0x200)
 			{
+				#ifdef DEBUG
 				printf("read only %x bytes, wanted %x bytes\n", retval, 0x200);
+				#endif
 				return RES_PARERR;
 			}		
 			memcpy(buff, diskio_buffer, 0x200);
@@ -174,7 +180,9 @@ DRESULT disk_read(BYTE drv,BYTE *buff, DWORD sector, BYTE count)
 DRESULT disk_write(BYTE drv, const BYTE *buff, DWORD sector, BYTE count)
 {
 	int retval = 0;
+	#ifdef DEBUG
 	printf("disk write sector %x num %x\n", (unsigned int)sector, (unsigned int)count);
+	#endif
 	if(sector==0)return 0;
 	if(sector==1 && vff_fat_types[(int)drv]==32)return 0;
 	sector--;
@@ -191,7 +199,9 @@ DRESULT disk_write(BYTE drv, const BYTE *buff, DWORD sector, BYTE count)
 		retval = ISFS_Seek((s32)disk_vff_handles[(int)drv], 0x20 + (sector*0x200), SEEK_SET);	
 		if(retval<0)
 		{
+			#ifdef DEBUG
 			printf("seek fail\n");
+			#endif
 			return RES_PARERR;
 		}
 	}
@@ -217,7 +227,9 @@ DRESULT disk_write(BYTE drv, const BYTE *buff, DWORD sector, BYTE count)
 			#endif
 			if(retval!=0x200)
 			{
+				#ifdef DEBUG
 				printf("wrote only %x bytes, wanted %x bytes\n", retval, 0x200);
+				#endif
 				return RES_PARERR;
 			}		
 			buff+=0x200;
@@ -230,7 +242,9 @@ DRESULT disk_write(BYTE drv, const BYTE *buff, DWORD sector, BYTE count)
 
 DRESULT disk_ioctl(BYTE drv, BYTE ctrl, void *buff)
 {
+	#ifdef DEBUG
 	printf("disk ioctl %x\n", (unsigned int)ctrl);
+	#endif
 	return RES_PARERR;
 }
 

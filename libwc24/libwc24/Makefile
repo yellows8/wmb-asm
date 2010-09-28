@@ -25,7 +25,11 @@ INCLUDES	:=  include
 # options for code generation
 #---------------------------------------------------------------------------------
 
-CFLAGS	= -g -O2 -Wall $(MACHDEP) $(INCLUDE)
+ifeq ($(DEBUG),1)
+DEFINES	:=	-DDEBUG
+endif
+
+CFLAGS	= -g -O2 -Wall $(MACHDEP) $(INCLUDE) $(DEFINES)
 CXXFLAGS	=	$(CFLAGS)
 
 LDFLAGS	=	-g $(MACHDEP) -Wl,-Map,$(notdir $@).map

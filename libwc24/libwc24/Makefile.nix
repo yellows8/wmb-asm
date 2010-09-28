@@ -60,7 +60,11 @@ INCLUDES	:=	include
 # options for code generation
 #---------------------------------------------------------------------------------
 
-CFLAGS	:=	-Wall -O2 -fPIC -DLINUX
+ifeq ($(DEBUG),1)
+DEFINES	:=	-DDEBUG
+endif
+
+CFLAGS	:=	-Wall -O2 -fPIC -DLINUX $(DEFINES)
 
 CFLAGS	+=	$(INCLUDE)
 CXXFLAGS	:= $(CFLAGS)
