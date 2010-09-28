@@ -66,15 +66,18 @@ char *basedir
 	#ifndef HW_RVL
 	strncpy(wc24_nanddumpbasedir, basedir, 255);
 	#endif
+
 	retval = WC24_OpenNWC4DLBin();
 	if(retval<0)return retval;
-	
+	printf("noes\n");
 	NWC24DL_Header = (nwc24dl_header*)memalign(32, sizeof(nwc24dl_header));
 	if(NWC24DL_Header==NULL)
 	{
 		printf("Failed to allocate hdr buf.\n");
 		#ifdef HW_RVL		
 		ISFS_Close(nwc24dlbin_fd);
+		#else
+		fclose(nwc24dlbin_fd);
 		#endif
 		nwc24dlbin_fd = 0;
 		return 0;
@@ -156,7 +159,11 @@ s32 WC24_OpenNWC4DLBin()
 	memset(path, 0, 256);
 	snprintf(path, 255, "%s%s", wc24_nanddumpbasedir, "/shared2/wc24/nwc24dl.bin");
 	nwc24dlbin_fd = fopen(path, "r+");
-	if(nwc24dlbin_fd==NULL)return ENOENT;
+	if(nwc24dlbin_fd==NULL)
+	{
+		printf("fail %s\n", path);
+		return ENOENT;
+	}
 	return 0;
 	#endif
 }
@@ -209,11 +216,11 @@ s32 WC24_ReadRecord(u32 index, nwc24dl_record *rec)
 		free(buf);
 		return retval;
 	}
-	memcpy(rec, buf, sizeof(nwc24dl_record));
 	#else
 	fseek(nwc24dlbin_fd, 0x80 + (index * sizeof(nwc24dl_record)), SEEK_SET);
 	fread(buf, sizeof(nwc24dl_record), 1, nwc24dlbin_fd);
 	#endif
+	memcpy(rec, buf, sizeof(nwc24dl_record));
 
 	free(buf);
 	if(open)
