@@ -120,13 +120,13 @@ DRESULT disk_read(BYTE drv,BYTE *buff, DWORD sector, BYTE count)
 	if(sector==0)return diskio_generatefatsector(drv, sector, buff);
 	if(sector==1 && vff_fat_types[(int)drv]==32)return diskio_generatefatsector(drv, sector, buff);
 	sector--;
-	if((sector>=0 && sector<31) && vff_fat_types[(int)drv]==32)
+	if((sector>0 && sector<31) && vff_fat_types[(int)drv]==32)
 	{
 		memset(buff, 0, count*0x200);
 		return 0;
 	}
 	if(sector>=31 && vff_fat_types[(int)drv]==32)sector-=31;
-	sector-=2;
+	//sector-=2;
 
 	#ifdef HW_RVL	
 	if(vff_types[(int)drv]==0)
@@ -183,7 +183,7 @@ DRESULT disk_write(BYTE drv, const BYTE *buff, DWORD sector, BYTE count)
 		return 0;
 	}
 	if(sector>=31 && vff_fat_types[(int)drv]==32)sector-=31;
-	sector-=2;
+	//sector-=2;
 
 	#ifdef HW_RVL	
 	if(vff_types[(int)drv]==0)
@@ -246,6 +246,7 @@ DRESULT diskio_generatefatsector(BYTE drv, DWORD sector, BYTE *buff)//Generate b
 
 DRESULT diskio_generatebootsector(BYTE drv, BYTE *buff)
 {
+	int temp;
 	diskio_storele16(&buff[0x0b], 0x200);//Bytes per sector.
 	buff[0x0d] = 1;//Sectors per cluster.
 	if(vff_fat_types[(int)drv]!=32)
@@ -266,7 +267,9 @@ DRESULT diskio_generatebootsector(BYTE drv, BYTE *buff)
 	{
 		diskio_storele16(&buff[0x20], vff_filesizes[(int)drv] / 0x200);
 	}
-	diskio_storele16(&buff[0x16], (vff_fatsizes[(int)drv] / 0x200)+1);//Number of sectors per FAT.
+	temp = (vff_fatsizes[(int)drv] / 0x200);
+	if(temp==0)temp++;
+	diskio_storele16(&buff[0x16], temp);//Number of sectors per FAT.
 	snprintf((char*)&buff[0x36], 8, "FAT%d   ", vff_fat_types[(int)drv]);
 	if(vff_fat_types[(int)drv]==32)snprintf((char*)&buff[0x52], 8, "FAT32   ");
 	return 0;
