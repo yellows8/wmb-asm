@@ -243,9 +243,11 @@ void ProcessArgs(int argc, char **argv, int boothbdirect)
 
 					if(strncmp(path, "dvd", 3)==0)
 					{
+						DI_Init();
 						if(!ISO9660_Mount())
 						{
 							printf("Failed to mount DVD ISO9660.\n");
+							DI_Close();
 							break;
 						}
 					}
@@ -263,7 +265,11 @@ void ProcessArgs(int argc, char **argv, int boothbdirect)
 						fclose(fdol);
 					}
 					memset(path, 0, 256);
-					if(strncmp(path, "dvd", 3)==0)ISO9660_Unmount();
+					if(strncmp(path, "dvd", 3)==0)
+					{
+						ISO9660_Unmount();
+						DI_Close();
+					}
 				}
 
 				SetDolArgv((void*)0x90100000, dolstats.st_size, argc, argv);
@@ -279,7 +285,6 @@ void ProcessArgs(int argc, char **argv, int boothbdirect)
 					printf("Booting homebrew directly from RAM buffer.\n");
 				}
 				WC24_Shutdown();
-				DI_Close();
 				WPAD_Shutdown();
 				FlushLog();
 				//IOS_ReloadIOS(36);
@@ -296,7 +301,6 @@ void ProcessArgs(int argc, char **argv, int boothbdirect)
 				DCFlushRange((void*)0x90100000, tinyload_dol_size);
 				WII_SetNANDBootInfoLaunchcode(0);
 				WC24_Shutdown();
-				DI_Close();
 				WPAD_Shutdown();
 				printf("Booting game disc.\n");
 				FlushLog();
@@ -321,7 +325,6 @@ void ProcessArgs(int argc, char **argv, int boothbdirect)
 	printf("Shutting down...\n");
 	printf("Shutting down WC24...\n");
 	WC24_Shutdown();
-	DI_Close();
 	FlushLog();
 	WPAD_Shutdown();
 	WII_Shutdown();
@@ -509,6 +512,7 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 				WC24_ReadEntry(myent.index, &myent);
 				if(retval<0)printf("KD_Download for wc24boottitle auto-update installer entry failed: %d\n", retval);
 				if(myent.error_code!=0 && myent.error_code!=WC24_EHTTP304)printf("WC24 error code: %d\n", myent.error_code);
+				printf("cnt_nextdl: %x\n", (u32)myent.cnt_nextdl);
 			}
 		}
 
@@ -527,6 +531,7 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 				WC24_ReadEntry(myent.index, &myent);
 				if(retval<0)printf("KD_Download for wc24boottitle auto-update version info entry failed: %d\n", retval);
 				if(myent.error_code!=0 && myent.error_code!=WC24_EHTTP304)printf("WC24 error code: %d\n", myent.error_code);
+				printf("cnt_nextdl: %x\n", (u32)myent.cnt_nextdl);
 			}
 		}
 
@@ -545,6 +550,7 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 				WC24_ReadEntry(myent.index, &myent);
 				if(retval<0)printf("KD_Download for wc24boottitle auto-update boot mail entry failed: %d\n", retval);
 				if(myent.error_code!=0 && myent.error_code!=WC24_EHTTP304)printf("WC24 error code: %d\n", myent.error_code);
+				printf("cnt_nextdl: %x\n", (u32)myent.cnt_nextdl);
 			}
 		}
 
@@ -563,6 +569,7 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 				WC24_ReadEntry(myent.index, &myent);
 				if(retval<0)printf("KD_Download for wc24boottitle boot mail entry failed: %d\n", retval);
 				if(myent.error_code!=0 && myent.error_code!=WC24_EHTTP304)printf("WC24 error code: %d\n", myent.error_code);
+				printf("cnt_nextdl: %x\n", (u32)myent.cnt_nextdl);
 			}
 		}
 	}
@@ -794,7 +801,6 @@ int main(int argc, char **argv) {
 //---------------------------------------------------------------------------------
 	s32 retval;
 
-	DI_Init();
 	// Initialise the video system
 	VIDEO_Init();
 	
@@ -864,7 +870,6 @@ int main(int argc, char **argv) {
 	ProcessArgs(argc, argv, 0);
 	printf("Shutting down WC24...\n");
 	WC24_Shutdown();
-	DI_Close();
 	FlushLog();
 
 	return 0;

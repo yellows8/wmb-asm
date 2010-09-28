@@ -99,7 +99,7 @@ typedef struct _nwc24dl_entry
 	u64 titleid;
 	u16 group_id;
 	u16 unk16;
-	u16 cnt_nextdl;//Number of downloads for this entry until WC24 starts downloading the next entry with the same ID? It's unknown what happens when this number is reached with only one entry for the ID. Might be decreased by KD everytime it downloads the entry, it's unknown how KD resets this value once it's zero.
+	u16 cnt_nextdl;//Number of downloads for this entry until WC24 starts downloading the next entry with the same ID? It's unknown what happens when this number is reached with only one entry for the ID. This is decreased by KD everytime it downloads the entry, it's unknown how KD resets this value once it's zero.
 	u16 total_errors;//Zero for no error for the last dl. Unknown for subTasks.
 	u16 dl_freq_perday;//Download frequency in minutes per day.
 	u16 dl_freq_days;//Dl frequency in minutes, for when the next day of downloading begins.(Starting at midnight of dl day. Usually 0x5a0 for daily.)
