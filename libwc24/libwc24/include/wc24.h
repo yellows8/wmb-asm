@@ -117,6 +117,8 @@ typedef struct _nwc24dl_entry
 	u16 unk1fe;
 } __attribute__((packed)) nwc24dl_entry;
 
+extern nwc24dl_header *NWC24DL_Header;
+
 s32 WC24_Init(
 #ifndef HW_RVL
 char *basedir
