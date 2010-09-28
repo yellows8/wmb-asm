@@ -31,11 +31,20 @@ DEALINGS IN THE SOFTWARE.
 #include "wc24.h"
 
 u32 wc24_did_init = 0;
+#ifdef HW_RVL
 s32 nwc24dlbin_fd = 0;
+#else
+FILE *nwc24dlbin_fd = NULL;
+#endif
 nwc24dl_header *NWC24DL_Header;
 u64 wc24_titleid = 0x00010001af1bf516LL;
+char wc24_nanddumpbasedir[256];
 
-s32 WC24_Init()
+s32 WC24_Init(
+#ifndef HW_RVL
+char *basedir
+#endif
+)
 {
 	s32 retval;
 	if(wc24_did_init)return LIBWC24_EINIT;
@@ -53,6 +62,10 @@ s32 WC24_Init()
 	}
 	#endif
 
+	memset(wc24_nanddumpbasedir, 0, 256);
+	#ifndef HW_RVL
+	strncpy(wc24_nanddumpbasedir, basedir, 255);
+	#endif
 	retval = WC24_OpenNWC4DLBin();
 	if(retval<0)return retval;
 	
@@ -82,6 +95,9 @@ s32 WC24_Init()
 		WC24_CloseNWC4DLBin();
 		return retval;
 	}
+	#else
+	fseek(nwc24dlbin_fd, 0, SEEK_SET);
+	fread(NWC24DL_Header, sizeof(nwc24dl_header), 1, nwc24dlbin_fd);
 	#endif
 
 	#ifdef HW_RVL
@@ -134,8 +150,15 @@ s32 WC24_OpenNWC4DLBin()
 {
 	#ifdef HW_RVL
 	nwc24dlbin_fd = ISFS_Open("/shared2/wc24/nwc24dl.bin", ISFS_OPEN_RW);
-	#endif
 	return nwc24dlbin_fd;
+	#else
+	char path[256];
+	memset(path, 0, 256);
+	snprintf(path, 255, "%s%s", wc24_nanddumpbasedir, "/shared2/wc24/nwc24dl.bin");
+	nwc24dlbin_fd = fopen(path, "r+");
+	if(nwc24dlbin_fd==NULL)return ENOENT;
+	return 0;
+	#endif
 }
 
 s32 WC24_CloseNWC4DLBin()
@@ -143,9 +166,13 @@ s32 WC24_CloseNWC4DLBin()
 	s32 retval = 0;
 	#ifdef HW_RVL	
 	retval = ISFS_Close(nwc24dlbin_fd);
-	#endif
 	nwc24dlbin_fd = 0;
 	return retval;
+	#else
+	if(nwc24dlbin_fd)fclose(nwc24dlbin_fd);
+	nwc24dlbin_fd = NULL;
+	return 0;
+	#endif
 }
 
 s32 WC24_ReadRecord(u32 index, nwc24dl_record *rec)
@@ -183,9 +210,12 @@ s32 WC24_ReadRecord(u32 index, nwc24dl_record *rec)
 		return retval;
 	}
 	memcpy(rec, buf, sizeof(nwc24dl_record));
-	free(buf);
+	#else
+	fseek(nwc24dlbin_fd, 0x80 + (index * sizeof(nwc24dl_record)), SEEK_SET);
+	fread(buf, sizeof(nwc24dl_record), 1, nwc24dlbin_fd);
 	#endif
 
+	free(buf);
 	if(open)
 	{
 		retval = WC24_CloseNWC4DLBin();
@@ -224,6 +254,10 @@ s32 WC24_WriteRecord(u32 index, nwc24dl_record *rec)
 	{
 		return retval;
 	}
+	#else
+	fseek(nwc24dlbin_fd, 0x80 + (index * sizeof(nwc24dl_record)), SEEK_SET);
+	fwrite(buf, sizeof(nwc24dl_record), 1, nwc24dlbin_fd);
+	free(buf);
 	#endif
 
 	if(open)
@@ -257,15 +291,16 @@ s32 WC24_ReadEntry(u32 index, nwc24dl_entry *ent)
 		free(buf);
 		return retval;
 	}
-	#endif
 
-	#ifdef HW_RVL
 	retval = ISFS_Read(nwc24dlbin_fd, buf, sizeof(nwc24dl_entry));
 	if(retval<0)
 	{
 		free(buf);
 		return retval;
 	}
+	#else
+	fseek(nwc24dlbin_fd, 0x800 + (index * sizeof(nwc24dl_entry)), SEEK_SET);
+	fread(buf, sizeof(nwc24dl_entry), 1, nwc24dlbin_fd);
 	#endif
 
 	memcpy(ent, buf, sizeof(nwc24dl_entry));
@@ -309,6 +344,10 @@ s32 WC24_WriteEntry(u32 index, nwc24dl_entry *ent)
 	{
 		return retval;
 	}
+	#else
+	fseek(nwc24dlbin_fd, 0x800 + (index * sizeof(nwc24dl_entry)), SEEK_SET);
+	fwrite(buf, sizeof(nwc24dl_entry), 1, nwc24dlbin_fd);
+	free(buf);
 	#endif
 	
 	if(open)
