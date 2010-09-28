@@ -6,6 +6,7 @@
 
 nwc24dl_record dlrec;
 nwc24dl_entry dlent;
+char str[256];
 
 void ProcessEntry()
 {
@@ -106,7 +107,6 @@ void ProcessEntry()
 
 	printf("cnt_nextdl: %x\n", be16toh(dlent.cnt_nextdl));
 	printf("total_errors: %x\n", be16toh(dlent.total_errors));
-	printf("total_errors: %x\n", be16toh(dlent.total_errors));
 	printf("dl_freq_perday: %x\n", be16toh(dlent.dl_freq_perday));
 	printf("dl_freq_days: %x\n", be16toh(dlent.dl_freq_days));
 	
@@ -122,6 +122,45 @@ void ProcessEntry()
 		if((stemp + 117000) < 0 && (stemp + 117000) > -1000)printf("HTTP %d", (abs(stemp) - 117000));
 		printf("\n");
 	}
+
+	printf("unk24SubTask: %x\n", dlent.unk24SubTask);
+	printf("unk25SubTask: %x\n", dlent.unk25SubTask);
+	printf("subTaskFlags: %x\n", dlent.subTaskFlags);
+	printf("unk27SubTask: %x\n", dlent.unk27SubTask);
+	temp = be32toh(dlent.subTaskBitmask);
+	printf("subTaskBitmask: %x\n", temp);
+
+	printf("unk2cSubTask: %x\n",  be16toh(dlent.unk2cSubTask));
+	printf("unk2eSubTask: %x\n",  be16toh(dlent.unk2eSubTask));
+
+	dltime = WC24_TimestampToSeconds(be32toh(dlent.dl_timestamp));
+	time = localtime(&dltime);
+	if(dltime)printf("dl_timestamp: %s", asctime(time));
+	if(!dltime)printf("dl_timestamp is zero this because was never downloaded or an error occurred.\n");
+
+	for(i=0; i<32; i++)
+	{
+		if(temp & (1<<i))
+		{
+			dltime = WC24_TimestampToSeconds(be32toh(dlent.subTaskTimestamps[i]));
+			time = localtime(&dltime);
+			if(dltime)printf("subTaskTimestamps[%x]: %s", i, asctime(time));
+			if(dltime==0)printf("subTaskTimestamps[%x] is zero since this subTask was never downloaded or an error occurred.\n", i);
+		}
+	}
+
+	memset(str, 0, 256);
+	strncpy(str, dlent.url, WC24_URLMAXSZ);
+	printf("URL: %s\n", str);
+
+	if(dlent.type!=WC24_TYPE_MSGBOARD)
+	{
+		memset(str, 0, 256);
+		strncpy(str, dlent.filename, WC24_VFFPATHMAXSZ);
+		printf("VFF path: %s\n", str);
+	}
+
+	printf("NHTTP_RootCA: %x\n", dlent.NHTTP_RootCA);
 
 	printf("\n");
 }
