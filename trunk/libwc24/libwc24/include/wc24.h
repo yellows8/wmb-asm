@@ -117,7 +117,11 @@ typedef struct _nwc24dl_entry
 	u16 unk1fe;
 } __attribute__((packed)) nwc24dl_entry;
 
-s32 WC24_Init();
+s32 WC24_Init(
+#ifndef HW_RVL
+char *basedir
+#endif
+);
 s32 WC24_Shutdown();
 s32 WC24_OpenNWC4DLBin();//Call this and WC24_CloseNWC4DLBin when using read/write functions to keep nwc24dl.bin opened between r/w functions, instead of opening/closing it for each r/w function.
 s32 WC24_CloseNWC4DLBin();
