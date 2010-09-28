@@ -119,7 +119,7 @@ void ProcessEntry()
 		if(stemp==WC24_EVFFPATH)printf("EVFFPATH");
 		if(stemp==WC24_ESIGFAIL)printf("ESIGFAIL");
 		if(stemp==WC24_EHTTP304)printf("EHTTP304");
-		if((abs(stemp) - 107000) < 11000)printf("HTTP %d", (abs(stemp) - 117000));
+		if((stemp + 117000) < 0 && (stemp + 117000) > -1000)printf("HTTP %d", (abs(stemp) - 117000));
 		printf("\n");
 	}
 
