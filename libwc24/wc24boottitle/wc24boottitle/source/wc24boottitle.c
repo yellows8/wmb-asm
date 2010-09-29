@@ -29,7 +29,7 @@
 #define SRVR_BASEURL "http://iwconfig.net/~yellows8/wc24boottitle/"
 #endif
 
-//#define VFFPATH "wc24boottitle/"
+#define VFFPATH "wc24boottitle/"
 #ifndef VFFPATH
 #define VFFPATH ""
 #endif
@@ -59,6 +59,8 @@ char log_line[256];
 char localip[16];
 char gateway[16];
 char netmask[16];
+
+char wc24update_argv[4][256] = { {"0001000857434254"}, {"wc24dl.vff:/" VFFPATH "installer.dol"}, {"1"}, {"0"} };
 
 void FlushLog();
 
@@ -350,7 +352,7 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 	#endif
 	if(dlnow)entry_bitmask = 0xf;
 
-	retval = WC24_CreateWC24DlVFF(0x100000, 1);//2MB
+	retval = WC24_CreateWC24DlVFF(0x100000, 0);//1MB
 	if(retval<0 && retval!=-105)//Return when VFF creation fails, except when the VFF already exists.
 	{
 		printf("WC24_CreateWC24DlVFF returned %d\n", retval);
@@ -574,7 +576,7 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 		}
 	}
 
-	/*printf("Processing content in wc24dl.vff...\n");
+	printf("Processing content in wc24dl.vff...\n");
 	WC24_MountWC24DlVFF();
 
 	fdol = fopen("wc24dl.vff:/" VFFPATH "installer.dol", "r");
@@ -648,7 +650,7 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 				unlink("wc24dl.vff:/" VFFPATH "verinfo");
 				VFF_Unmount("wc24dl.vff");
 
-				ProcessArgs(2, NULL, 1);
+				ProcessArgs(4, (char**)wc24update_argv, 1);
 			}
 			else
 			{
@@ -665,7 +667,7 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 
 	if(fdol)fclose(fdol);
 	if(fver)fclose(fver);
-	VFF_Unmount("wc24dl.vff");*/
+	VFF_Unmount("wc24dl.vff");
 
 	return 0;
 }
