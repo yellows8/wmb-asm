@@ -352,7 +352,7 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 	#endif
 	if(dlnow)entry_bitmask = 0xf;
 
-	retval = WC24_CreateWC24DlVFF(0x100000, 0);//1MB
+	retval = WC24_CreateWC24DlVFF(0x200000, 0);//2MB
 	if(retval<0 && retval!=-105)//Return when VFF creation fails, except when the VFF already exists.
 	{
 		printf("WC24_CreateWC24DlVFF returned %d\n", retval);
@@ -650,7 +650,7 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 				unlink("wc24dl.vff:/" VFFPATH "verinfo");
 				VFF_Unmount("wc24dl.vff");
 
-				ProcessArgs(4, (char**)wc24update_argv, 1);
+				ProcessArgs(4, (char**)wc24update_argv, 4);
 			}
 			else
 			{
