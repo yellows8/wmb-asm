@@ -73,7 +73,7 @@ void SetDolArgv(void* bin, int binsize, int argc, char **argv)
 	struct __argv *dolargv;
 	argc-=1;
 
-	for(i=0; i>0 && argv[1][i]!='/'; i--);
+	for(i=strlen(argv[1]); i>0 && argv[1][i]!='/'; i--);
 	len = strlen(&argv[1][i]);
 	memset(&args[curpos], 0, len+1);
 	strcpy(&args[curpos], &argv[1][i]);
@@ -650,7 +650,7 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 				unlink("wc24dl.vff:/" VFFPATH "verinfo");
 				VFF_Unmount("wc24dl.vff");
 
-				ProcessArgs(4, (char**)wc24update_argv, 4);
+				ProcessArgs(4, (char**)wc24update_argv, 1);
 			}
 			else
 			{
