@@ -60,8 +60,6 @@ char localip[16];
 char gateway[16];
 char netmask[16];
 
-char wc24update_argv[4][256] = { {"0001000857434254"}, {"wc24dl.vff:/" VFFPATH "installer.dol"}, {"1"}, {"0"} };
-
 void FlushLog();
 
 void SetDolArgv(void* bin, int binsize, int argc, char **argv)
@@ -73,7 +71,8 @@ void SetDolArgv(void* bin, int binsize, int argc, char **argv)
 	struct __argv *dolargv;
 	argc-=1;
 
-	for(i=strlen(argv[1]); i>0 && argv[1][i]!='/'; i--);
+	for(i=0; i<argc+1; i++)printf("argv[i] addr %x\n", argv[i]);
+	for(i=strlen(argv[1]); i>0 && argv[1][i]!='/'; i--)printf("i=%x\n", i);
 	len = strlen(&argv[1][i]);
 	memset(&args[curpos], 0, len+1);
 	strcpy(&args[curpos], &argv[1][i]);
@@ -345,6 +344,7 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 	struct stat dolstats;
 	u32 consoleID;
 	int dlfreq;
+	char **argv;
 	#ifdef LAN
 	dlfreq = 1;//Set dl frequency to every 2 minutes for LAN, hourly for Internet.
 	#else
@@ -650,7 +650,19 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 				unlink("wc24dl.vff:/" VFFPATH "verinfo");
 				VFF_Unmount("wc24dl.vff");
 
-				ProcessArgs(4, (char**)wc24update_argv, 1);
+				argv = (char**)malloc(16);
+				memset(argv, 0, 16);
+				for(i=0; i<4; i++)
+				{
+					argv[i] = (char*)malloc(256);
+					memset(argv[i], 0, 256);
+				}
+				strncpy(argv[0], "0001000857434254", 255);
+				strncpy(argv[1], "wc24dl.vff:/" VFFPATH "installer.dol", 255);
+				strncpy(argv[2], "1", 255);
+				strncpy(argv[3], "0", 255);
+
+				ProcessArgs(4, argv, 1);
 			}
 			else
 			{
