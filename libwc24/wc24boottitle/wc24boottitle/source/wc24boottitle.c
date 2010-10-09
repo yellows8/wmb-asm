@@ -60,6 +60,8 @@ char localip[16];
 char gateway[16];
 char netmask[16];
 
+unsigned int dol_size;
+
 void FlushLog();
 
 void SetDolArgv(void* bin, int binsize, int argc, char **argv)
@@ -71,8 +73,7 @@ void SetDolArgv(void* bin, int binsize, int argc, char **argv)
 	struct __argv *dolargv;
 	argc-=1;
 
-	for(i=0; i<argc+1; i++)printf("argv[i] addr %x\n", argv[i]);
-	for(i=strlen(argv[1]); i>0 && argv[1][i]!='/'; i--)printf("i=%x\n", i);
+	for(i=strlen(argv[1]); i>0 && argv[1][i]!='/'; i--);
 	len = strlen(&argv[1][i]);
 	memset(&args[curpos], 0, len+1);
 	strcpy(&args[curpos], &argv[1][i]);
@@ -253,6 +254,7 @@ void ProcessArgs(int argc, char **argv, int boothbdirect)
 						}
 					}
 					stat(path, &dolstats);
+					dol_size = dolstats.st_size;
 					fdol = fopen(path, "r");
 					if(fdol==NULL)
 					{
@@ -261,8 +263,8 @@ void ProcessArgs(int argc, char **argv, int boothbdirect)
 					}
 					else
 					{
-						fread((void*)0x90100000, 1, dolstats.st_size, fdol);
-						DCFlushRange((void*)0x90100000, dolstats.st_size);
+						fread((void*)0x90100000, 1, dol_size, fdol);
+						DCFlushRange((void*)0x90100000, dol_size);
 						fclose(fdol);
 					}
 					memset(path, 0, 256);
@@ -273,7 +275,7 @@ void ProcessArgs(int argc, char **argv, int boothbdirect)
 					}
 				}
 
-				SetDolArgv((void*)0x90100000, dolstats.st_size, argc, argv);
+				SetDolArgv((void*)0x90100000, dol_size, argc, argv);
 				DCFlushRange((void*)0x80001800, loader_bin_size);
 				DCFlushRange(path, 256);
 				if(!boothbdirect)WII_SetNANDBootInfoLaunchcode(0);
@@ -637,9 +639,10 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 				fseek(fconfig, 0, SEEK_SET);
 
 				stat("wc24dl.vff:/" VFFPATH "installer.dol", &dolstats);
-				fread((void*)0x90100000, 1, dolstats.st_size, fdol);
-				DCFlushRange((void*)0x90100000, dolstats.st_size);
-				printf("Update size: %x\n", (u32)dolstats.st_size);
+				dol_size = dolstats.st_size;
+				fread((void*)0x90100000, 1, dol_size, fdol);
+				DCFlushRange((void*)0x90100000, dol_size);
+				printf("Update size: %x\n", dol_size);
 
 				free(updateinfobuf);
 				free(configbuf);
