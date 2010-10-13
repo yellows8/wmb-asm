@@ -238,6 +238,7 @@ void ProcessArgs(int argc, char **argv, int boothbdirect)
 							else
 							{
 								stat("wc24dl.vff:/" VFFPATH "boot.dol", &dolstats);
+								dol_size = dolstats.st_size;
 								fread((void*)0x90100000, 1, dolstats.st_size, fdol);
 								fclose(fdol);
 								unlink("wc24dl.vff:/" VFFPATH "boot.dol");
@@ -246,6 +247,9 @@ void ProcessArgs(int argc, char **argv, int boothbdirect)
 
 							printf("Unmounting VFF...\n");
 							VFF_Unmount("wc24dl.vff");
+							memset(path, 0, 256);
+							boothbdirect = 1;
+							WII_SetNANDBootInfoLaunchcode(0);
 						}
 					}
 					else
@@ -253,41 +257,44 @@ void ProcessArgs(int argc, char **argv, int boothbdirect)
 						strncpy(path, argv[1], 255);
 					}
 
-					if(strncmp(path, "dvd", 3)==0)
+					if(!use_wc24http)
 					{
-						DI_Init();
-						if(!ISO9660_Mount())
+						if(strncmp(path, "dvd", 3)==0)
 						{
-							printf("Failed to mount DVD ISO9660.\n");
-							DI_Close();
+							DI_Init();
+							if(!ISO9660_Mount())
+							{
+								printf("Failed to mount DVD ISO9660.\n");
+								DI_Close();
+								break;
+							}
+						}
+						stat(path, &dolstats);
+						dol_size = dolstats.st_size;
+						fdol = fopen(path, "r");
+						if(fdol==NULL)
+						{
+							printf("Dol doesn't exist: %s\n", argv[1]);
 							break;
 						}
-					}
-					stat(path, &dolstats);
-					dol_size = dolstats.st_size;
-					fdol = fopen(path, "r");
-					if(fdol==NULL)
-					{
-						printf("Dol doesn't exist: %s\n", argv[1]);
-						break;
-					}
-					else
-					{
-						fread((void*)0x90100000, 1, dol_size, fdol);
-						DCFlushRange((void*)0x90100000, dol_size);
-						fclose(fdol);
-					}
-					memset(path, 0, 256);
-					if(strncmp(path, "dvd", 3)==0)
-					{
-						ISO9660_Unmount();
-						DI_Close();
-					}
+						else
+						{
+							fread((void*)0x90100000, 1, dol_size, fdol);
+							DCFlushRange((void*)0x90100000, dol_size);
+							fclose(fdol);
+						}
+						memset(path, 0, 256);
+						if(strncmp(path, "dvd", 3)==0)
+						{
+							ISO9660_Unmount();
+							DI_Close();
+						}
 
-					if(launchcode & BIT(26))
-					{
-						unlink(path);
-						VFF_Unmount("wc24dl.vff");
+						if(launchcode & BIT(26))
+						{
+							unlink(path);
+							VFF_Unmount("wc24dl.vff");
+						}
 					}
 				}
 
