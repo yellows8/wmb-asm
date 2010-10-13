@@ -69,7 +69,7 @@ char *basedir
 
 	retval = WC24_OpenNWC4DLBin();
 	if(retval<0)return retval;
-	printf("noes\n");
+
 	NWC24DL_Header = (nwc24dl_header*)memalign(32, sizeof(nwc24dl_header));
 	if(NWC24DL_Header==NULL)
 	{
