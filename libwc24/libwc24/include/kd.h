@@ -40,6 +40,7 @@ DEALINGS IN THE SOFTWARE.
 #define KD_EINVAL -3//Invalid input.
 #define KD_ESHUTDOWN -48//Only happens when STM_Wakeup needs to be called by KD: "Shutdown required. Quit processing."
 #define KD_ENOSPACE -6//No space is available in VFF.
+#define KD_ENOENT -13//The entry specified by KD_Download is empty.
 
 s32 KD_Open();//KD_Open and KD_Close are called by WC24_Init and WC24_Shutdown.
 s32 KD_Close();

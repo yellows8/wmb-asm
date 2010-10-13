@@ -198,7 +198,7 @@ void ProcessArgs(int argc, char **argv, int boothbdirect)
 							printf("Using WC24 to download: %s\n", argv[1]);
 
 							printf("Creating record+entry...\n");
-							retval = WC24_CreateRecord(&myrec, &myent, 0, 0, 0x4842, WC24_TYPE_TITLEDATA, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_RSA_VERIFY_DISABLE, 0x3c, 0x5a0, 0, argv[1], VFFPATH "boot.dol");
+							retval = WC24_CreateRecord(&myrec, &myent, 0, 0, 0x4842, WC24_TYPE_TITLEDATA, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_HB, 0x3c, 0x5a0, 0, argv[1], VFFPATH "boot.dol");
 							if(retval<0)
 							{
 								printf("WC24_CreateRecord returned %d\n", retval);
@@ -208,15 +208,17 @@ void ProcessArgs(int argc, char **argv, int boothbdirect)
 							index = retval;
 
 							printf("Downloading...\n");
-							printf("Deleting record+entry...\n");
-							WC24_DeleteRecord(index);
 							retval = KD_Download(KD_DOWNLOADFLAGS_MANUAL, (u16)index, 0x0);
 							if(retval<0)
 							{
 								printf("KD_Download returned %d\n", retval);
+								WC24_DeleteRecord(index);
 								WC24_Shutdown();
 								break;
 							}
+
+							printf("Deleting record+entry...\n");
+							WC24_DeleteRecord(index);
 
 							printf("Mounting VFF...\n");
 							retval = WC24_MountWC24DlVFF();
