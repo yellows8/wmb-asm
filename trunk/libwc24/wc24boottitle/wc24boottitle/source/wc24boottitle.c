@@ -150,6 +150,8 @@ void ProcessArgs(int argc, char **argv, int boothbdirect)
 					{
 						if(!use_wc24http)
 						{
+							printf("Using libyellhttp to download: %s\n", argv[1]);
+
 							memset(localip, 0, 16);
 							memset(netmask, 0, 16);
 							memset(gateway, 0, 16);
@@ -168,6 +170,11 @@ void ProcessArgs(int argc, char **argv, int boothbdirect)
 							}
 
 							printf("Downloading %s...\n", argv[1]);
+							if(launchcode & BIT(26))
+							{
+								WC24_MountWC24DlVFF();
+								chdir("wc24dl.vff:/");
+							}
 							retval = YellHttp_ExecRequest(ctx, argv[1]);
 							YellHttp_FreeCtx(ctx);
 
@@ -183,7 +190,8 @@ void ProcessArgs(int argc, char **argv, int boothbdirect)
 								if(argv[1][i]=='/')break;
 							}
 							i++;
-							strncpy(path, &argv[1][i], 255);
+							if(launchcode & BIT(26))strncpy(path, "wc24dl.vff:", 255);
+							strncat(path, &argv[1][i], 255);
 						}
 						else
 						{
@@ -273,6 +281,12 @@ void ProcessArgs(int argc, char **argv, int boothbdirect)
 						ISO9660_Unmount();
 						DI_Close();
 					}
+
+					if(launchcode & BIT(26))
+					{
+						unlink(path);
+						VFF_Unmount("wc24dl.vff");
+					}
 				}
 
 				SetDolArgv((void*)0x90100000, dol_size, argc, argv);
@@ -327,6 +341,7 @@ void ProcessArgs(int argc, char **argv, int boothbdirect)
 	#endif
 	printf("Shutting down...\n");
 	printf("Shutting down WC24...\n");
+	if(launchcode & BIT(26))VFF_Unmount("wc24dl.vff");
 	WC24_Shutdown();
 	FlushLog();
 	WPAD_Shutdown();
@@ -458,7 +473,7 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 	if(retval==LIBWC24_ENOENT)
 	{
 		printf("Creating record+entry for wc24boottitle auto-update boot mail...\n");
-		retval = WC24_CreateRecord(&myrec, &myent, WC24ID, 0, 0x4842, WC24_TYPE_MSGBOARD, WC24_FLAGS_HB, WC24_FLAGS_RSA_VERIFY_DISABLE, dlfreq, 0x5a0, 0, url, NULL);
+		retval = WC24_CreateRecord(&myrec, &myent, WC24ID, 0, 0x4842, WC24_TYPE_MSGBOARD, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_HB | WC24_FLAGS_IDLEONLY, dlfreq, 0x5a0, 0, url, NULL);
 		if(retval<0)
 		{
 			printf("WC24_CreateRecord returned %d\n", retval);
@@ -487,7 +502,7 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 	if(retval==LIBWC24_ENOENT)
 	{
 		printf("Creating record+entry for wc24boottitle boot mail...\n");
-		retval = WC24_CreateRecord(&myrec, &myent, WC24ID, 0, 0x4842, WC24_TYPE_MSGBOARD, WC24_FLAGS_HB, WC24_FLAGS_RSA_VERIFY_DISABLE, dlfreq, 0x5a0, 0, url, NULL);
+		retval = WC24_CreateRecord(&myrec, &myent, WC24ID, 0, 0x4842, WC24_TYPE_MSGBOARD, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_HB | WC24_FLAGS_IDLEONLY, dlfreq, 0x5a0, 0, url, NULL);
 		if(retval<0)
 		{
 			printf("WC24_CreateRecord returned %d\n", retval);
@@ -495,6 +510,35 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 			return retval;
 		}
 		entry_bitmask |= BIT(3);
+	}
+
+	memset(url, 0, 256);
+	snprintf(url, 255, "%swc24boottitle/changelogmail%s", SRVR_BASEURL, url_id);
+	retval = WC24_FindEntry((u32)curtitleid, "changelogmail", &myent, 1);
+	if(retval>=0)
+	{
+		if(strncmp(myent.url, url, 0xec))
+		{
+			WC24_DeleteRecord(retval);
+			retval = LIBWC24_ENOENT;
+		}
+		else
+		{
+			retval = -1;
+		}
+	}
+
+	if(retval==LIBWC24_ENOENT)
+	{
+		printf("Creating record+entry for wc24boottitle changelog mail...\n");
+		retval = WC24_CreateRecord(&myrec, &myent, WC24ID, 0, 0x4842, WC24_TYPE_MSGBOARD, WC24_RECORD_FLAGS_DEFAULT, WC24_FLAGS_HB, dlfreq, 0x5a0, 0, url, NULL);
+		if(retval<0)
+		{
+			printf("WC24_CreateRecord returned %d\n", retval);
+			VFF_Unmount("wc24dl.vff");
+			return retval;
+		}
+		entry_bitmask |= BIT(4);
 	}
 
 	if(entry_bitmask)
@@ -572,6 +616,25 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 				retval = KD_Download(KD_DOWNLOADFLAGS_MANUAL, (u16)retval, 0x0);
 				WC24_ReadEntry(myent.index, &myent);
 				if(retval<0)printf("KD_Download for wc24boottitle boot mail entry failed: %d\n", retval);
+				if(myent.error_code!=0 && myent.error_code!=WC24_EHTTP304)printf("WC24 error code: %d\n", myent.error_code);
+				printf("cnt_nextdl: %x\n", (u32)myent.cnt_nextdl);
+			}
+		}
+
+		if(entry_bitmask & BIT(4))
+		{
+			memset(url, 0, 256);
+			snprintf(url, 255, "%swc24boottitle/changelogmail%s", SRVR_BASEURL, url_id);
+			retval = WC24_FindEntry((u32)curtitleid, url, &myent, 0);
+			if(retval<0)
+			{
+				printf("Failed to find entry for wc24boottitle changelog mail.\n");
+			}
+			else
+			{
+				retval = KD_Download(KD_DOWNLOADFLAGS_MANUAL, (u16)retval, 0x0);
+				WC24_ReadEntry(myent.index, &myent);
+				if(retval<0)printf("KD_Download for wc24boottitle changelog mail entry failed: %d\n", retval);
 				if(myent.error_code!=0 && myent.error_code!=WC24_EHTTP304)printf("WC24 error code: %d\n", myent.error_code);
 				printf("cnt_nextdl: %x\n", (u32)myent.cnt_nextdl);
 			}
