@@ -357,7 +357,7 @@ void ProcessArgs(int argc, char **argv, int boothbdirect)
 	WII_Shutdown();
 }
 
-s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update, and processes the downloaded auto-update content downloaded via WC24. When wc24boottitle is deleted by the installer app, these entries aren't deleted by the installer app. When KD downloads title data entries, and can't find wc24dl.vff, KD deletes the entries since the data dir containing wc24dl.vff was deleted by ES when the installer app deleted wc24boottitle.
+s32 ProcessWC24(int dlnow)
 {
 	s32 retval;
 	u32 entry_bitmask = 0xf;
