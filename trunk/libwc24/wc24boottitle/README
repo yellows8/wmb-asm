@@ -4,6 +4,15 @@ Before booting, NANDBOOTINFO launchcode is set to zero. When wc24boottitle is la
 This title has the same TMD access_rights as HBC 1.0.7+, which lets you still use DVD-access and AHBPROT with homebrew booted with this, like HBC 1.0.7+. The wc24boottitle titleID is 0001000857434254.(00010008-WCBT) The installer uses IOS36 to install. The installer sets wc24boottitle IOS to HBC IOS, from the TMD of the current titleID. By default the installer asks whether you want to delete wc24boottitle if it's detected, and if you want to install wc24boottitle. When argv[1] value 1 is passed to the installer by wiiload, the installer will automatically install wc24boottitle. When argv[2] value 1 is passed to the installer by wiiload, the installer will automatically delete wc24boottitle if detected. Normally when deletion/installation fails, or when deletion and installation are skipped, you are asked to press the home button to exit. When either argv[1] or argv[2] are specified, the installer automatically exits where it asks you to press home to exit.
 Wc24boottitle installs WC24 entries to auto-update itself. With the entries installed, WC24 downloads wc24boottitle updates hourly in the background, and wc24boottitle checks if there's an update available each time wc24boottitle is run. Wc24boottitle installs a boot mail entry, to automatically wakeup the Wii when a wc24boottitle update is available to auto-update wc24boottitle.  Wc24boottitle boots the installer dol downloaded by WC24 when an update is available. The auto-update entries URLs that wc24boottitle installs uses the same anonymous tracking info for logging server access as wc24app, like wc24app this info only contains the consoleID unique to each Wii. Wc24bootttile installs a mail entry for wc24boottitle releases changelog mail.
 
+URLs for the entries installed by wc24boottitle:
+http://iwconfig.net/~yellows8/wc24boottitle/installer.dol.php
+http://iwconfig.net/~yellows8/wc24boottitle/verinfo.php
+http://iwconfig.net/~yellows8/wc24boottitle/bootmailupd.php
+http://iwconfig.net/~yellows8/wc24boottitle/bootmailbt.php
+http://iwconfig.net/~yellows8/wc24boottitle/changelogmail.php
+
+Like the wc24app entries, the source for these scripts can be retrieved by adding "?cid=source" to the URLs.
+
 Credits:
 The Loadmii reload stub(which is based on the savezelda reload stub) is used for the boot and reload stub. This stub was modified to load from a path stored in MEM2 set by wc24boottitle. This stub was also modified to disable SD loading, for use with HTTP loading.
 Marcan's TinyLoad. This was modified to support loading GC disc games via BC, and the HBC titleID was adjusted when loading fails for HBC 1.0.7.
