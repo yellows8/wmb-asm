@@ -98,7 +98,7 @@ void DoStuff(char *url)
 	memset(url_id, 0, 256);
 	snprintf(url_id, 255, "?cid=%08x", consoleID);
 
-	hbml_srvr = (char*)"wc24.hackmii.com";
+	hbml_srvr = (char*)"wc24.hackmii.com";//See the README for note on retrieving server scripts source.
 	if(strstr(url, LANSRVR_ADDR))
 	{
 		hbml_srvr = LANSRVR_ADDR;

@@ -406,7 +406,7 @@ s32 ProcessWC24(int dlnow)//This installs entries for wc24boottitle auto-update,
 	snprintf(url_id, 255, ".php?cid=%08x", consoleID);
 
 	memset(url, 0, 256);
-	snprintf(url, 255, "%swc24boottitle/installer.dol%s", SRVR_BASEURL, url_id);
+	snprintf(url, 255, "%swc24boottitle/installer.dol%s", SRVR_BASEURL, url_id);//See the README for note on retrieving server scripts source.
 	retval = WC24_FindEntry((u32)curtitleid, "installer.dol", &myent, 1);
 	if(retval>=0)
 	{
