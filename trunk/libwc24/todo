@@ -1,0 +1,22 @@
+libwc24
+
+1) Add proper code to support multiple mounted VFFs by changing device name to libff drive ID.
+
+wc24app
+
+1) Add feature to install/delete arbitrary entries specified by file stored on FAT.
+2) Entry manger, to easily view and delete NAND nwc24dl.bin entries.
+
+wc24emu
+
+1) Add code to wc24emu and libwc24 to support just reading/writing nwc24dl.bin with a direct path to a nwc24dl.bin dump.
+2) Implement proper WC24 emulation for HTTP email.
+
+wc24boottitle
+
+1) Switch verinfo to xml.
+
+vffmount
+
+1) Finish writing vffmount.
+
