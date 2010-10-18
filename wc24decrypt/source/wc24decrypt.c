@@ -151,7 +151,7 @@ int main(int argc, char **argv)
                 return 1;
             }
 
-            if(argc==4)
+            if(argc-cache==4)
             {
                 fkeys = fopen(argv[3], "rb");
                 if(fkeys==NULL)
