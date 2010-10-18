@@ -19,8 +19,6 @@ OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 DEALINGS IN THE SOFTWARE.
 */
 
-//be32 is from SquidMan's update downloader.
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -56,15 +54,6 @@ int GetFileLength(FILE* _pfile)
 
 	return l_iEnd;
 }
-
-inline u32 be32(u32 x)
-{
-    return (x>>24) |
-        ((x<<8) & 0x00FF0000) |
-        ((x>>8) & 0x0000FF00) |
-        (x<<24);
-}
-
 
 int main(int argc, char **argv)
 {
@@ -133,6 +122,13 @@ int main(int argc, char **argv)
 			return retval;
 		}
 
+		if(ctx->http_status==304)
+		{
+			printf("HTTP 304, content not modified stop.\n");
+			YellHttp_FreeCtx(ctx);
+			return -304;
+		}
+
 		YellHttp_FreeCtx(ctx);
             }
             else
@@ -185,7 +181,7 @@ int main(int argc, char **argv)
             }
 
             memcpy(&temp, &inbuf[4], 4);
-            temp = be32(temp);
+            temp = be32toh(temp);
             printf("WC24 header version is 0x%x.\n", (unsigned int)temp);
             if(temp>1)
             {
@@ -225,7 +221,7 @@ int main(int argc, char **argv)
 
             if(inbuf[0xc]==1)
             {
-                if(argc!=4)
+                if(argc-cache!=4)
                 {
                     printf("wc24pubk.mod/keys filename not specified.\n");
                     fclose(fout);
