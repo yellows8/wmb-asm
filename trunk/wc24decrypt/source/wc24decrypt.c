@@ -108,9 +108,6 @@ int main(int argc, char **argv)
 		if(!cache)
 		{
 			remove(fnstr);
-		}
-		else
-		{
 			ctx->server_flags |= YELLHTTP_SRVFLAG_NOCACHE;
 		}
                 retval = YellHttp_ExecRequest(ctx, str);
