@@ -1,6 +1,6 @@
 /*
 getwiimsg is licensed under the MIT license:
-Copyright (c) 2009 yellowstar6
+Copyright (c) 2009 and 2010 yellowstar6
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this
 software and associated documentation files (the Software), to deal in the Software
@@ -22,6 +22,7 @@ DEALINGS IN THE SOFTWARE.
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <sys/wait.h>
 
 void encode( FILE *infile, FILE *outfile, int linesize );
 void decode( FILE *infile, FILE *outfile );
@@ -142,58 +143,77 @@ int main(int argc, char **argv)
 	if(argc<4)
 	{
 		printf("getwiimsg v1.1 by yellowstar6.\n");
-		printf("Download Wii Message Board mail from server, decrypt, and dump to .eml and .txt files.\n");
+		printf("Download Wii Message Board mail from server, decrypt, and dump to .eml and text files.\n");
 		printf("Local encrypted mail can be decrypted and dumped as well.\n");
 		printf("Internal KD WC24 AES key is needed.\n");
 		printf("Usage:\n");
-		printf("getwiimsg <country code number> <language code> <wc24msgboardkey.bin> <optional list of\nalternate msg files to process from a server or locally>\n");
+		printf("getwiimsg <country code number> <language code> <wc24msgboardkey.bin or wc24pubk.mod for title mail> <optional list of\nalternate msg files to process from a server or locally> <options>\n");
 		printf("language code can be one of the following: ja, en, de, fr, es, it, nl.\n");
+		printf("Options:\n");
+		printf("--cache: Cache the download, don't delete it before downloading and don't disable sending the If-Modified header. Default is no cache.");
 	}
 	else
 	{
-		unsigned int country_code, language_code, argi, index = 0;
+		unsigned int country_code, language_code, argi, index = 0, cache = 0, numoptions = 0;
+		int retval;
 		memset(str, 0, 256);
 		sscanf(argv[1], "%d", &country_code);
 		language_code = GetLangCode(argv[2]);
-		if(argc==4)
-		{
-			sprintf(str, "wc24decrypt http://cfh.wapp.wii.com/announce/%03d/%d/%d.bin decrypt%d.txt %s", country_code, language_code, 1, index, argv[3]);
-			printf("%s\n", str);
-			system(str);
-			memset(str, 0, 256);
-			ProcessMail(index);
-			index++;
-			
-			sprintf(str, "wc24decrypt http://cfh.wapp.wii.com/announce/%03d/%d/%d.bin decrypt%d.txt %s", country_code, language_code, 2, index, argv[3]);
-			printf("%s\n", str);
-			system(str);
-			memset(str, 0, 256);
-			ProcessMail(index);
-			index++;
-			
-			sprintf(str, "wc24decrypt http://cfh.wapp.wii.com/announce/%03d/%d/%d.bin decrypt%d.txt %s", country_code, language_code, 3, index, argv[3]);
-			printf("%s\n", str);
-			system(str);
-			memset(str, 0, 256);
-			ProcessMail(index);
-			index++;
-			
-			sprintf(str, "wc24decrypt http://cfh.wapp.wii.com/announce/%03d/%d/%d.bin decrypt%d.txt %s", country_code, language_code, 4, index, argv[3]);
-			printf("%s\n", str);
-			system(str);
-			memset(str, 0, 256);
-			ProcessMail(index);
-			index++;
-		}
-		else if(argc>4)
+		if(argc>4)
 		{
 			for(argi=4; argi<argc; argi++)
 			{
-				sprintf(str, "wc24decrypt %s decrypt%d.txt %s", argv[argi], index, argv[3]);
+				if(strcmp(argv[argi], "--cache")==0)
+				{
+					cache = 1;
+					numoptions++;
+				}
+			}
+		}
+
+		if(argc-numoptions==4)
+		{
+			for(argi=1; argi<5; argi++)
+			{
+				snprintf(str, 255, "wc24decrypt http://cfh.wapp.wii.com/announce/%03d/%d/%d.bin decrypt%d.txt %s", country_code, language_code, argi, index, argv[3]);
+				if(cache)strncat(str, " --cache", 255);
 				printf("%s\n", str);
-				system(str);
+				retval = WEXITSTATUS(system(str));
 				memset(str, 0, 256);
-				ProcessMail(index);
+				if(retval!=0)
+				{
+					if(retval==34)
+					{
+						printf("Not modified.\n");
+					}
+				}
+				else
+				{
+					ProcessMail(index);
+				}
+				index++;
+			}
+		}
+		else if(argc-numoptions>4)
+		{
+			for(argi=4+numoptions; argi<argc; argi++)
+			{
+				snprintf(str, 255, "wc24decrypt %s decrypt%d.txt %s", argv[argi], index, argv[3]);
+				if(cache)strncat(str, " --cache", 255);
+				printf("%s\n", str);
+				retval = WEXITSTATUS(system(str));
+				memset(str, 0, 256);
+				if(retval!=0)
+				{
+					if(retval==34)
+					{
+						printf("Not modified.\n");
+					}
+				}
+				else
+				{
+					ProcessMail(index);
+				}
 				index++;
 			}
 		}
