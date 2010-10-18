@@ -4,10 +4,12 @@
 #include <time.h>
 #include <wc24/wc24.h>
 
+int readonly = 0;
+time_t curtime;
+time_t entrytime;
 nwc24dl_record dlrec;
 nwc24dl_entry dlent;
 char str[256];
-int readonly = 0;
 
 void DisplayEntry()
 {
@@ -168,15 +170,43 @@ void DisplayEntry()
 
 void ProcessEntry()
 {
+	struct tm *entrytmtime;
+	char *filename;
+	char *temp;
+	int i;
+	entrytime = WC24_TimestampToSeconds(be32toh(dlrec.last_modified));
+	if(entrytime)entrytmtime = gmtime(&entrytime);
 	printf("Found next entry to dl.\n");
 	DisplayEntry();
+
+	for(i=strlen(dlent.url); i>0 && dlent.url[i]!='/'; i--);
+	i++;
+	filename = &dlent.url[i];
+
+	if(entrytime)
+	{
+		memset(str, 0, 256);
+		snprintf(str, 255, "touch --date=\"%sUTC\" %s", asctime(entrytmtime), filename);
+		temp = strchr(str, 0x0a);
+		if(temp)*temp = ' ';
+		printf("%s\n", str);
+		system(str);
+	}
+	else
+	{
+		unlink(filename);
+	}
+
+	memset(str, 0, 256);
+	snprintf(str, 255, "getwiimsg 049 en wc24msgboardkey.bin --cache %s", dlent.url);
+	printf("%s\n", str);
+	system(str);
 }
 
 void DlQuene()
 {
 	int i;
-	time_t curtime = time(NULL);
-	time_t entrytime;
+	curtime = time(NULL);
 
 	for(i=0; i<be16toh(NWC24DL_Header->max_entries); i++)
 	{
