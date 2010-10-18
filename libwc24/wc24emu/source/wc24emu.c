@@ -187,6 +187,7 @@ int main(int argc, char **argv)
 		printf("App to emulate WC24.\n");
 		printf("Usage:\n");
 		printf("wc24emu <nand_dump_path>\n");
+		printf("To only read and display nwc24dl.bin entries, specify a direct path to a nwc24dl.bin.");
 		return 0;
 	}
 

@@ -157,7 +157,14 @@ s32 WC24_OpenNWC4DLBin()
 	#else
 	char path[256];
 	memset(path, 0, 256);
-	snprintf(path, 255, "%s%s", wc24_nanddumpbasedir, "/shared2/wc24/nwc24dl.bin");
+	if(!strstr(wc24_nanddumpbasedir, ".bin"))
+	{
+		snprintf(path, 255, "%s%s", wc24_nanddumpbasedir, "/shared2/wc24/nwc24dl.bin");
+	}
+	else
+	{
+		strncpy(path, wc24_nanddumpbasedir, 255);
+	}
 	nwc24dlbin_fd = fopen(path, "r+");
 	if(nwc24dlbin_fd==NULL)
 	{

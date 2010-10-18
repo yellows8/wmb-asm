@@ -9,8 +9,7 @@ wc24app
 
 wc24emu
 
-1) Add code to wc24emu and libwc24 to support just reading/writing nwc24dl.bin with a direct path to a nwc24dl.bin dump.
-2) Implement proper WC24 emulation for HTTP email.
+1) Implement proper WC24 emulation for HTTP email.
 
 wc24boottitle
 
