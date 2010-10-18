@@ -123,7 +123,7 @@ int main(int argc, char **argv)
 		{
 			printf("HTTP 304, content not modified stop.\n");
 			YellHttp_FreeCtx(ctx);
-			return -304;
+			return 34;
 		}
 
 		YellHttp_FreeCtx(ctx);
