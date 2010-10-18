@@ -7,8 +7,9 @@
 nwc24dl_record dlrec;
 nwc24dl_entry dlent;
 char str[256];
+int readonly = 0;
 
-void ProcessEntry()
+void DisplayEntry()
 {
 	int i;
 	unsigned int temp, temp2;
@@ -165,31 +166,66 @@ void ProcessEntry()
 	printf("\n");
 }
 
+void ProcessEntry()
+{
+	printf("Found next entry to dl.\n");
+	DisplayEntry();
+}
+
 void DlQuene()
 {
 	int i;
+	time_t curtime = time(NULL);
+	time_t entrytime;
+
 	for(i=0; i<be16toh(NWC24DL_Header->max_entries); i++)
 	{
 		WC24_ReadRecord(i, &dlrec);
 		WC24_ReadEntry(i, &dlent);
 		if(dlrec.ID==0 && dlent.type==WC24_TYPE_EMPTY)continue;
 
-		ProcessEntry();
+		if(readonly)
+		{
+			DisplayEntry();
+		}
+		else
+		{
+
+			if(dlent.type!=WC24_TYPE_MSGBOARD)continue;//Only process mail entries for now.
+
+			entrytime = WC24_TimestampToSeconds(be32toh(dlrec.next_dl));
+			if(curtime<entrytime)continue;
+
+			ProcessEntry();
+			break;
+		}
 	}
 }
 
 int main(int argc, char **argv)
 {
 	int retval;
+	int argi;
 	printf("wc24emu v1.0 by yellowstar6\n");
 	if(argc<2)
 	{
 		printf("App to emulate WC24.\n");
 		printf("Usage:\n");
-		printf("wc24emu <nand_dump_path>\n");
-		printf("To only read and display nwc24dl.bin entries, specify a direct path to a nwc24dl.bin.");
+		printf("wc24emu <nand_dump_path> <options>\n");
+		printf("To only read and display nwc24dl.bin entries, specify a direct path to a nwc24dl.bin.\nThe displayed timestamps use localtime.\n");
+		printf("Options:\n");
+		printf("--read: Only read and display entries, don't emulate.(Default when direct nwc24dl.bin path is used.)\n");
 		return 0;
 	}
+
+	if(argc>2)
+	{
+		for(argi=2; argi<argc; argi++)
+		{
+			if(strcmp(argv[argi], "--parse")==0)readonly = 1;
+		}
+	}
+	if(strstr(argv[1], ".bin"))readonly = 1;
 
 	retval = WC24_Init(argv[1]);
 	if(retval<0)
