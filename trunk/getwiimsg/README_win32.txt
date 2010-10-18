@@ -4,8 +4,10 @@ In IOS35 v3088, this key is stored at 0x5f780 in 00000006.app. getwiimsg require
 
 Help displayed when run without parameters:
 Usage:
-getwiimsg <country code number> <language code> <wc24msgboardkey.bin> <optional list of alternate msg files to process from a server or locally>
+getwiimsg <country code number> <language code> <wc24msgboardkey.bin or wc24pubk.mod for title mail> <optional list of alternate msg files to process from a server or locally> <optional list of alternate msg files to process from a server or locally> <options>
 language code can be one of the following: ja, en, de, fr, es, it, nl.
+Options:
+--cache: Cache the download, don't delete it before downloading and don't disable sending the If-Modified header. Default is no cache.
 
 Source is available on SVN at http://wmb-asm.googlecode.com/svn/trunk/getwiimsg/
 
