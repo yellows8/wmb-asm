@@ -1,8 +1,30 @@
+/*
+wc24emu is licensed under the MIT license:
+Copyright (c) 2009 - 2010 yellowstar6
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this
+software and associated documentation files (the Software), to deal in the Software
+without restriction, including without limitation the rights to use, copy, modify, merge,
+publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
+to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies
+or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED AS IS, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
+FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <wc24/wc24.h>
 
 int readonly = 0;
@@ -10,6 +32,7 @@ time_t curtime;
 time_t entrytime;
 nwc24dl_record dlrec;
 nwc24dl_entry dlent;
+char *nandbase;
 char str[256];
 char emailaddr[256];
 
@@ -179,6 +202,8 @@ void ProcessEntry()
 	char *temp;
 	int i;
 	struct stat mailstats;
+	unsigned int flags;
+	int retval;
 	curtime = time(NULL);
 	entrytime = WC24_TimestampToSeconds(be32toh(dlrec.last_modified));
 	if(entrytime)entrytmtime = gmtime(&entrytime);
@@ -203,10 +228,23 @@ void ProcessEntry()
 		unlink(filename);
 	}
 
+	flags = be32toh(dlent.flags);
 	memset(str, 0, 256);
-	snprintf(str, 255, "getwiimsg 049 en wc24msgboardkey.bin --cache %s", dlent.url);
+	if((flags & (WC24_FLAGS_RSA_WC24PUBKMOD | WC24_FLAGS_AES_WC24PUBKMOD))==0)
+	{
+		snprintf(str, 255, "getwiimsg 049 en wc24msgboardkey.bin --cache %s", dlent.url);
+	}
+	else
+	{
+		snprintf(str, 255, "getwiimsg 049 en %s/title/%08x/%08x/data/wc24pubk.mod --cache %s", dlent.url, (u32)be64toh(dlent.titleid), (u32)(be64toh(dlent.titleid) >> 32));
+	}
 	printf("%s\n", str);
-	system(str);
+	retval = WEXITSTATUS(system(str));
+	if(retval!=0)
+	{
+		printf("HTTP or wc24decrypt fail.\n");
+		return;
+	}
 
 	stat(filename, &mailstats);
 	savemail("mail0.eml", mailstats.st_mtime);
@@ -331,6 +369,7 @@ int main(int argc, char **argv)
 	}
 	if(strstr(argv[1], ".bin"))readonly = 1;
 
+	nandbase = argv[1];
 	retval = WC24_Init(argv[1]);
 	if(retval<0)
 	{
