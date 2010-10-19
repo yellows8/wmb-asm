@@ -35,7 +35,7 @@ char language_codes[7][3] = {{"ja"}, {"en"}, {"de"}, {"fr"}, {"es"}, {"it"}, {"n
 char str[256];
 char str2[256];
 
-void ProcessMail(unsigned int index)
+int ProcessMail(unsigned int index)
 {
 	FILE *fmail, *fmail2;
 	char *buffer, *newbuf, *base64, *decodebuf;
@@ -52,7 +52,7 @@ void ProcessMail(unsigned int index)
 	if(fmail==NULL)
 	{
 		printf("Failed to open %s\n", str);
-		return;
+		return 2;
 	}
 	filelen = GetFileLength(fmail);
 	buffer = (char*)malloc(filelen);
@@ -60,7 +60,7 @@ void ProcessMail(unsigned int index)
 	{
 		printf("Failed to alloc memory.(decrypt %d)\n", filelen);
 		fclose(fmail);
-		return;
+		return 1;
 	}
 	fread(buffer, 1, filelen, fmail);
 	fclose(fmail);
@@ -70,7 +70,7 @@ void ProcessMail(unsigned int index)
 	{
 		printf("Empty msg file.\n");
 		free(buffer);
-		return;
+		return 3;
 	}
 	newlen = ((unsigned int)strstr(newbuf, "--BoundaryForDL") - (unsigned int)newbuf);
 	sprintf(str, "mail%d.eml", index);
@@ -79,7 +79,7 @@ void ProcessMail(unsigned int index)
 	{
 		printf("Failed to open %s\n", str);
 		free(buffer);
-		return;
+		return 2;
 	}
 	fwrite(newbuf, 1, newlen, fmail);
 	
@@ -95,7 +95,7 @@ void ProcessMail(unsigned int index)
 	{
 		printf("Failed to alloc memory.(base64 %d)\n", base64len);
 		fclose(fmail);
-		return;
+		return 1;
 	}
 	memset(decodebuf, 0, base64len);
 	sprintf(str, "b64_%d.txt", index);
@@ -114,6 +114,7 @@ void ProcessMail(unsigned int index)
 	fclose(fmail2);
 	free(buffer);
 	free(decodebuf);
+	return 0;
 }
 
 int GetFileLength(FILE* _pfile)
@@ -199,7 +200,8 @@ int main(int argc, char **argv)
 				}
 				else
 				{
-					ProcessMail(index);
+					retval = ProcessMail(index);
+					if(retval!=0)lastfail = retval;
 				}
 				index++;
 			}
@@ -231,7 +233,8 @@ int main(int argc, char **argv)
 				}
 				else
 				{
-					ProcessMail(index);
+					retval = ProcessMail(index);
+					if(retval!=0)lastfail = retval;
 				}
 				index++;
 			}
