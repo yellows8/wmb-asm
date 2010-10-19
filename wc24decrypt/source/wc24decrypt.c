@@ -127,6 +127,20 @@ int main(int argc, char **argv)
 			return 34;
 		}
 
+		if(ctx->http_status==404)
+		{
+			printf("HTTP 404, content not found stop.\n");
+			YellHttp_FreeCtx(ctx);
+			return 44;
+		}
+
+		if(ctx->http_status!=200)
+		{
+			printf("Aborting due to HTTP %d.\n", ctx->http_status);
+			YellHttp_FreeCtx(ctx);
+			return 11;
+		}
+
 		memset(str, 0, 256);
 		snprintf(str, 255, "touch --date=\"%sUTC\" %s", asctime(localtime(&ctx->lastmodified)), fnstr);
 		temp = strchr(str, 0x0a);
