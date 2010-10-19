@@ -140,6 +140,7 @@ unsigned int GetLangCode(char *lang)
 
 int main(int argc, char **argv)
 {
+	int lastfail = 0;
 	if(argc<4)
 	{
 		printf("getwiimsg v1.1 by yellowstar6.\n");
@@ -182,9 +183,18 @@ int main(int argc, char **argv)
 				memset(str, 0, 256);
 				if(retval!=0)
 				{
+					lastfail = retval;
 					if(retval==34)
 					{
 						printf("Not modified.\n");
+					}
+					else if(retval==44)
+					{
+						printf("Not found.\n");
+					}
+					else
+					{
+						printf("HTTP fail.\n");
 					}
 				}
 				else
@@ -205,9 +215,18 @@ int main(int argc, char **argv)
 				memset(str, 0, 256);
 				if(retval!=0)
 				{
+					lastfail = retval;
 					if(retval==34)
 					{
 						printf("Not modified.\n");
+					}
+					else if(retval==44)
+					{
+						printf("Not found.\n");
+					}
+					else
+					{
+						printf("HTTP fail.\n");
 					}
 				}
 				else
@@ -218,5 +237,5 @@ int main(int argc, char **argv)
 			}
 		}
 	}
-	return 0;
+	return lastfail;
 }
