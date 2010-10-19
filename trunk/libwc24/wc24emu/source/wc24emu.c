@@ -32,7 +32,7 @@ time_t curtime;
 time_t entrytime;
 nwc24dl_record dlrec;
 nwc24dl_entry dlent;
-char *nandbase;
+char nandbase[256];
 char str[256];
 char emailaddr[256];
 
@@ -236,7 +236,7 @@ void ProcessEntry()
 	}
 	else
 	{
-		snprintf(str, 255, "getwiimsg 049 en %s/title/%08x/%08x/data/wc24pubk.mod --cache %s", dlent.url, (u32)be64toh(dlent.titleid), (u32)(be64toh(dlent.titleid) >> 32));
+		snprintf(str, 255, "getwiimsg 049 en %stitle/%08x/%08x/data/wc24pubk.mod --cache %s", nandbase, (u32)be64toh(dlent.titleid), (u32)(be64toh(dlent.titleid) >> 32), dlent.url);
 	}
 	printf("%s\n", str);
 	retval = WEXITSTATUS(system(str));
@@ -250,6 +250,7 @@ void ProcessEntry()
 	{
 		stat(filename, &mailstats);
 		savemail("mail0.eml", mailstats.st_mtime);
+		printf("New mail downloaded.\n");
 	}
 
 	if(retval==0 || retval==3)dlrec.last_modified = htobe32(WC24_SecondsToTimestamp(mailstats.st_mtime));
@@ -372,7 +373,8 @@ int main(int argc, char **argv)
 	}
 	if(strstr(argv[1], ".bin"))readonly = 1;
 
-	nandbase = argv[1];
+	memset(nandbase, 0, 256);
+	strncpy(nandbase, argv[1], 255);
 	retval = WC24_Init(argv[1]);
 	if(retval<0)
 	{
