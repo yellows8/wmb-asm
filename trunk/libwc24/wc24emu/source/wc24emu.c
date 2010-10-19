@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <sys/stat.h>
 #include <wc24/wc24.h>
 
 int readonly = 0;
@@ -10,6 +11,9 @@ time_t entrytime;
 nwc24dl_record dlrec;
 nwc24dl_entry dlent;
 char str[256];
+char emailaddr[256];
+
+void savemail(char *mailfn);
 
 void DisplayEntry()
 {
@@ -201,6 +205,63 @@ void ProcessEntry()
 	snprintf(str, 255, "getwiimsg 049 en wc24msgboardkey.bin --cache %s", dlent.url);
 	printf("%s\n", str);
 	system(str);
+
+	savemail("mail0.eml");
+}
+
+void savemail(char *mailfn)
+{
+	struct stat mailstats;
+	struct tm *modtime;
+	unsigned char *buf;
+	FILE *fmail;
+	char *staticstr;
+	int fromlen = 0;
+	char *fromstr, *home;
+	char curdir[256];
+	stat(mailfn, &mailstats);
+	modtime = gmtime(&mailstats.st_mtime);
+
+	memset(str, 0, 256);
+	snprintf(str, 255, "recvmail/%08x", dlent.ID);
+	mkdir("recvmail", 0777);
+	mkdir(str, 0777);
+
+	memset(str, 0, 256);
+	snprintf(str, 255, "recvmail/%08x/%d-%d-%d_%d-%d.eml", dlent.ID, modtime->tm_mon+1, modtime->tm_mday, modtime->tm_yday-280, modtime->tm_hour, modtime->tm_min);
+
+	buf = (unsigned char*)malloc(mailstats.st_size);
+	memset(buf, 0, mailstats.st_size);
+	fmail = fopen(mailfn, "rb");
+	fread(buf, 1, mailstats.st_size, fmail);
+	fclose(fmail);
+
+	fmail = fopen(str, "wb");
+	fwrite(buf, 1, mailstats.st_size, fmail);
+	fclose(fmail);
+
+	if(strlen(emailaddr)>0)
+	{
+		fmail = fopen("tmpmail", "wb");
+		fwrite(buf, 1, mailstats.st_size, fmail);
+		fclose(fmail);
+
+		memset(str, 0, 256);
+		snprintf(str, 255, "sendmail %s < %s", emailaddr, "tmpmail");
+		printf("%s\n", str);
+		system(str);
+	}
+
+	home = getenv("HOME");
+	if(home)
+	{
+		memset(str, 0, 256);
+		snprintf(str, 255, "%s/Desktop/new_wc24recvmail", home);
+		memset(curdir, 0, 256);
+		getcwd(curdir, 255);
+		strncat(curdir, "/recvmail", 255);
+		symlink(curdir, str);
+	}
 }
 
 void DlQuene()
@@ -245,14 +306,17 @@ int main(int argc, char **argv)
 		printf("To only read and display nwc24dl.bin entries, specify a direct path to a nwc24dl.bin.\nThe displayed timestamps use localtime.\n");
 		printf("Options:\n");
 		printf("--read: Only read and display entries, don't emulate.(Default when direct nwc24dl.bin path is used.)\n");
+		printf("--email=<email address> Send raw downloaded email to this email address with sendmail.\n");
 		return 0;
 	}
 
+	memset(emailaddr, 0, 256);
 	if(argc>2)
 	{
 		for(argi=2; argi<argc; argi++)
 		{
 			if(strcmp(argv[argi], "--parse")==0)readonly = 1;
+			if(strncmp(argv[argi], "--email=", 8)==0)strncpy(emailaddr, &argv[argi][8], 255);
 		}
 	}
 	if(strstr(argv[1], ".bin"))readonly = 1;
