@@ -149,7 +149,7 @@ int main(int argc, char **argv)
 		printf("Local encrypted mail can be decrypted and dumped as well.\n");
 		printf("Internal KD WC24 AES key is needed.\n");
 		printf("Usage:\n");
-		printf("getwiimsg <country code number> <language code> <wc24msgboardkey.bin or wc24pubk.mod for title mail> <optional list of\nalternate msg files to process from a server or locally> <options>\n");
+		printf("getwiimsg <country code number> <language code> <wc24msgboardkey.bin or wc24pubk.mod for title mail> <options> <optional list of\nalternate msg files to process from a server or locally>\n");
 		printf("language code can be one of the following: ja, en, de, fr, es, it, nl.\n");
 		printf("Options:\n");
 		printf("--cache: Cache the download, don't delete it before downloading and don't disable sending the If-Modified header. Default is no cache.");
