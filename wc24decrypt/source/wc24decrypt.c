@@ -117,28 +117,24 @@ int main(int argc, char **argv)
 		{
 			printf("Error: retval = %d str: %s", retval, errstr);
 			YellHttp_FreeCtx(ctx);
-			return retval;
-		}
+			
+			if(ctx->http_status==304)
+			{
+				printf("HTTP 304, content not modified stop.\n");
+				return 34;
+			}
 
-		if(ctx->http_status==304)
-		{
-			printf("HTTP 304, content not modified stop.\n");
-			YellHttp_FreeCtx(ctx);
-			return 34;
-		}
+			if(ctx->http_status==404)
+			{
+				printf("HTTP 404, content not found stop.\n");
+				return 44;
+			}
 
-		if(ctx->http_status==404)
-		{
-			printf("HTTP 404, content not found stop.\n");
-			YellHttp_FreeCtx(ctx);
-			return 44;
-		}
-
-		if(ctx->http_status!=200)
-		{
-			printf("Aborting due to HTTP %d.\n", ctx->http_status);
-			YellHttp_FreeCtx(ctx);
-			return 11;
+			if(ctx->http_status!=200)
+			{
+				printf("Aborting due to HTTP %d.\n", ctx->http_status);
+				return 11;
+			}
 		}
 
 		memset(str, 0, 256);
