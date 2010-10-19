@@ -240,16 +240,19 @@ void ProcessEntry()
 	}
 	printf("%s\n", str);
 	retval = WEXITSTATUS(system(str));
-	if(retval!=0)
+	if(retval!=0 && retval!=3 && retval!=34 && retval!=44)
 	{
-		printf("HTTP or wc24decrypt fail.\n");
+		printf("HTTP or wc24decrypt/getwiimsg fail.\n");
 		return;
 	}
 
-	stat(filename, &mailstats);
-	savemail("mail0.eml", mailstats.st_mtime);
+	if(retval!=3 && retval!=34 && retval!=44 && retval!=11)
+	{
+		stat(filename, &mailstats);
+		savemail("mail0.eml", mailstats.st_mtime);
+	}
 
-	dlrec.last_modified = htobe32(WC24_SecondsToTimestamp(mailstats.st_mtime));
+	if(retval==0 || retval==3)dlrec.last_modified = htobe32(WC24_SecondsToTimestamp(mailstats.st_mtime));
 	dlrec.next_dl = htobe32(WC24_SecondsToTimestamp(curtime) + be16toh(dlent.dl_freq_perday));
 	//dlent.dl_timestamp = htobe32(WC24_SecondsToTimestamp(curtime));
 
