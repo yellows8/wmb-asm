@@ -80,6 +80,7 @@ int main(int argc, char **argv)
 	    int retval;
 	    YellHttp_Ctx *ctx;
 	    int cache = 0;
+	    char *temp;
 	    char errstr[256];
             memset(str, 0, 256);
             memset(fnstr, 0, 256);
@@ -125,6 +126,12 @@ int main(int argc, char **argv)
 			YellHttp_FreeCtx(ctx);
 			return 34;
 		}
+
+		memset(str, 0, 256);
+		snprintf(str, 255, "touch --date=\"%sUTC\" %s", asctime(localtime(&ctx->lastmodified)), fnstr);
+		temp = strchr(str, 0x0a);
+		if(temp)*temp = ' ';
+		system(str);
 
 		YellHttp_FreeCtx(ctx);
             }
