@@ -13,7 +13,7 @@ nwc24dl_entry dlent;
 char str[256];
 char emailaddr[256];
 
-void savemail(char *mailfn);
+void savemail(char *mailfn, time_t lastmodtime);
 
 void DisplayEntry()
 {
@@ -178,6 +178,7 @@ void ProcessEntry()
 	char *filename;
 	char *temp;
 	int i;
+	struct stat mailstats;
 	entrytime = WC24_TimestampToSeconds(be32toh(dlrec.last_modified));
 	if(entrytime)entrytmtime = gmtime(&entrytime);
 	printf("Found next entry to dl.\n");
@@ -206,10 +207,11 @@ void ProcessEntry()
 	printf("%s\n", str);
 	system(str);
 
-	savemail("mail0.eml");
+	stat(filename, &mailstats);
+	savemail("mail0.eml", mailstats.st_mtime);
 }
 
-void savemail(char *mailfn)
+void savemail(char *mailfn, time_t lastmodtime)
 {
 	struct stat mailstats;
 	struct tm *modtime;
@@ -220,7 +222,7 @@ void savemail(char *mailfn)
 	char *fromstr, *home;
 	char curdir[256];
 	stat(mailfn, &mailstats);
-	modtime = gmtime(&mailstats.st_mtime);
+	modtime = gmtime(&lastmodtime);
 
 	memset(str, 0, 256);
 	snprintf(str, 255, "recvmail/%08x", dlent.ID);
@@ -228,7 +230,7 @@ void savemail(char *mailfn)
 	mkdir(str, 0777);
 
 	memset(str, 0, 256);
-	snprintf(str, 255, "recvmail/%08x/%d-%d-%d_%d-%d.eml", dlent.ID, modtime->tm_mon+1, modtime->tm_mday, modtime->tm_yday-280, modtime->tm_hour, modtime->tm_min);
+	snprintf(str, 255, "recvmail/%08x/%d-%d-%d_%d-%d.eml", dlent.ID, modtime->tm_mon+1, modtime->tm_mday, modtime->tm_yday-228, modtime->tm_hour, modtime->tm_min);
 
 	buf = (unsigned char*)malloc(mailstats.st_size);
 	memset(buf, 0, mailstats.st_size);
