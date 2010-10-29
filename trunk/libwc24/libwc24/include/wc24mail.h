@@ -40,9 +40,9 @@ typedef struct _sNWC24MsgCfg//See also: http://wiibrew.org/wiki//shared2/wc24/nw
 {
 	u32 magic;
 	u32 unk4;//Unknown, must always be 8.
-	u64 friend_code;//Wii msg board friend code/"Wii ID".
-	u32 unk10;//Unknown, must always be less than 0x20.
-	u32 unk14;//Unknown, usually 2? 
+	u64 friend_code;//Wii msg board friend code/"Wii ID"/NWC24 ID.
+	u32 nwc24idgen;//see http://wiibrew.org/wiki//shared2/wc24/nwc24msg.cfg
+	u32 id_registered;//"1 = ID is not registered yet, 2 = ID has been registered." see http://wiibrew.org/wiki//shared2/wc24/nwc24msg.cfg
 	char email_domain[0x40];//The Wii E-Mail address domain, includes the '@'. 
 	char unk58[0x20];
 	char mlchkid[0x24];//This is the mlchkid string value used in HTTP(S) mail POST requests. 
