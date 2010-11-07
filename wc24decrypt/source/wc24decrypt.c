@@ -173,6 +173,7 @@ int main(int argc, char **argv)
                     fclose(fwc24);
                     fclose(fout);
                     printf("Failed to open %s\n", argv[3]);
+		    return 1;
                 }
             }
 
