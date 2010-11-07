@@ -240,7 +240,7 @@ void ProcessEntry()
 	}
 	printf("%s\n", str);
 	retval = WEXITSTATUS(system(str));
-	if(retval!=0 && retval!=3 && retval!=34 && retval!=44)
+	if(retval!=0 && retval!=3 && retval!=34 && retval!=44 && retval!=11)
 	{
 		printf("HTTP or wc24decrypt/getwiimsg fail.\n");
 		return;
