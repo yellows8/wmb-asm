@@ -236,7 +236,7 @@ void ProcessEntry()
 	}
 	else
 	{
-		snprintf(str, 255, "getwiimsg 049 en %stitle/%08x/%08x/data/wc24pubk.mod --cache %s", nandbase, (u32)be64toh(dlent.titleid), (u32)(be64toh(dlent.titleid) >> 32), dlent.url);
+		snprintf(str, 255, "getwiimsg 049 en %s/title/%08x/%08x/data/wc24pubk.mod --cache %s", nandbase, (u32)(be64toh(dlent.titleid) >> 32), (u32)be64toh(dlent.titleid), dlent.url);
 	}
 	printf("%s\n", str);
 	retval = WEXITSTATUS(system(str));
