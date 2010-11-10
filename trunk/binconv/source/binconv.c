@@ -1,6 +1,6 @@
 /*
 binconv is licensed under the MIT license:
-Copyright (c) 2008 and 2009 yellowstar6
+Copyright (c) 2008 - 2010 yellowstar6
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this
 software and associated documentation files (the “Software”), to deal in the Software
@@ -212,53 +212,54 @@ unsigned char *ConvertBinBuff(unsigned char *data, int length)
     int offset = 0;
     int i;
 
-    memset(banner->titles, 0, 1536);
-
-    for(i=0; i<49; i++)
+    if(data[2]<4)//For bin versions less than 4, fix the banner with the info from the .bin header.
     {
-        if(header->game_title[i]==0)break;//If we found the null terminating character, break, write the newline character, then handle the description.
+    	    memset(banner->titles, 0, 1536);
+	    for(i=0; i<49; i++)
+	    {
+	        if(header->game_title[i]==0)break;//If we found the null terminating character, break, write the newline character, then handle the description.
+	
+	        description[offset] = header->game_title[i];
+	
+	        ConvertEndian(&description[offset], &description[offset], 2);//The bytes in the UTF characters are byte swapped, this fixes that.
+	        offset++;
+	    }
 
-        description[offset] = header->game_title[i];
-
-        ConvertEndian(&description[offset], &description[offset], 2);//The bytes in the UTF characters are byte swapped, this fixes that.
-
-        offset++;
+	    description[offset] = 0x000A;
+	    offset++;
+	
+	    for(i=0; i<97; i++)
+	    {
+	        if(header->game_description[i]==0)break;//If we found the null terminating character, break, write the newline character, then handle the description.
+	
+	        description[offset] = header->game_description[i];
+	
+	        ConvertEndian(&description[offset], &description[offset], 2);
+	
+	        offset++;
+	    }
+	
+	    /*description[offset] = 0xFFFF;
+	    offset++;
+	
+	    for(int i=0; i<97; i++)
+	    {
+	        if(header->game_name[i]==0)break;//If we found the null terminating character, break, write the newline character, then handle the description.
+	
+	        description[offset] = header->game_name[i];
+	
+	        offset++;
+	    }*/
+	
+	    memcpy(&banner->titles[0][0], description, 256);
+	    memcpy(&banner->titles[1][0], description, 256);
+	    memcpy(&banner->titles[2][0], description, 256);
+	    memcpy(&banner->titles[3][0], description, 256);
+	    memcpy(&banner->titles[4][0], description, 256);
+	    memcpy(&banner->titles[5][0], description, 256);
+	
+	    banner->crc = calccrc16(banner->icon, 2080);
     }
-
-    description[offset] = 0x000A;
-    offset++;
-
-    for(i=0; i<97; i++)
-    {
-        if(header->game_description[i]==0)break;//If we found the null terminating character, break, write the newline character, then handle the description.
-
-        description[offset] = header->game_description[i];
-
-        ConvertEndian(&description[offset], &description[offset], 2);
-
-        offset++;
-    }
-
-    /*description[offset] = 0xFFFF;
-    offset++;
-
-    for(int i=0; i<97; i++)
-    {
-        if(header->game_name[i]==0)break;//If we found the null terminating character, break, write the newline character, then handle the description.
-
-        description[offset] = header->game_name[i];
-
-        offset++;
-    }*/
-
-    memcpy(&banner->titles[0][0], description, 256);
-    memcpy(&banner->titles[1][0], description, 256);
-    memcpy(&banner->titles[2][0], description, 256);
-    memcpy(&banner->titles[3][0], description, 256);
-    memcpy(&banner->titles[4][0], description, 256);
-    memcpy(&banner->titles[5][0], description, 256);
-
-    banner->crc = calccrc16(banner->icon, 2080);
 
     return nds;
 }
