@@ -189,7 +189,7 @@ unsigned char *ConvertBinBuff(unsigned char *data, int length)
     NCBin_Header *header = (NCBin_Header*)data;
     unsigned int romsize = 0;
 
-    if(data[2]>4)
+    if(data[2]>6)
     {
         printf("Unsupported .bin header version.\n");
         return NULL;
