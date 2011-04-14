@@ -100,6 +100,15 @@ typedef struct _DLlist_title_type_entry_v4//v4
 	u8 unk;//usually matches the rating list "header" last byte.
 } __attribute((packed)) DLlist_title_type_entry_v4;
 
+typedef struct _DLlist_title_type_entry_v6//v6
+{
+	u8 typeID;
+	char console_model[3];//console model code.
+	u16 title[51];//Name of type.
+	u8 groupID;
+	u8 unk;//usually matches the rating list "header" last byte.
+} __attribute((packed)) DLlist_title_type_entry_v6;
+
 typedef struct _DLlist_company_entry//v3
 {
 	u32 ID;//?
@@ -265,6 +274,7 @@ typedef struct _DLlist_header_wrapper//v3
 } __attribute((packed)) DLlist_header_wrapper;
 
 typedef struct _DLlist_header_v4
+
 {
 	u16 unk0;
 	u8 version;
@@ -274,8 +284,7 @@ typedef struct _DLlist_header_v4
 	u32 DlListID;
 	u32 thumbnail_id;//ID of the thumbnail: dddd-ttt.thumb in the thumbnail URL, where dddd is the decimal DlListID and ttt is the decimal thumbnail_id.
 	u32 country_code;
-	u8 unk18[0x2];
-	u8 language_code;
+	u32 language_code;
 	u8 unk6[0x9];
 	u32 ratings_total;
 	u32 ratings_offset;
@@ -313,7 +322,11 @@ typedef struct _DLlist_header_wrapper_v4
 	u32 ratings_total;
 	DLlist_rating_entry_v4 *ratings;
 	u32 total_title_types;
-	DLlist_title_type_entry_v4 *title_types;
+	union
+	{
+		DLlist_title_type_entry_v4 *title_types;
+		DLlist_title_type_entry_v6 *title_typesv6;
+	};
 	u32 companies_total;
 	DLlist_company_entry *companies;
 	u32 total_titles;
@@ -740,9 +753,9 @@ int main(int argc, char **argv)
 		printf("%d\n", version);
 	}
 
-    if(version>4)
+    if(version>6)
     {
-        sprintf(pstr, "Unsupported dl list version for parser: %d\r\n", header->version);
+        sprintf(pstr, "Unsupported dl list version for parser: %d\r\n", header_v4->version);
         free(buffer);
 
         printf(pstr);
@@ -757,6 +770,7 @@ int main(int argc, char **argv)
     u16 utf_temp;
     u32 i, texti, ratingi;
     u32 total_demos, total_videos;
+    u32 titletypesoff = 0;
 
     if(version<4)
     {
@@ -772,7 +786,8 @@ int main(int argc, char **argv)
     }
     else
     {
-        header_v4->ratings = (DLlist_rating_entry_v4*)(be32toh((u32)header_v4->ratings) + (u32)buffer);
+	titletypesoff = be32toh((u32)header_v4->title_types);
+        header_v4->ratings = (DLlist_rating_entry_v4*)(titletypesoff + (u32)buffer);
         header_v4->title_types = (DLlist_title_type_entry_v4*)(be32toh((u32)header_v4->title_types) + (u32)buffer);
         header_v4->companies = (DLlist_company_entry*)(be32toh((u32)header_v4->companies) + (u32)buffer);
         header_v4->titles = (DLlist_title_entry_v4*)(be32toh((u32)header_v4->titles) + (u32)buffer);
@@ -956,30 +971,49 @@ int main(int argc, char **argv)
 
 	int ti;
 	u32 tt_num;
-	if(version<4)tt_num = be32toh(header->total_title_types);
-	if(version>=4)tt_num = be32toh(header_v4->total_title_types);
+	if(version<4)tt_num = header->total_title_types;
+	if(version>=4)tt_num = header_v4->total_title_types;
 	for(ti = 0; ti<tt_num; ti++)
-				{
-				    if(version<4)
-				    {
-                        if(title_ptr->title_type==header->main_title_types[ti].typeID)
-                        {
-                            break;
-                        }
-				    }
-				    else
-                    {
-                        if(title_ptr_v4->title_type==header_v4->title_types[ti].typeID)
-                        {
-                            break;
-                        }
-                    }
-				}
+	{
+	    if(version<4)
+	    {
+                 if(title_ptr->title_type==header->main_title_types[ti].typeID)
+                 {
+                        break;
+                 }
+	    }
+	    else
+            {
+		 if(version<6)
+		 {
+                 	if(title_ptr_v4->title_type==header_v4->title_types[ti].typeID)
+                 	{
+                 	       break;
+                 	}
+		 }
+		 else
+		 {
+			if(title_ptr_v4->title_type==header_v4->title_typesv6[ti].typeID)
+                 	{
+                 	       break;
+                 	}
+		 }
+            }
+	}
 
 	fprintf(fil, "Title type: ");
 	memset(str, 0, 256);
-	if(version<4)ConvertUTF16ToUTF8(header->main_title_types[ti].title, str);
-	if(version>=4)ConvertUTF16ToUTF8(header_v4->title_types[ti].title, str);
+	if(version<4)
+	{
+		ConvertUTF16ToUTF8(header->main_title_types[ti].title, str);
+	} else if(version<6)
+	{
+		ConvertUTF16ToUTF8(header_v4->title_types[ti].title, str);
+	}
+	else if(version>=6)
+	{
+		ConvertUTF16ToUTF8(header_v4->title_typesv6[ti].title, str);
+	}
 	fprintf(fil, str);
         if(version<4)fprintf(fil, " (typeID %02x)\n", title_ptr->title_type);
         if(version>=4)fprintf(fil, " (typeID %02x)\n", title_ptr_v4->title_type);
@@ -1177,30 +1211,49 @@ int main(int argc, char **argv)
 
 	int ti;
 	u32 tt_num;
-	if(version<4)tt_num = be32toh(header->total_title_types);
-	if(version>=4)tt_num = be32toh(header_v4->total_title_types);
+	if(version<4)tt_num = header->total_title_types;
+	if(version>=4)tt_num = header_v4->total_title_types;
 	for(ti = 0; ti<tt_num; ti++)
-				{
-				    if(version<4)
-				    {
-                        if(header->titles[i].title_type==header->main_title_types[ti].typeID)
-                        {
-                            break;
-                        }
-				    }
-				    else
-                    {
-                        if(header_v4->titles[i].title_type==header_v4->title_types[ti].typeID)
-                        {
-                            break;
-                        }
-                    }
-				}
+	{
+	    if(version<4)
+	    {
+                 if(title_ptr->title_type==header->main_title_types[ti].typeID)
+                 {
+                        break;
+                 }
+	    }
+	    else
+            {
+		 if(version<6)
+		 {
+                 	if(title_ptr_v4->title_type==header_v4->title_types[ti].typeID)
+                 	{
+                 	       break;
+                 	}
+		 }
+		 else
+		 {
+			if(title_ptr_v4->title_type==header_v4->title_typesv6[ti].typeID)
+                 	{
+                 	       break;
+                 	}
+		 }
+            }
+	}
 
 	fprintf(fil, "Title type: ");
 	memset(str, 0, 256);
-	if(version<4)ConvertUTF16ToUTF8(header->main_title_types[ti].title, str);
-	if(version>=4)ConvertUTF16ToUTF8(header_v4->title_types[ti].title, str);
+	if(version<4)
+	{
+		ConvertUTF16ToUTF8(header->main_title_types[ti].title, str);
+	} else if(version<6)
+	{
+		ConvertUTF16ToUTF8(header_v4->title_types[ti].title, str);
+	}
+	else if(version>=6)
+	{
+		ConvertUTF16ToUTF8(header_v4->title_typesv6[ti].title, str);
+	}
 	fprintf(fil, str);
         if(version<4)fprintf(fil, " (typeID %02x)\n", title_ptr->title_type);
         if(version>=4)fprintf(fil, " (typeID %02x)\n", title_ptr_v4->title_type);
