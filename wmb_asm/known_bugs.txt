@@ -1,15 +1,7 @@
 Wmb Asm PC known bugs
 
-There are no known bugs in Wmb Asm 2.0b r2 PC. If you find any, if your capture won't assemble correctly,
-or if there's any problems, goto the issue tracker on the Google Code project page, and report your issue.
+There are no known bugs in the PC version of Wmb Asm. If you find any, or if your capture
+won't assemble correctly, or if there's any problems, goto the issue tracker on the Google Code project page,
+and report your issue.
 
 Wmb Asm Google Code Project page: http://code.google.com/p/wmb-asm/
-
-The following is the Wmb Asm bugs in this SVN revision:
-
-1. Wmb Asm won't display an error message when packets are missing, or will display the wrong error message.
-
-2. Binaries assembled from multi-game captures may be incorrectly assembled.
-
-3. Not all of the binaries from multi-game captures may be assembled.
-

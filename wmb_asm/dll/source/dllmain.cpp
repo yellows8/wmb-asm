@@ -1,3 +1,4 @@
+/*
 Wmb Asm and all software in the Wmb Asm package are licensed under the MIT license:
 Copyright (c) 2008 yellowstar
 
@@ -16,3 +17,48 @@ PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS 
 FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
 OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
+*/
+
+#define DLLMAIN//Define for wmb_asm.h, see that for details.
+#ifndef BUILDING_DLL//Not all compilers/IDEs define this, so make sure it's defined, as this define is used in the code.
+#define BUILDING_DLL
+#endif
+#include "..\include\dll.h"
+#include "..\include\wmb_asm.h"
+
+#ifdef WIN32
+DllClass::DllClass()
+{
+
+}
+
+
+DllClass::~DllClass ()
+{
+
+}
+
+
+BOOL APIENTRY DllMain (HINSTANCE hInst     /* Library instance handle. */ ,
+                       DWORD reason        /* Reason this function is being called. */ ,
+                       LPVOID reserved     /* Not used. */ )
+{
+    switch (reason)
+    {
+      case DLL_PROCESS_ATTACH:
+        break;
+
+      case DLL_PROCESS_DETACH:
+        break;
+
+      case DLL_THREAD_ATTACH:
+        break;
+
+      case DLL_THREAD_DETACH:
+        break;
+    }
+
+    /* Returns TRUE on success, FALSE on failure */
+    return TRUE;
+}
+#endif

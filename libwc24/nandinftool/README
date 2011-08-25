@@ -1,5 +1,0 @@
-nandinftool v1.0 by yellowstar
-This app can update a NANDBOOTINFO checksum, and read/write launchcode and arguments. Run nandinftool without parameters for help.
-
-Credits:
-Marcan's wiilaunch.c from libogc. This was modified to be usable on computer.

@@ -1,3 +1,4 @@
+/*
 Wmb Asm and all software in the Wmb Asm package are licensed under the MIT license:
 Copyright (c) 2008 yellowstar
 
@@ -16,3 +17,36 @@ PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS 
 FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
 OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
+*/
+
+#ifdef BUILDING_DLL
+# define DLLIMPORT __declspec (dllexport)
+#endif
+#ifndef BUILDING_DLL /* Not BUILDING_DLL */
+# define DLLIMPORT __declspec (dllimport)
+#endif /* Not BUILDING_DLL */
+
+#ifdef NDS
+#undef DLLIMPORT
+#define DLLIMPORT//This is done when compiling for DS, so the functions with this define infront
+//of their prototypes and declarations, would have those removed.(The export commands would be removed,
+//because of the preprocessor, from the prespective of the compiler.)
+#endif
+
+#ifdef DLLMAIN
+#ifndef _DLL_H_
+#define _DLL_H_
+
+class DLLIMPORT DllClass
+{
+  public:
+    DllClass();
+    virtual ~DllClass(void);
+
+  private:
+
+};
+
+
+#endif /* _DLL_H_ */
+#endif

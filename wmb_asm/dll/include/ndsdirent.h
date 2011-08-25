@@ -1,3 +1,4 @@
+/*
 Wmb Asm and all software in the Wmb Asm package are licensed under the MIT license:
 Copyright (c) 2008 yellowstar
 
@@ -16,3 +17,31 @@ PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS 
 FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
 OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
+*/
+
+#ifdef NDS
+
+#ifndef _H_NDSDIRENT
+#define _H_NDSDIRENT
+
+#include <sys/dir.h>
+#include <sys/stat.h>
+
+//This header is very similar to that Win32 dirent header
+typedef struct DIR DIR;//So we can define it only in the c file?
+typedef unsigned int ino_t;
+
+struct dirent
+{
+	ino_t d_ino;
+    char *d_name;
+};
+
+DIR           *opendir(const char *);
+int           closedir(DIR *);
+struct dirent *readdir(DIR *);
+void          rewinddir(DIR *);
+
+#endif
+
+#endif

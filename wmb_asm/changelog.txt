@@ -1,5 +1,10 @@
 Wmb Asm PC changelog
 
+2.0b r3
+
+Added support for 802.11 captures that don't use AVS.
+
+
 2.0b r2
 
 Fixed flaws in the module Read Me. Install instructions are now on a Wiki page on the Google Code project page.

@@ -1,14 +1,11 @@
-Wmb Asm DS beta 0.1
-This DS version will remain as a beta until all the bugs have been fixed. Once the bugs are fixed, the version
-will be updated to the Wmb Asm PC version.
+Wmb Asm Module v2.0b r2 by yellowstar 07/11/08
 
-This DS version has serious bugs which stop the assembly of the .nds. So this doesn't work very well, if at all.
+This module assembles libpcap .cap files of DS WMB Download Play captures into a .nds.
 
-Usage:
-First, DLDI patch wmb_asm.nds for your card. Copy it to your card.
-Copy your capture to the root of your card, and rename it capture.cap.
-Run wmb_asm.nds, and the capture should be assembled. Once done, the output should appear on the root of your card.
-Restart your DS and goto your card's menu. The output should appear.
+Setup instructions: http://code.google.com/p/wmb-asm/wiki/Setup
+
+Right now, this tool is made for compiled for Windows only. However, other platforms are supported, but it needs to be compiled
+for the other platforms. The general public needs to wait for devs to compile & host those binaries, before you can use it on those platforms.
 
 Compiling
 This program was built with the GNU compiler, but others should work, but some changes might be needed for other compilers.
