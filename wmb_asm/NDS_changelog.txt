@@ -1,4 +1,0 @@
-Wmb Asm DS changelog
-
-0.1b
-Initial release.
