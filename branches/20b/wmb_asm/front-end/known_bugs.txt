@@ -1,0 +1,9 @@
+Wmb Asm Front-End known bugs
+
+There are known bugs in the PC version of Wmb Asm. If you find any other bugs, or if your capture
+won't assemble correctly, or if there's any problems, goto the issue tracker on the Google Code project page,
+and report your issue.
+
+Wmb Asm Google Code Project page: http://code.google.com/p/wmb-asm/
+
+1. Sometimes the status bar text will disappear, then reappear, depending on where the mouse is moved.

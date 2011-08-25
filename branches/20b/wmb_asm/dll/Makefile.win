@@ -1,0 +1,57 @@
+# Project: wmb_asm_module
+# Compiler: Default GCC compiler
+# Compiler Type: MingW 3
+# Makefile created by wxDev-C++ 6.10.2 on 12/07/08 19:09
+
+CPP       = g++.exe
+CC        = gcc.exe
+WINDRES   = windres.exe
+OBJ       = source/dllmain.o source/ndsdirent.o source/pcap.o source/utils.o source/wmb.o source/win32dirent.o source/dirscan.o source/asm.o wmb_asm_module_private.res
+LINKOBJ   = source/dllmain.o source/ndsdirent.o source/pcap.o source/utils.o source/wmb.o source/win32dirent.o source/dirscan.o source/asm.o wmb_asm_module_private.res
+LIBS      = -L"C:/Dev-Cpp/Lib" -L"C:/idasdk/libgcc.w32" --no-export-all-symbols --add-stdcall-alias  -g3 
+INCS      = -I"include" -I"C:/idasdk/include"
+CXXINCS   = -I"C:/Dev-Cpp/lib/gcc/mingw32/3.4.2/include" -I"C:/Dev-Cpp/include/c++/3.4.2/backward" -I"C:/Dev-Cpp/include/c++/3.4.2/mingw32" -I"C:/Dev-Cpp/include/c++/3.4.2" -I"C:/Dev-Cpp/include" -I"C:/Dev-Cpp/" -I"C:/Dev-Cpp/include/common/wx/msw" -I"C:/Dev-Cpp/include/common/wx/generic" -I"C:/Dev-Cpp/include/common/wx/fl" -I"C:/Dev-Cpp/include/common/wx/gizmos" -I"C:/Dev-Cpp/include/common/wx/html" -I"C:/Dev-Cpp/include/common/wx/mmedia" -I"C:/Dev-Cpp/include/common/wx/net" -I"C:/Dev-Cpp/include/common/wx/ogl" -I"C:/Dev-Cpp/include/common/wx/plot" -I"C:/Dev-Cpp/include/common/wx/protocol" -I"C:/Dev-Cpp/include/common/wx/stc" -I"C:/Dev-Cpp/include/common/wx/svg" -I"C:/Dev-Cpp/include/common/wx/xml" -I"C:/Dev-Cpp/include/common/wx/xrc" -I"C:/Dev-Cpp/include/common/wx" -I"C:/Dev-Cpp/include/common" -I"C:/idasdk/include"
+RCINCS    = --include-dir "C:/Dev-Cpp/include/common"
+BIN       = wmb_asm.dll
+DEFINES   = 
+CXXFLAGS  = $(CXXINCS) $(DEFINES) -DBUILDING_DLL=1   -fexpensive-optimizations -O3 -g3
+CFLAGS    = $(INCS) $(DEFINES) -DBUILDING_DLL=1   -fexpensive-optimizations -O3 -g3
+GPROF     = gprof.exe
+RM        = rm -f
+LINK      = g++.exe
+
+.PHONY: all all-before all-after clean clean-custom
+all: all-before $(BIN) all-after
+
+clean: clean-custom
+	$(RM) $(OBJ) $(BIN)
+
+$(BIN): $(OBJ)
+	$(LINK) -shared $(STATICLIB) $(LINKOBJ) $(LIBS) -Wl,--out-implib,libwmb_asm.a -o wmb_asm.dll
+
+source/dllmain.o: $(GLOBALDEPS) source/dllmain.cpp include/dll.h include/wmb_asm.h include/dll.h include/pcap.h include/dirscan.h include/win32dirent.h include/ndsdirent.h include/dll_load.h
+	$(CPP) -c source/dllmain.cpp -o source/dllmain.o $(CXXFLAGS)
+
+source/ndsdirent.o: $(GLOBALDEPS) source/ndsdirent.cpp include/wmb_asm.h include/dll.h include/pcap.h include/dirscan.h include/win32dirent.h include/ndsdirent.h include/dll_load.h
+	$(CPP) -c source/ndsdirent.cpp -o source/ndsdirent.o $(CXXFLAGS)
+
+source/pcap.o: $(GLOBALDEPS) source/pcap.cpp include/wmb_asm.h include/dll.h include/pcap.h include/dirscan.h include/win32dirent.h include/ndsdirent.h include/dll_load.h
+	$(CPP) -c source/pcap.cpp -o source/pcap.o $(CXXFLAGS)
+
+source/utils.o: $(GLOBALDEPS) source/utils.cpp include/wmb_asm.h include/dll.h include/pcap.h include/dirscan.h include/win32dirent.h include/ndsdirent.h include/dll_load.h
+	$(CPP) -c source/utils.cpp -o source/utils.o $(CXXFLAGS)
+
+source/wmb.o: $(GLOBALDEPS) source/wmb.cpp include/wmb_asm.h include/dll.h include/pcap.h include/dirscan.h include/win32dirent.h include/ndsdirent.h include/dll_load.h
+	$(CPP) -c source/wmb.cpp -o source/wmb.o $(CXXFLAGS)
+
+source/win32dirent.o: $(GLOBALDEPS) source/win32dirent.cpp include/wmb_asm.h include/dll.h include/pcap.h include/dirscan.h include/win32dirent.h include/ndsdirent.h include/dll_load.h
+	$(CPP) -c source/win32dirent.cpp -o source/win32dirent.o $(CXXFLAGS)
+
+source/dirscan.o: $(GLOBALDEPS) source/dirscan.cpp include/wmb_asm.h include/dll.h include/pcap.h include/dirscan.h include/win32dirent.h include/ndsdirent.h include/dll_load.h
+	$(CPP) -c source/dirscan.cpp -o source/dirscan.o $(CXXFLAGS)
+
+source/asm.o: $(GLOBALDEPS) source/asm.cpp include/wmb_asm.h include/dll.h include/pcap.h include/dirscan.h include/win32dirent.h include/ndsdirent.h include/dll_load.h
+	$(CPP) -c source/asm.cpp -o source/asm.o $(CXXFLAGS)
+
+wmb_asm_module_private.res: wmb_asm_module_private.rc 
+	$(WINDRES) --input-format=rc -o wmb_asm_module_private.res $(RCINCS) WMB_AS~1.RC -O coff
