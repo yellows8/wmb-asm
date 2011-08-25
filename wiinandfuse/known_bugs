@@ -1,6 +1,0 @@
-Known wiinandfuse bugs:
-
-1) With raw NAND dumps with ECC, some files may be corrupted. This happened with a YaWND NAND image, it's unknown if this happens with flash programmer dumps.
-
-2) Not exactly a bug since the max fn length is specified in statvfs, but some file browsers may use a long directory name when creating directories, and part of the name will be cut off. Thus would result in a file/dir not found, ignore that and reload. Having mknod return ENAMETOOLONG wouldn't fix this, with nautilus it would just displays "error: filename to long".
-

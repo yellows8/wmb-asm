@@ -58,7 +58,7 @@ INCLUDES	:=	include
 # options for code generation
 #---------------------------------------------------------------------------------
 
-CFLAGS	:=	-Wall -O2 -Dunix
+CFLAGS	:=	-Wall -O2
 
 CFLAGS	+=	$(INCLUDE)
 CXXFLAGS	:= $(CFLAGS)
@@ -69,14 +69,14 @@ LDFLAGS	=	-g -Wl
 #---------------------------------------------------------------------------------
 # any extra libraries we wish to link with the project (order is important)
 #---------------------------------------------------------------------------------
-LIBS	:= 	-llzo2
+LIBS	:= 	-liconv
  
  
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing
 # include and lib
 #---------------------------------------------------------------------------------
-LIBDIRS	:=	/usr
+LIBDIRS	:=	
  
 #---------------------------------------------------------------------------------
 # no real need to edit anything past this point unless you need to add additional
