@@ -1,0 +1,5 @@
+Touch!Try!DS! is a service that allows you to, using only a DS in the store, to play any DS Demo you want.(At least 100 demos available, so about every demo ever released and more.) This is referred to on this wiki as "DS Station". This is un-related to the "DS Station" revision of the Nintendo Spot series. [Japanese Touch!Try!DS Title List](http://www.nintendo.co.jp/ds/ds_station/touch_try/list.html)
+
+# Details #
+
+DS Station uses Internet, via Ethernet. The the DS used for DS Station is not a "normal" DS. The DS used seems to be similar to the IS-NITRO-CAPTURE hardware. (No blue box, just a stand) There's a stand, which has a Ethernet cord connected to it, and the DS Station has a large cord from Slot-1 connected to the stand. It doesn't have a power switch either. Instead, it has a reset button. However, the DS Station isn't using a DS Card for the DS Station software either - the DS Station software is the firmware. The demos are sometimes larger than 4 MB. There may be NAND inside the DS Station.

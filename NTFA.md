@@ -1,0 +1,6 @@
+This wiki page describes the NTFA file format, used by Nintendo Spot series for the whole menu. This file format was reverse engineered by Lizardon. Observation on offset 0 was added by yellowstar6.
+
+# File format #
+
+The whole file is LZSS compressed.(Sometimes compression isn't used, but usually only very small NTFA files are not compressed.) In the decompressed data, at offset 0, may be a u32 for the size of the header? A 8 byte magic string,(no null terminator) is located at offset 4: "NTFA0000". The u16 at offset 0xc is the transparent flag. If non-zero, palette index 0 is used for transparency. If zero, palette index 0 is used as a regular color without transparency. The u16 at offset 0xe is used for image type: 3 for 4-bit, 4 for 8-bit. The u16 image width is at offset 0x10, u16 image height at offset 0x12. The offset to the image is stored in the u32 at offset 0x14. The offset to the palette is stored in the u32 at offset 0x18. The number of palette entries can be determined by subtracting image offset by palette offset, and dividing the result by 2.
+The palette is RGB15. The image is non-tiled. When the u16 type at 0xe is 3, 4-bits are used per pixel for palette index. 8-bits are used when type is 4.
